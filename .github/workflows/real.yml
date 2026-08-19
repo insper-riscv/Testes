@@ -47,6 +47,17 @@ jobs:
         # <<< ADJUST if Quartus is installed somewhere else on the runner.
         run: echo "/home/picow/altera_lite/25.1std/quartus/bin" >> "$GITHUB_PATH"
 
+      - name: Install RISC-V toolchain (riscv-collab, always latest nightly)
+        # Same as sim.yml: no pinned tag, since the project ships no
+        # "stable" release and this is meant to track the same
+        # toolchain used in production.
+        run: |
+          curl -fsSL -o /tmp/riscv-gcc.tar.xz \
+            https://github.com/riscv-collab/riscv-gnu-toolchain/releases/latest/download/riscv32-elf-ubuntu-24.04-gcc.tar.xz
+          rm -rf /tmp/riscv32-elf && mkdir -p /tmp/riscv32-elf
+          tar -xf /tmp/riscv-gcc.tar.xz -C /tmp/riscv32-elf --strip-components=1
+          echo "/tmp/riscv32-elf/bin" >> "$GITHUB_PATH"
+
       - name: Install Python dependencies
         run: pip install -r tools/riscv_build/requirements.txt
 
