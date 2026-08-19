@@ -1,0 +1,57 @@
+name: real tests (FPGA)
+
+on:
+  push:
+    branches: [main]     # <<< ADJUST if the default branch isn't main
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Repo secret FPGA_RUN_SECRET's value, to confirm you're allowed to run this on the physical FPGA"
+        required: true
+
+jobs:
+  test-real:
+    # Only runs on main (or on demand) — needs licensed Quartus and
+    # real hardware attached over JTAG, so it stays off feature
+    # branches/PRs by default.
+    runs-on: [self-hosted, quartus, fpga]   # <<< ADJUST to match your runner's labels
+
+    steps:
+      - name: Authorize manual run
+        # Only applies to workflow_dispatch: repo write access already
+        # gates who can trigger this, but on a repo shared with people
+        # who shouldn't touch the hardware, this adds a second check —
+        # only someone who separately knows FPGA_RUN_SECRET can run it.
+        # A push to main skips this: branch protection on main is the
+        # gate for that path instead.
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ inputs.confirm }}" != "${{ secrets.FPGA_RUN_SECRET }}" ]; then
+            echo "::error::confirmation does not match FPGA_RUN_SECRET — refusing to run on the FPGA"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Checkout RV32IM (holds the real Quartus project)
+        # config.yaml's quartus.project_dir is "../RV32IM/..." relative
+        # to this checkout — on this workstation that's true by
+        # accident (the two folders happen to sit side by side), but a
+        # GitHub-hosted checkout starts empty, so this makes it true on
+        # the runner too. RV32IM is public, no auth needed to clone it.
+        run: |
+          rm -rf ../RV32IM
+          git clone --depth 1 https://github.com/insper-riscv/RV32IM.git ../RV32IM
+
+      - name: Add Quartus to PATH
+        # <<< ADJUST if Quartus is installed somewhere else on the runner.
+        run: echo "/home/picow/altera_lite/25.1std/quartus/bin" >> "$GITHUB_PATH"
+
+      - name: Install Python dependencies
+        run: pip install -r tools/riscv_build/requirements.txt
+
+      - name: Build real test ROM images
+        run: python3 tools/riscv_build/build_tests.py --emit mif
+
+      - name: Run tests on the FPGA
+        run: python3 tools/riscv_build/build_fpga.py

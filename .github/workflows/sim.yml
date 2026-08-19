@@ -1,0 +1,46 @@
+name: sim tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: sim-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-sim:
+    # Runs on any push/PR/branch, no hardware needed: cheap, fast, no
+    # license required (GHDL is open source).
+    runs-on: ubuntu-latest
+    container:
+      image: ghdl/ghdl:6.0.0-mcode-ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install RISC-V toolchain (riscv-collab, always latest nightly)
+        run: |
+          curl -fsSL -o /tmp/riscv-gcc.tar.xz \
+            https://github.com/riscv-collab/riscv-gnu-toolchain/releases/latest/download/riscv32-elf-ubuntu-24.04-gcc.tar.xz
+          mkdir -p /opt/riscv
+          tar -xf /tmp/riscv-gcc.tar.xz -C /opt/riscv --strip-components=1
+          echo "/opt/riscv/bin" >> "$GITHUB_PATH"
+
+      - name: Install Python dependencies
+        run: pip install --break-system-packages -r tools/riscv_build/requirements.txt
+
+      - name: Build sim test ROM images
+        run: python3 tools/riscv_build/build_tests.py --emit hex
+
+      - name: Run sim tests
+        run: python3 tools/riscv_build/run_sim_tests.py
+
+      - name: Upload waveforms
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: waveforms
+          path: "**/*.ghw"
+          if-no-files-found: ignore
