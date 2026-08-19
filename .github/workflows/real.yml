@@ -9,6 +9,14 @@ on:
         description: "Repo secret FPGA_RUN_SECRET's value, to confirm you're allowed to run this on the physical FPGA"
         required: true
 
+concurrency:
+  # Queue instead of overlapping/canceling: cancel-in-progress could
+  # kill a run mid quartus_pgm/JTAG write and leave the board or the
+  # In-System Memory Editor session in a bad state. Unlike sim.yml,
+  # this must NOT cancel-in-progress.
+  group: real-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   test-real:
     # Only runs on main (or on demand) — needs licensed Quartus and
