@@ -52,8 +52,13 @@ jobs:
           git clone --depth 1 https://github.com/insper-riscv/RV32IM.git ../RV32IM
 
       - name: Add Quartus to PATH
-        # <<< ADJUST if Quartus is installed somewhere else on the runner.
-        run: echo "/home/picow/altera_lite/25.1std/quartus/bin" >> "$GITHUB_PATH"
+        # <<< ADJUST if Quartus is installed somewhere else on the
+        # runner. Reached via /opt/altera_lite (a bind mount of
+        # /home/picow/altera_lite in /etc/fstab), not the /home/picow
+        # path directly — /home/picow is 750, and the runner user
+        # deliberately isn't in the picow group, so it can't traverse
+        # there at all.
+        run: echo "/opt/altera_lite/25.1std/quartus/bin" >> "$GITHUB_PATH"
 
       - name: Install RISC-V toolchain (riscv-collab, cached until a newer nightly exists)
         # Same "always latest, no pinned tag" reasoning as sim.yml, but

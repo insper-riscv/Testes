@@ -67,61 +67,42 @@ Each suite has its own workflow file:
 
 ## Configuring the real suite on this workstation
 
-This machine already has everything the real suite needs to run
-*locally* (i.e. `python3 tools/riscv_build/build_fpga.py`, run by
-hand):
+This is the actual setup running on this machine — repo
+[`insper-riscv/RISC-V-Workstation-Tests`](https://github.com/insper-riscv/RISC-V-Workstation-Tests)
+(private), runner named `WS-C621E-SAGE`, runner group `Workstation -
+FPGA` (Repository access → Selected repositories → only this repo;
+"Allow public repositories" left unchecked — otherwise the public
+`RV32IM`, same org, could reach this exact machine through the same
+runner).
 
-- Quartus 25.1std at `/home/picow/altera_lite/25.1std/quartus/bin` —
-  add it to `PATH` before running anything (`quartus_sh`,
-  `quartus_pgm`, `quartus_stp` all live there).
-- The board answers on JTAG: `jtagconfig` reports hardware
-  `USB-Blaster [1-4]`, device `@1: 5CE(BA4|FA4) (0x02B050DD)` —
-  already set in `config.yaml`.
+**Hardware/board facts, already reflected in `config.yaml`/`link.ld`/`include/rv32_test.h`:**
+- JTAG: `jtagconfig` reports hardware `USB-Blaster [1-4]`, device
+  `@1: 5CE(BA4|FA4) (0x02B050DD)`.
 - `core_fpga_test`'s ROM1PORT/RAM1PORT IPs both have
   `ENABLE_RUNTIME_MOD=YES` (`INSTANCE_NAME=ROM` / `RAM`), so the
   In-System Memory Content Editor can read/write them over JTAG — this
-  is what `read_mailbox.tcl`/`dump_ram.tcl` rely on. Confirmed by
-  grepping `ips/{ROM,RAM}1PORT/*1port.vhd`; no Quartus GUI changes
-  needed.
+  is what `read_mailbox.tcl`/`dump_ram.tcl` rely on.
 - Memory map: `rv32im_pipeline_core` is Harvard (separate `rom_addr` /
   `ram_addr` buses, each its own space starting at `0x0`) — ROM is
   8192 words (32K), RAM is 4096 words (16K), mailbox at the last RAM
-  word (`0x00003FFC`). All already reflected in `config.yaml`,
-  `link.ld`, and `include/rv32_test.h`.
+  word (`0x00003FFC`).
 
-CI needs a git repo with a GitHub remote to attach a runner to — this
-folder lives in a new **private** repo, separate from `RV32IM`
-(`RV32IM` is public, and a self-hosted runner reachable from a public
-repo means anyone who can open a PR against it can run code on
-whatever machine the runner lives on).
-
-**If the runner is registered at the organization level** (available
-to every repo in the org, not just this one), that protection doesn't
-hold by default: any repo the runner's *runner group* is scoped to —
-often "All repositories" out of the box — can dispatch jobs to it,
-including the public `RV32IM`. Go to **Organization Settings → Actions
-→ Runner groups**, find the group this runner landed in, and set
-**Repository access → Selected repositories → only the private `test`
-repo**. Without this step, a public repo in the same org can still
-reach this exact machine, which defeats the whole point of making
-`test` private.
-
-The runner itself runs as a dedicated, unprivileged Linux service
-account (`runner`), not as a regular login user:
+**The runner runs as a dedicated, unprivileged Linux service account**
+(`runner`, no login password, no sudo of its own), home at
+`/opt/actions-runner` — deliberately *not* `/home/runner`, and
+deliberately *not* in the `picow` group, so it has zero standing
+access to anything under `/home/picow`:
 
 ```bash
-# as an admin (has sudo)
-sudo useradd -m -s /bin/bash runner
+sudo useradd -r -m -d /opt/actions-runner -s /bin/bash runner
 sudo passwd -l runner              # no password login; only reachable via sudo/systemd
-sudo usermod -aG picow runner      # /home/picow is 750 — needed just to traverse into altera_lite
-sudo usermod -aG plugdev runner    # defense in depth; the USB-Blaster udev rule is already 0666
+sudo usermod -aG plugdev runner    # USB-Blaster access; udev already makes the device 0666 anyway
 
-# register the runner AS that user (uses the admin's sudo, not runner's — runner gets none)
-# Org Settings -> Actions -> Runners -> New runner gives the download URL + token below.
-# (--url is the ORG, not a specific repo, for an org-level runner — see the
-# runner-group restriction above, which is what actually limits which repos reach it.)
+# Org Settings -> Actions -> Runners -> New runner gives the download URL + token.
+# --url is the ORG (this is an org-level runner) — the runner-group
+# restriction above is what actually limits which repos reach it.
 sudo -iu runner bash -lc '
-  mkdir -p ~/actions-runner && cd ~/actions-runner
+  cd /opt/actions-runner
   curl -o actions-runner.tar.gz -L <download URL from that page>
   tar xzf actions-runner.tar.gz
   ./config.sh --url https://github.com/<org> --token <token from that same page> \
@@ -129,10 +110,27 @@ sudo -iu runner bash -lc '
 '
 ```
 
-The bundled `svc.sh install` expects the service user to have sudo of
-its own (it shells out to `sudo systemctl ...`), which conflicts with
-`runner` having none. Writing the systemd unit directly as the admin
-avoids that:
+Registering the token needs the **`workflow`** permission (fine-grained
+PAT: "Workflows", separate from "Contents"/"Actions") to be able to
+push `.github/workflows/*.yml` at all — without it, `git push` gets
+rejected with "refusing to allow a Personal Access Token to create or
+update workflow ... without `workflow` scope".
+
+Since `runner` isn't in the `picow` group, it can't reach Quartus at
+`/home/picow/altera_lite` either (`/home/picow` is `750`). Fixed with
+a bind mount instead of a group grant — `runner` never gets any
+permission on `/home/picow` itself, it just sees the same directory
+tree through a second, root-managed path under `/opt`:
+
+```bash
+sudo mkdir -p /opt/altera_lite
+echo '/home/picow/altera_lite /opt/altera_lite none bind 0 0' | sudo tee -a /etc/fstab
+sudo mount --bind /home/picow/altera_lite /opt/altera_lite
+```
+
+**Service**, written directly as the admin rather than via the bundled
+`svc.sh install` (which shells out to `sudo systemctl ...` itself —
+conflicts with `runner` having no sudo):
 
 ```bash
 sudo tee /etc/systemd/system/gh-actions-runner.service <<'UNIT'
@@ -143,8 +141,8 @@ After=network.target
 [Service]
 Type=simple
 User=runner
-WorkingDirectory=/home/runner/actions-runner
-ExecStart=/home/runner/actions-runner/run.sh
+WorkingDirectory=/opt/actions-runner
+ExecStart=/opt/actions-runner/run.sh
 Restart=always
 RestartSec=5
 
@@ -156,18 +154,24 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now gh-actions-runner
 ```
 
-The token and download URL are one-time, repo-specific, and shown on
-the GitHub Settings page — there's no way to script around fetching
-them yourself.
-
 `real.yml`'s `workflow_dispatch` also gates on a repository secret
 (`FPGA_RUN_SECRET`, set under Settings → Secrets and variables →
-Actions): repo write access already controls who can trigger it, but
-this adds a second check for anyone with write access who still
-shouldn't be able to run jobs on the physical board — set it to any
-passphrase and pass the same value in the `confirm` input when
+Actions, e.g. `openssl rand -hex 32`): repo write access already
+controls who can trigger it, but this adds a second check for anyone
+with write access who still shouldn't be able to run jobs on the
+physical board — pass the same value in the `confirm` input when
 dispatching manually. It only guards the manual path; a push to `main`
 is gated by branch protection instead.
+
+**Runner OS is Ubuntu 22.04** (glibc 2.35, confirmed via `lsb_release
+-a`/`ldd --version`) — `real.yml` downloads the
+`riscv32-elf-ubuntu-22.04-gcc.tar.xz` riscv-collab asset specifically
+for this reason; the `ubuntu-24.04` one (needs glibc ≥2.38) fails to
+even start with a `GLIBC_2.38 not found` error. If this runner is ever
+reinstalled on a newer Ubuntu, update that asset name in `real.yml`
+and clear `/opt/actions-runner/.cache/riscv32-elf` (see the toolchain
+caching note below — it won't redetect the mismatch on its own, since
+it only compares release tags, not compatibility).
 
 ## Design decisions worth knowing
 
@@ -204,12 +208,11 @@ is gated by branch protection instead.
 
 ## `<<< ADJUST` checklist
 
-The `real` suite's config is resolved for this workstation (see above).
-What's still open:
+The `real` suite is fully wired up and running in CI on this
+workstation (see above). What's still open:
 
 | File | What |
 |---|---|
 | `sim/Makefile` | `TOPLEVEL`, `VHDL_SOURCES` — sim has no real core wired in yet |
 | `sim/test_c_program.py` | `dut.rom_inst` / `dut.ram_inst` hierarchical paths, and the `clk`/`rst` signal names |
-| `.github/workflows/real.yml` | `runs-on` labels — only matter once a runner is registered with those exact labels (see above); adjust the `branches: [main]` check too if the target repo's default branch isn't `main` |
-| — | This folder (or wherever it ends up living) needs to actually be a git repo with a GitHub remote before either workflow can run in CI at all — see "Configuring the real suite on this workstation" above |
+| `.github/workflows/real.yml` | `riscv32-elf-ubuntu-22.04-gcc.tar.xz` asset name and `/opt/altera_lite/...` PATH, if this ever moves to a different/newer runner OS or a different Quartus install location |
