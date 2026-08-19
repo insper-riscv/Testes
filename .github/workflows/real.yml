@@ -60,6 +60,12 @@ jobs:
         # this runner is a persistent machine (sim.yml's isn't), so the
         # ~200MB tarball only needs re-fetching when the nightly tag
         # actually changed — the ~1KB API check runs every time either way.
+        # <<< ADJUST the ubuntu-22.04 asset below if this runner's OS
+        # ever changes — riscv-collab's prebuilt gcc needs a glibc at
+        # least as new as the Ubuntu version it was built against
+        # (confirmed via `lsb_release -a` / `ldd --version` on this
+        # workstation: Ubuntu 22.04, glibc 2.35 — the 24.04 build
+        # failed with "GLIBC_2.38 not found").
         run: |
           CACHE_DIR=/opt/actions-runner/.cache/riscv32-elf
           RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/riscv-collab/riscv-gnu-toolchain/releases/latest)
@@ -75,7 +81,7 @@ jobs:
             echo "Installing $LATEST_TAG (cached was: $(cat "$CACHE_DIR/.tag" 2>/dev/null || echo none))"
             rm -rf "$CACHE_DIR" && mkdir -p "$CACHE_DIR"
             curl -fsSL -o /tmp/riscv-gcc.tar.xz \
-              "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$LATEST_TAG/riscv32-elf-ubuntu-24.04-gcc.tar.xz"
+              "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$LATEST_TAG/riscv32-elf-ubuntu-22.04-gcc.tar.xz"
             tar -xf /tmp/riscv-gcc.tar.xz -C "$CACHE_DIR" --strip-components=1
             rm /tmp/riscv-gcc.tar.xz
             echo "$LATEST_TAG" > "$CACHE_DIR/.tag"
