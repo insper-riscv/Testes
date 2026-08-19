@@ -47,16 +47,32 @@ jobs:
         # <<< ADJUST if Quartus is installed somewhere else on the runner.
         run: echo "/home/picow/altera_lite/25.1std/quartus/bin" >> "$GITHUB_PATH"
 
-      - name: Install RISC-V toolchain (riscv-collab, always latest nightly)
-        # Same as sim.yml: no pinned tag, since the project ships no
-        # "stable" release and this is meant to track the same
-        # toolchain used in production.
+      - name: Install RISC-V toolchain (riscv-collab, cached until a newer nightly exists)
+        # Same "always latest, no pinned tag" reasoning as sim.yml, but
+        # this runner is a persistent machine (sim.yml's isn't), so the
+        # ~200MB tarball only needs re-fetching when the nightly tag
+        # actually changed — the ~1KB API check runs every time either way.
         run: |
-          curl -fsSL -o /tmp/riscv-gcc.tar.xz \
-            https://github.com/riscv-collab/riscv-gnu-toolchain/releases/latest/download/riscv32-elf-ubuntu-24.04-gcc.tar.xz
-          rm -rf /tmp/riscv32-elf && mkdir -p /tmp/riscv32-elf
-          tar -xf /tmp/riscv-gcc.tar.xz -C /tmp/riscv32-elf --strip-components=1
-          echo "/tmp/riscv32-elf/bin" >> "$GITHUB_PATH"
+          CACHE_DIR=/opt/actions-runner/.cache/riscv32-elf
+          LATEST_TAG=$(curl -fsSL https://api.github.com/repos/riscv-collab/riscv-gnu-toolchain/releases/latest \
+              | grep -m1 '"tag_name"' | cut -d'"' -f4)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "::error::could not resolve the latest riscv-collab release tag"
+            exit 1
+          fi
+
+          if [ "$(cat "$CACHE_DIR/.tag" 2>/dev/null)" = "$LATEST_TAG" ]; then
+            echo "Cached toolchain is already $LATEST_TAG, skipping download"
+          else
+            echo "Installing $LATEST_TAG (cached was: $(cat "$CACHE_DIR/.tag" 2>/dev/null || echo none))"
+            rm -rf "$CACHE_DIR" && mkdir -p "$CACHE_DIR"
+            curl -fsSL -o /tmp/riscv-gcc.tar.xz \
+              "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$LATEST_TAG/riscv32-elf-ubuntu-24.04-gcc.tar.xz"
+            tar -xf /tmp/riscv-gcc.tar.xz -C "$CACHE_DIR" --strip-components=1
+            rm /tmp/riscv-gcc.tar.xz
+            echo "$LATEST_TAG" > "$CACHE_DIR/.tag"
+          fi
+          echo "$CACHE_DIR/bin" >> "$GITHUB_PATH"
 
       - name: Install Python dependencies
         run: pip install -r tools/riscv_build/requirements.txt

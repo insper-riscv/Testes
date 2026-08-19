@@ -171,15 +171,19 @@ is gated by branch protection instead.
 
 ## Design decisions worth knowing
 
-- **Toolchain**: both `sim.yml` and `real.yml` always pull the latest
+- **Toolchain**: both `sim.yml` and `real.yml` always track the latest
   nightly from
   [riscv-collab/riscv-gnu-toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain)
-  rather than pinning a tag, even though `real.yml` runs on a
-  persistent machine that could cache it — the project ships no
-  "stable" release, updates often specifically to fix bugs, and this
-  is meant to track the same toolchain used in production, so a stale
-  local copy would defeat the point. Costs a ~200MB download per run,
-  which is negligible next to the Quartus compile it's followed by.
+  rather than pinning a tag — the project ships no "stable" release,
+  updates often specifically to fix bugs, and this is meant to track
+  the same toolchain used in production. `sim.yml` runs on an
+  ephemeral GitHub-hosted runner, so it just re-downloads every time.
+  `real.yml` runs on a persistent machine: it checks the latest
+  release tag via the GitHub API every run (a ~1KB request) and caches
+  the ~200MB toolchain at `/opt/actions-runner/.cache/riscv32-elf`,
+  only re-downloading when that tag actually changed — always current,
+  without paying the download cost on every push when nothing changed
+  upstream.
 - **Recompile-per-test**: `build_fpga.py` overwrites the ROM IP's
   `.mif` and runs a full `quartus_sh --flow compile` for every test,
   producing one bitstream each. This is simpler and needs no extra
