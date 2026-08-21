@@ -11,6 +11,7 @@ from pathlib import Path
 
 CONTENT_RE = re.compile(r"CONTENT\s+BEGIN(.*)END\s*;", re.IGNORECASE | re.DOTALL)
 LINE_RE = re.compile(r"^\s*([0-9A-Fa-f]+)\s*:\s*([0-9A-Fa-f]+)\s*;")
+RANGE_RE = re.compile(r"^\s*\[([0-9A-Fa-f]+)\.\.([0-9A-Fa-f]+)\]\s*:\s*([0-9A-Fa-f]+)\s*;")
 
 
 def parse_mif_words(mif_path: Path) -> dict:
@@ -20,7 +21,14 @@ def parse_mif_words(mif_path: Path) -> dict:
         raise ValueError(f"{mif_path}: no CONTENT ... END; block found")
     words = {}
     for line in m.group(1).splitlines():
-        lm = LINE_RE.match(line.strip())
+        line = line.strip()
+        rm = RANGE_RE.match(line)
+        if rm:
+            start, end, val = int(rm.group(1), 16), int(rm.group(2), 16), int(rm.group(3), 16)
+            for addr in range(start, end + 1):
+                words[addr] = val
+            continue
+        lm = LINE_RE.match(line)
         if lm:
             words[int(lm.group(1), 16)] = int(lm.group(2), 16)
     return words
