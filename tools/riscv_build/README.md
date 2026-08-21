@@ -38,6 +38,28 @@ value (0-255). `build_tests.py` fails fast if it's missing.
 
 ## Running locally
 
+Needs `riscv32-unknown-elf-gcc` on `PATH`. `cache/riscv32-elf/` (gitignored,
+not checked in) holds a local copy for exactly this — matches the same
+`riscv32-elf-ubuntu-22.04-gcc.tar.xz` build `real.yml` downloads on the
+runner, since this workstation is Ubuntu 22.04:
+
+```bash
+export PATH="$PWD/cache/riscv32-elf/bin:$PATH"
+```
+
+To (re)populate it, or bump it to whatever the latest nightly is:
+
+```bash
+TAG=$(curl -fsSL https://api.github.com/repos/riscv-collab/riscv-gnu-toolchain/releases/latest \
+    | grep -m1 '"tag_name"' | cut -d'"' -f4)
+rm -rf cache/riscv32-elf && mkdir -p cache/riscv32-elf
+curl -fsSL -o /tmp/riscv-gcc.tar.xz \
+  "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$TAG/riscv32-elf-ubuntu-22.04-gcc.tar.xz"
+tar -xf /tmp/riscv-gcc.tar.xz -C cache/riscv32-elf --strip-components=1
+echo "$TAG" > cache/riscv32-elf/.tag
+rm /tmp/riscv-gcc.tar.xz
+```
+
 ```bash
 # real (needs Quartus + a board on JTAG)
 python3 tools/riscv_build/build_tests.py --emit mif
