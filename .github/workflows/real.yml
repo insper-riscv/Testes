@@ -71,8 +71,14 @@ jobs:
         # (confirmed via `lsb_release -a` / `ldd --version` on this
         # workstation: Ubuntu 22.04, glibc 2.35 — the 24.04 build
         # failed with "GLIBC_2.38 not found").
+        #
+        # /opt/riscv-foundation is a shared, workstation-wide cache for
+        # every RISC-V toolchain this project needs (not just this
+        # one) — owned by runner:runner, setgid so picow (in the
+        # runner group) can also refresh it interactively for local
+        # dev, instead of each keeping a separate multi-GB copy.
         run: |
-          CACHE_DIR=/opt/actions-runner/.cache/riscv32-elf
+          CACHE_DIR=/opt/riscv-foundation/riscv32-elf
           RELEASE_JSON=$(curl -fsSL https://api.github.com/repos/riscv-collab/riscv-gnu-toolchain/releases/latest)
           LATEST_TAG=$(echo "$RELEASE_JSON" | grep -m1 '"tag_name"' | cut -d'"' -f4)
           if [ -z "$LATEST_TAG" ]; then

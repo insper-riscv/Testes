@@ -38,25 +38,31 @@ value (0-255). `build_tests.py` fails fast if it's missing.
 
 ## Running locally
 
-Needs `riscv32-unknown-elf-gcc` on `PATH`. `cache/riscv32-elf/` (gitignored,
-not checked in) holds a local copy for exactly this — matches the same
-`riscv32-elf-ubuntu-22.04-gcc.tar.xz` build `real.yml` downloads on the
-runner, since this workstation is Ubuntu 22.04:
+Needs `riscv32-unknown-elf-gcc` on `PATH`. `/opt/riscv-foundation/riscv32-elf/`
+holds it — a shared, workstation-wide cache (not repo-local: it's meant to
+serve every RISC-V project on this machine, not just this one), owned
+`runner:runner` with `picow` added to the `runner` group so it's writable
+without sudo either way. Matches the `riscv32-elf-ubuntu-22.04-gcc.tar.xz`
+build `real.yml` downloads on the runner, since this workstation is Ubuntu
+22.04:
 
 ```bash
-export PATH="$PWD/cache/riscv32-elf/bin:$PATH"
+export PATH="/opt/riscv-foundation/riscv32-elf/bin:$PATH"
 ```
 
-To (re)populate it, or bump it to whatever the latest nightly is:
+To (re)populate it, or bump it to whatever the latest nightly is (if
+your shell's group list doesn't include `runner` yet — `id` to check —
+prefix these with `sg runner -c '...'` instead of running directly):
 
 ```bash
 TAG=$(curl -fsSL https://api.github.com/repos/riscv-collab/riscv-gnu-toolchain/releases/latest \
     | grep -m1 '"tag_name"' | cut -d'"' -f4)
-rm -rf cache/riscv32-elf && mkdir -p cache/riscv32-elf
+CACHE_DIR=/opt/riscv-foundation/riscv32-elf
+rm -rf "$CACHE_DIR" && mkdir -p "$CACHE_DIR"
 curl -fsSL -o /tmp/riscv-gcc.tar.xz \
   "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$TAG/riscv32-elf-ubuntu-22.04-gcc.tar.xz"
-tar -xf /tmp/riscv-gcc.tar.xz -C cache/riscv32-elf --strip-components=1
-echo "$TAG" > cache/riscv32-elf/.tag
+tar -xf /tmp/riscv-gcc.tar.xz -C "$CACHE_DIR" --strip-components=1
+echo "$TAG" > "$CACHE_DIR/.tag"
 rm /tmp/riscv-gcc.tar.xz
 ```
 
@@ -191,7 +197,7 @@ is gated by branch protection instead.
 for this reason; the `ubuntu-24.04` one (needs glibc ≥2.38) fails to
 even start with a `GLIBC_2.38 not found` error. If this runner is ever
 reinstalled on a newer Ubuntu, update that asset name in `real.yml`
-and clear `/opt/actions-runner/.cache/riscv32-elf` (see the toolchain
+and clear `/opt/riscv-foundation/riscv32-elf` (see the toolchain
 caching note below — it won't redetect the mismatch on its own, since
 it only compares release tags, not compatibility).
 
@@ -206,7 +212,7 @@ it only compares release tags, not compatibility).
   ephemeral GitHub-hosted runner, so it just re-downloads every time.
   `real.yml` runs on a persistent machine: it checks the latest
   release tag via the GitHub API every run (a ~1KB request) and caches
-  the ~200MB toolchain at `/opt/actions-runner/.cache/riscv32-elf`,
+  the ~200MB toolchain at `/opt/riscv-foundation/riscv32-elf`,
   only re-downloading when that tag actually changed — always current,
   without paying the download cost on every push when nothing changed
   upstream.
