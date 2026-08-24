@@ -22,7 +22,7 @@ header comments configure it:
 // RV32_EXT: M          // extensions ADDED to the implicit rv32i base.
 // RV32_EXT: M,A        // order doesn't matter — both this and "A,M" become rv32ima.
 // RV32_TEST_KIND: unit          // default. real tests only: checked via the
-// RV32_TEST_KIND: integration   // PASS/FAIL mailbox alone, or mailbox + a
+// RV32_TEST_KIND: memory        // PASS/FAIL mailbox alone, or mailbox + a
                                   // full RAM dump compared against
                                   // tests/c/real/golden/<name>.json.
 #include "rv32_test.h"
@@ -32,7 +32,7 @@ int main(void) {
 }
 ```
 
-An `integration` test needs a matching
+A `memory` test needs a matching
 `tests/c/real/golden/<name>.json`: byte address (hex string) -> expected
 value (0-255). `build_tests.py` fails fast if it's missing.
 

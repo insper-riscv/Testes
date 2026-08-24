@@ -1,4 +1,4 @@
-// RV32_TEST_KIND: integration
+// RV32_TEST_KIND: memory
 #include "rv32_test.h"
 
 // Writes a small pattern into RAM. Unlike a unit test, reaching

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compares a RAM dump (.mif, one 32-bit word per line) against a
 golden JSON of expected byte values. Used for RV32_TEST_KIND:
-integration tests, where the PASS/FAIL mailbox alone isn't enough to
+memory tests, where the PASS/FAIL mailbox alone isn't enough to
 prove the test did the right thing — e.g. it wrote the right values to
 memory, not just that it reached RV32_PASS()."""
 import json
