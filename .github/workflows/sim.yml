@@ -19,6 +19,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install RISC-V toolchain (riscv-collab, always latest nightly)
         run: |
@@ -28,14 +30,22 @@ jobs:
           tar -xf /tmp/riscv-gcc.tar.xz -C /opt/riscv --strip-components=1
           echo "/opt/riscv/bin" >> "$GITHUB_PATH"
 
-      - name: Install Python dependencies
-        run: pip install --break-system-packages -r tools/riscv_build/requirements.txt
+      - uses: astral-sh/setup-uv@v3
+
+      - name: Install Python dependencies (riscv-tools, editable from tools/Tools, + its sim extra)
+        run: uv sync
+
+      - name: Generate rv32_test.h
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
 
       - name: Build sim test ROM images
-        run: python3 tools/riscv_build/build_tests.py --emit hex
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex
 
       - name: Run sim tests
-        run: python3 tools/riscv_build/run_sim_tests.py
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml sim
+
+      - name: Run per-entity VHDL unit tests (tests/python/)
+        run: uv run python tests/python/runner.py
 
       - name: Upload waveforms
         if: always()

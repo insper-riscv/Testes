@@ -6,12 +6,47 @@ PASS/FAIL:
 - **real** (`tests/c/real/`): runs on an actual FPGA over JTAG.
 - **sim** (`tests/c/sim/`): runs in a GHDL/cocotb simulation, no hardware needed.
 
+Both are driven by [`riscv-tools`](https://github.com/insper-riscv/Tools)
+— vendored here as the `tools/Tools` git submodule, not a copy. This
+folder only holds what's genuinely project-specific: `config.yaml`
+(memory map, Quartus project, toolchain), `crt0.S`/`link.ld` (this
+project's own startup code/linker script), and `sim/test_c_program.py`
+(the cocotb testbench that knows the DUT's actual VHDL signal
+hierarchy — `riscv-tools` can't know that, only this project can).
+Everything else — compiling, JTAG programming/readback, RAM-vs-golden
+comparison, running the simulation — is `riscv-tools` code, so it's
+fixed/extended in one place ([insper-riscv/Tools](https://github.com/insper-riscv/Tools))
+instead of drifting between copies.
+
 The **real** suite is wired to
 [`RV32IM/tests/FPGA/core/quartus/core_fpga_test.qpf`](../../../RV32IM/tests/FPGA/core/quartus/core_fpga_test.qpf)
 (a sibling repo, not nested under this folder) — the only working core
-+ Quartus project on this workstation. The **sim** suite still has no
-real VHDL core wired in; that part remains `<<< ADJUST` (list at the
-bottom of this file).
++ Quartus project on this workstation.
+
+The **sim** suite is wired to a *different* RV32IM toplevel,
+`rv32i3stage_core_sim_test` — not `core_fpga_test`: the real hardware
+top instantiates Quartus' `ROM1PORT`/`RAM1PORT` IP (`altsyncram`-based),
+which GHDL/cocotb can't inspect the contents of at all.
+`rv32i3stage_core_sim_test` instantiates `ROM_simulation`/
+`RAM_simulation` instead — plain VHDL processes a testbench can
+actually observe. Two things worth knowing if this ever needs
+revisiting:
+- `sim.test_module` (`sim/test_c_program.py`) watches the RAM *write
+  bus* (`ram_addr`/`ram_wren`/`ram_en`/`ram_wdata`, all visible via
+  VPI) for a write to the mailbox word, rather than reading
+  `RAM_simulation`'s internal `mem` array directly — this GHDL
+  install's VPI (mcode backend) doesn't expose array-of-vector
+  ("memory") signals as child objects at all, confirmed empirically.
+  If a different GHDL backend/version does support it, reading `mem`
+  directly would also work; watching the bus doesn't depend on that
+  either way.
+- `ROM_simulation`/`RAM_simulation` default to a 512-word memory array
+  (`memoryAddrWidth := 9`), too small to hold `memory.mailbox_addr`'s
+  word offset (4095) — `rv32i3stage_core_sim_test` exposes
+  `rom_addr_width`/`ram_addr_width` generics (defaulting to the same
+  9, so RV32IM's own existing instruction-level cocotb tests are
+  unaffected) that `config.yaml`'s `sim.parameters` overrides to 13/12
+  to match `memory.rom_words`/`ram_words`.
 
 ## Writing a test
 
@@ -32,9 +67,14 @@ int main(void) {
 }
 ```
 
+`rv32_test.h` is **generated**, not checked in (see `.gitignore`) —
+`riscv-tools generate-header` writes it from `config.yaml`'s
+`memory.mailbox_addr` (see "Running locally" below). Regenerate it
+after changing that address; don't hand-edit the generated file.
+
 A `memory` test needs a matching
 `tests/c/real/golden/<name>.json`: byte address (hex string) -> expected
-value (0-255). `build_tests.py` fails fast if it's missing.
+value (0-255). `riscv-tools compile` fails fast if it's missing.
 
 ## Running locally
 
@@ -66,19 +106,35 @@ echo "$TAG" > "$CACHE_DIR/.tag"
 rm /tmp/riscv-gcc.tar.xz
 ```
 
-```bash
-# real (needs Quartus + a board on JTAG)
-python3 tools/riscv_build/build_tests.py --emit mif
-python3 tools/riscv_build/build_fpga.py
+This repo's own Python side is `uv`-managed — a single `pyproject.toml`
+at the repo root depends on `riscv-tools` as an **editable path
+dependency on the `tools/Tools` submodule** (see `[tool.uv.sources]`),
+so `git submodule update --remote tools/Tools` + `uv sync` is the whole
+upgrade story, no separate `pip install` step, no version drift between
+what this repo's own `tests/python/` unit tests and `riscv-tools`
+itself use for cocotb:
 
-# sim (needs GHDL + cocotb)
-python3 tools/riscv_build/build_tests.py --emit hex
-python3 tools/riscv_build/run_sim_tests.py
+```bash
+git submodule update --init --recursive
+uv sync
+
+# real (needs Quartus + a board on JTAG)
+uv run riscv-tools --config tools/riscv_build/config.yaml generate-header  # once, or after changing mailbox_addr
+uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
+uv run riscv-tools --config tools/riscv_build/config.yaml run
+
+# sim (needs GHDL; cocotb/cocotb-tools already come from riscv-tools[sim])
+uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex
+uv run riscv-tools --config tools/riscv_build/config.yaml sim
+
+# per-entity VHDL unit tests (ALU, RAM, control_unit, ...) — see tests/python/README.md
+uv run python tests/python/runner.py          # all of them
+uv run python tests/python/runner.py ALU      # just one
 ```
 
-Both `build_tests.py` runs iterate every `.c` file in their folder and
-write a `build/{real,sim}/manifest.json` that the corresponding runner
-consumes.
+`compile` iterates every `.c`/`.S` file in `tests/c/{real,sim}/` and
+writes `build/{real,sim}/manifest.json`, which `run`/`sim` then
+consume.
 
 ## CI
 
@@ -93,6 +149,10 @@ Each suite has its own workflow file:
   workflow**. Needs a self-hosted runner with Quartus and a board
   attached.
 
+Both check out submodules recursively (`tools/Tools`, plus
+`vendor/riscv-arch-test`) and set up `uv` the same way local dev does
+above.
+
 ## Configuring the real suite on this workstation
 
 This is the actual setup running on this machine — repo
@@ -103,13 +163,16 @@ FPGA` (Repository access → Selected repositories → only this repo;
 `RV32IM`, same org, could reach this exact machine through the same
 runner).
 
-**Hardware/board facts, already reflected in `config.yaml`/`link.ld`/`include/rv32_test.h`:**
+**Hardware/board facts, already reflected in `config.yaml`/`link.ld`
+(and in the generated `rv32_test.h` — see "Writing a test" above):**
 - JTAG: `jtagconfig` reports hardware `USB-Blaster [1-4]`, device
   `@1: 5CE(BA4|FA4) (0x02B050DD)`.
 - `core_fpga_test`'s ROM1PORT/RAM1PORT IPs both have
   `ENABLE_RUNTIME_MOD=YES` (`INSTANCE_NAME=ROM` / `RAM`), so the
   In-System Memory Content Editor can read/write them over JTAG — this
-  is what `read_mailbox.tcl`/`dump_ram.tcl` rely on.
+  is what `riscv-tools`' `mailbox`/`ram_dump`/`rom_writer` modules rely
+  on (via their own bundled `.tcl` scripts, not anything project-local
+  anymore).
 - Memory map: `rv32im_pipeline_core` is Harvard (separate `rom_addr` /
   `ram_addr` buses, each its own space starting at `0x0`) — ROM is
   8192 words (32K), RAM is 4096 words (16K), mailbox at the last RAM
@@ -216,13 +279,14 @@ it only compares release tags, not compatibility).
   only re-downloading when that tag actually changed — always current,
   without paying the download cost on every push when nothing changed
   upstream.
-- **Recompile-per-test**: `build_fpga.py` overwrites the ROM IP's
-  `.mif` and runs a full `quartus_sh --flow compile` for every test,
-  producing one bitstream each. This is simpler and needs no extra
-  infrastructure, but is slow for large suites — if that becomes a
-  bottleneck, the alternative is flashing one bitstream and loading
-  each test's ROM content live via JTAG (Quartus' In-System Memory
-  Content Editor supports this too), skipping recompilation entirely.
+- **Recompile-per-test**: `riscv-tools run` overwrites the ROM IP's
+  `.mif` and runs a full `quartus_sh --flow compile` once up front,
+  then JTAG-reloads each test's ROM content live on that same
+  bitstream (falling back to a full recompile+reprogram only if a
+  test's mailbox never responds — see `riscv-tools`'
+  `orchestrator`/`docs/configuration.md`). Simpler than recompiling
+  per test, and the fallback still exists for when the board itself
+  wedges.
 - **JTAG readback**: reading the PASS/FAIL mailbox and dumping RAM
   both go through Quartus' In-System Memory Content Editor
   (`quartus_stp` + the `insystem_memory_edit` package) — this is the
@@ -236,11 +300,11 @@ it only compares release tags, not compatibility).
 
 ## `<<< ADJUST` checklist
 
-The `real` suite is fully wired up and running in CI on this
-workstation (see above). What's still open:
+Both `real` and `sim` are fully wired up now (verified end to end:
+`real` runs in CI on this workstation; `sim` was verified locally
+against RV32IM's `rv32i3stage_core_sim_test` with both a PASS and a
+FAIL test — see above). What's still open:
 
 | File | What |
 |---|---|
-| `sim/Makefile` | `TOPLEVEL`, `VHDL_SOURCES` — sim has no real core wired in yet |
-| `sim/test_c_program.py` | `dut.rom_inst` / `dut.ram_inst` hierarchical paths, and the `clk`/`rst` signal names |
 | `.github/workflows/real.yml` | `riscv32-elf-ubuntu-22.04-gcc.tar.xz` asset name and `/opt/altera_lite/...` PATH, if this ever moves to a different/newer runner OS or a different Quartus install location |

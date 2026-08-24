@@ -40,6 +40,8 @@ jobs:
           fi
 
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Checkout RV32IM (holds the real Quartus project)
         # config.yaml's quartus.project_dir is "../RV32IM/..." relative
@@ -99,11 +101,16 @@ jobs:
           fi
           echo "$CACHE_DIR/bin" >> "$GITHUB_PATH"
 
-      - name: Install Python dependencies
-        run: pip install -r tools/riscv_build/requirements.txt
+      - uses: astral-sh/setup-uv@v3
+
+      - name: Install Python dependencies (riscv-tools, editable from tools/Tools)
+        run: uv sync
+
+      - name: Generate rv32_test.h
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
 
       - name: Build real test ROM images
-        run: python3 tools/riscv_build/build_tests.py --emit mif
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
 
       - name: Run tests on the FPGA
-        run: python3 tools/riscv_build/build_fpga.py
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml run

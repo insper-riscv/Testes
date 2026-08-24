@@ -1,4 +1,0 @@
-pyyaml
-# Only needed to run the sim suite locally (test-sim already has it in
-# the ghdl/ghdl container via its own install step in fpga-build.yml).
-cocotb
