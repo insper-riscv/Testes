@@ -8,16 +8,22 @@
  * once it stops being 0. Must match memory.mailbox_addr in config.yaml. */
 #define RV32_MAILBOX_ADDR ((volatile unsigned int *)0x00003FFC)
 
+/* Implemented in crt0.S: waits for go_flag_addr to go nonzero, then
+ * jumps back to _start. Lets build_fpga.py re-run a different program
+ * on the same, already-configured bitstream (JTAG-write a new ROM
+ * image + pulse the flag) instead of reprogramming the FPGA. */
+extern void rv32_wait_restart(void) __attribute__((noreturn));
+
 /* Signals to the testbench that the test PASSED. */
 static inline void RV32_PASS(void) {
     *RV32_MAILBOX_ADDR = 1;
-    for (;;) {}
+    rv32_wait_restart();
 }
 
 /* Signals to the testbench that the test FAILED. */
 static inline void RV32_FAIL(void) {
     *RV32_MAILBOX_ADDR = 2;
-    for (;;) {}
+    rv32_wait_restart();
 }
 
 #endif /* RV32_TEST_H */

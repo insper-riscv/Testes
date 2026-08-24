@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""Scans tests/c/real or tests/c/sim, compiles each .c against the
+"""Scans tests/c/real or tests/c/sim, compiles each .c/.S against the
 configured memory map, and emits either an FPGA-ready .mif (real) or a
 plain-text .hex (sim), plus a manifest.json the downstream runner
 (build_fpga.py / run_sim_tests.py) consumes.
 
-Per-test header conventions, read from comments at the top of the .c file:
+Per-test header conventions, read from comments at the top of the .c/.S file:
 
   // RV32_EXT: M          -> compiled with -march=rv32im (additions to
   // RV32_EXT: M,A        -> the implicit rv32i base; order doesn't matter,
                               it's normalized against isa.canonical_order)
   // RV32_TEST_KIND: unit          -> default. Checked via the PASS/FAIL
                                        mailbox only (see rv32_test.h).
-  // RV32_TEST_KIND: integration   -> real tests only. Additionally dumps
+  // RV32_TEST_KIND: memory        -> real tests only. Additionally dumps
                                        the whole RAM and compares it against
                                        tests/c/real/golden/<name>.json.
+  // RV32_TIMEOUT_S: 5              -> real tests only. How long build_fpga.py
+                                       waits for this test's mailbox before
+                                       falling back to a full reprogram+retry.
+                                       Defaults to quartus.default_timeout_s.
+                                       Simple unit tests can go low; slower/
+                                       memory tests may need more.
 """
 import argparse
 import json
@@ -29,7 +35,8 @@ HERE = Path(__file__).resolve().parent
 CONFIG_PATH = HERE / "config.yaml"
 
 EXT_RE = re.compile(r"^\s*//\s*RV32_EXT:\s*(.+?)\s*$", re.MULTILINE)
-KIND_RE = re.compile(r"^\s*//\s*RV32_TEST_KIND:\s*(unit|integration)\s*$", re.MULTILINE)
+KIND_RE = re.compile(r"^\s*//\s*RV32_TEST_KIND:\s*(unit|memory)\s*$", re.MULTILINE)
+TIMEOUT_RE = re.compile(r"^\s*//\s*RV32_TIMEOUT_S:\s*([0-9.]+)\s*$", re.MULTILINE)
 
 
 def load_config() -> dict:
@@ -52,16 +59,18 @@ def canonical_march(cfg: dict, ext_csv: str) -> str:
     return base + sorted_ext
 
 
-def parse_header(text: str) -> tuple[str, str]:
+def parse_header(cfg: dict, text: str) -> tuple[str, str, float]:
     ext_match = EXT_RE.search(text)
     ext_csv = ext_match.group(1) if ext_match else ""
     kind_match = KIND_RE.search(text)
     kind = kind_match.group(1) if kind_match else "unit"
-    return ext_csv, kind
+    timeout_match = TIMEOUT_RE.search(text)
+    timeout_s = float(timeout_match.group(1)) if timeout_match else float(cfg["quartus"]["default_timeout_s"])
+    return ext_csv, kind, timeout_s
 
 
-def compile_test(cfg: dict, c_file: Path, build_dir: Path) -> tuple[Path, str, str]:
-    ext_csv, kind = parse_header(c_file.read_text())
+def compile_test(cfg: dict, c_file: Path, build_dir: Path) -> tuple[Path, str, str, float]:
+    ext_csv, kind, timeout_s = parse_header(cfg, c_file.read_text())
     march = canonical_march(cfg, ext_csv)
 
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -85,7 +94,7 @@ def compile_test(cfg: dict, c_file: Path, build_dir: Path) -> tuple[Path, str, s
         check=True,
     )
     subprocess.run([cfg["toolchain"]["objcopy"], "-O", "binary", str(elf), str(bin_)], check=True)
-    return bin_, march, kind
+    return bin_, march, kind, timeout_s
 
 
 def main() -> None:
@@ -107,26 +116,32 @@ def main() -> None:
     else:
         from bin_to_hex import bin_to_hex
 
-    c_files = sorted(src_dir.glob("*.c"))
+    # .S is supported alongside .c: gcc preprocesses+assembles it the
+    # same way it compiles .c (same crt0/linker/header conventions
+    # below apply — just no C-level codegen to second-guess the exact
+    # instruction sequence, useful when the addressing mode itself is
+    # what's under test).
+    c_files = sorted(src_dir.glob("*.c")) + sorted(src_dir.glob("*.S"))
     if not c_files:
-        print(f"No .c files found in {src_dir}", file=sys.stderr)
+        print(f"No .c/.S files found in {src_dir}", file=sys.stderr)
         sys.exit(1)
 
     manifest = []
     for c_file in c_files:
         print(f"Building {c_file.relative_to(ROOT)} ...")
-        bin_, march, kind = compile_test(cfg, c_file, build_dir)
+        bin_, march, kind, timeout_s = compile_test(cfg, c_file, build_dir)
 
         entry = {"name": c_file.stem, "march": march, "kind": kind}
         if is_real:
+            entry["timeout_s"] = timeout_s
             mif = build_dir / f"{c_file.stem}.mif"
             bin_to_mif(bin_, mif, depth=cfg["memory"]["rom_words"])
             entry["mif"] = str(mif.relative_to(ROOT))
-            if kind == "integration":
+            if kind == "memory":
                 golden = ROOT / cfg["paths"]["golden_dir"] / f"{c_file.stem}.json"
                 if not golden.is_file():
                     print(
-                        f"ERROR: {c_file.name} is RV32_TEST_KIND: integration but "
+                        f"ERROR: {c_file.name} is RV32_TEST_KIND: memory but "
                         f"{golden.relative_to(ROOT)} is missing",
                         file=sys.stderr,
                     )

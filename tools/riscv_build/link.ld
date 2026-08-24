@@ -5,16 +5,17 @@
  * ORIGIN 0x0 is intentional, not a typo.
  *
  * LENGTH must match memory.rom_words / memory.ram_words in
- * config.yaml. RAM is 4 bytes shorter than the raw IP depth because
- * the last word is reserved for the PASS/FAIL mailbox (see
- * include/rv32_test.h) and must stay out of the stack's reach —
- * that's why the mailbox address is (ram_words*4 - 4).
+ * config.yaml. RAM is 8 bytes shorter than the raw IP depth because
+ * the last two words are reserved for the PASS/FAIL mailbox and the
+ * restart "go" flag (see include/rv32_test.h) and must stay out of
+ * the stack's reach — that's why mailbox_addr/go_flag_addr are
+ * (ram_words*4 - 4) and (ram_words*4 - 8).
  */
 
 MEMORY
 {
     ROM (rx) : ORIGIN = 0x00000000, LENGTH = 32K       /* rom_words: 8192 * 4 bytes */
-    RAM (rw) : ORIGIN = 0x00000000, LENGTH = 16K - 4    /* ram_words: 4096 * 4 bytes, minus the mailbox word */
+    RAM (rw) : ORIGIN = 0x00000000, LENGTH = 16K - 8    /* ram_words: 4096 * 4 bytes, minus the mailbox + go-flag words */
 }
 
 SECTIONS
