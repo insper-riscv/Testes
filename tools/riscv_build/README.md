@@ -18,10 +18,14 @@ comparison, running the simulation — is `riscv-tools` code, so it's
 fixed/extended in one place ([insper-riscv/Tools](https://github.com/insper-riscv/Tools))
 instead of drifting between copies.
 
+This repo is itself vendored as [RV32IM](https://github.com/insper-riscv/RV32IM)'s
+own `Tests/` git submodule — RV32IM's root is one level up from this
+project's own root (see `quartus.project_dir` in `config.yaml`).
+
 The **real** suite is wired to
-[`RV32IM/tests/FPGA/core/quartus/core_fpga_test.qpf`](../../../RV32IM/tests/FPGA/core/quartus/core_fpga_test.qpf)
-(a sibling repo, not nested under this folder) — the only working core
-+ Quartus project on this workstation.
+[`tests/FPGA/core/quartus/core_fpga_test.qpf`](../../tests/FPGA/core/quartus/core_fpga_test.qpf)
+in RV32IM — the only working core + Quartus project on this
+workstation.
 
 The **sim** suite is wired to a *different* RV32IM toplevel,
 `rv32i3stage_core_sim_test` — not `core_fpga_test`: the real hardware
