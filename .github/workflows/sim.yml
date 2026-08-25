@@ -23,11 +23,12 @@ jobs:
       # `submodules: recursive` ("Input 'submodules' not supported
       # when falling back to download using the GitHub REST API").
       # Installing git first lets checkout use a real clone instead.
-      # curl is also missing (needed below to fetch the RISC-V toolchain).
-      - name: Install git and curl (missing from the ghdl/ghdl image)
+      # curl and xz-utils are also missing (needed below to fetch and
+      # extract the RISC-V toolchain's .tar.xz).
+      - name: Install git, curl and xz-utils (missing from the ghdl/ghdl image)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates curl
+          apt-get install -y --no-install-recommends git ca-certificates curl xz-utils
 
       # Non-recursive: tools/Tools and vendor/riscv-arch-test are all
       # this pipeline touches. Going recursive would also clone
