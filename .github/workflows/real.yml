@@ -39,9 +39,13 @@ jobs:
             exit 1
           fi
 
+      # Non-recursive — see sim.yml for why: tools/Tools's own
+      # vendor/riscv-gnu-toolchain and vendor/riscv-isa-sim submodules
+      # (multi-GB, only needed by `generate-golden`/spike, never
+      # called here) would otherwise be pulled in too.
       - uses: actions/checkout@v7
         with:
-          submodules: recursive
+          submodules: true
 
       - name: Checkout RV32IM (holds the real Quartus project)
         # config.yaml's quartus.project_dir is "../RV32IM/..." relative

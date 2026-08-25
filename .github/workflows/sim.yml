@@ -29,9 +29,17 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends git ca-certificates curl
 
+      # Non-recursive: tools/Tools and vendor/riscv-arch-test are all
+      # this pipeline touches. Going recursive would also clone
+      # tools/Tools's own vendor/riscv-gnu-toolchain and
+      # vendor/riscv-isa-sim submodules — a multi-GB tree (full gcc,
+      # glibc, llvm, qemu-with-every-firmware-ROM checkouts) that only
+      # `generate-golden` (spike) needs, and this workflow never calls
+      # that command. The GCC toolchain used here comes prebuilt via
+      # curl below instead.
       - uses: actions/checkout@v7
         with:
-          submodules: recursive
+          submodules: true
 
       - name: Install RISC-V toolchain (riscv-collab, always latest nightly)
         run: |
