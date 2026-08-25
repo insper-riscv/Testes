@@ -1,10 +1,12 @@
 # RISC-V test pipeline
 
-Compiles bare-metal C test programs, runs them two ways, and reports
-PASS/FAIL:
+Compiles bare-metal test programs (C under `c/`, assembly under
+`asm/`) and runs them two ways, and reports PASS/FAIL:
 
-- **real** (`tests/c/real/`): runs on an actual FPGA over JTAG.
-- **sim** (`tests/c/sim/`): runs in a GHDL/cocotb simulation, no hardware needed.
+- **real**: every test, on an actual FPGA over JTAG.
+- **sim**: `unit`-kind tests only, in a GHDL/cocotb simulation, no
+  hardware needed (`memory`-kind tests need a real RAM dump — see
+  "Writing a test" below).
 
 Both are driven by [`riscv-tools`](https://github.com/insper-riscv/Tools)
 — vendored here as the `tools/Tools` git submodule, not a copy. This
@@ -54,16 +56,25 @@ revisiting:
 
 ## Writing a test
 
-Drop a `.c` file into `tests/c/real/` or `tests/c/sim/`. Two optional
-header comments configure it:
+Create a folder named for what the test does, under `c/` (for a `.c`
+source) or `asm/` (for a `.S` source), containing a `src.c`/`src.S`:
+
+```
+c/
+└── my-test/
+    └── src.c
+```
+
+Two optional header comments configure it:
 
 ```c
 // RV32_EXT: M          // extensions ADDED to the implicit rv32i base.
 // RV32_EXT: M,A        // order doesn't matter — both this and "A,M" become rv32ima.
-// RV32_TEST_KIND: unit          // default. real tests only: checked via the
-// RV32_TEST_KIND: memory        // PASS/FAIL mailbox alone, or mailbox + a
-                                  // full RAM dump compared against
-                                  // tests/c/real/golden/<name>.json.
+// RV32_TEST_KIND: unit          // default. Checked via the PASS/FAIL mailbox
+                                  // alone. Builds for both real hardware and sim.
+// RV32_TEST_KIND: memory        // Mailbox + a full RAM dump compared against
+                                  // c/my-test/manifest.json (real hardware only —
+                                  // sim doesn't verify RAM contents).
 #include "rv32_test.h"
 
 int main(void) {
@@ -76,9 +87,11 @@ int main(void) {
 `memory.mailbox_addr` (see "Running locally" below). Regenerate it
 after changing that address; don't hand-edit the generated file.
 
-A `memory` test needs a matching
-`tests/c/real/golden/<name>.json`: byte address (hex string) -> expected
-value (0-255). `riscv-tools compile` fails fast if it's missing.
+A `memory` test needs a matching `manifest.json` next to its
+`src.c`/`src.S`: byte address (hex string) -> expected value (0-255).
+`riscv-tools compile` fails fast if it's missing. See
+[`docs/creating-a-c-test.md`](https://github.com/insper-riscv/Tools/blob/main/docs/creating-a-c-test.md)
+in `tools/Tools` for the full reference.
 
 ## Running locally
 
@@ -136,9 +149,10 @@ uv run python tests/python/runner.py          # all of them
 uv run python tests/python/runner.py ALU      # just one
 ```
 
-`compile` iterates every `.c`/`.S` file in `tests/c/{real,sim}/` and
-writes `build/{real,sim}/manifest.json`, which `run`/`sim` then
-consume.
+`compile` iterates every `<name>/src.c`/`<name>/src.S` folder under
+`c/`/`asm/` and writes `build/{real,sim}/manifest.json` (`--emit mif`
+builds every test, `--emit hex` skips `memory`-kind ones), which
+`run`/`sim` then consume.
 
 ## CI
 
