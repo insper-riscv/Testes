@@ -18,7 +18,17 @@ jobs:
       image: ghdl/ghdl:6.0.0-mcode-ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      # ghdl/ghdl's image has no git, so actions/checkout falls back to
+      # downloading via the GitHub REST API — which doesn't support
+      # `submodules: recursive` ("Input 'submodules' not supported
+      # when falling back to download using the GitHub REST API").
+      # Installing git first lets checkout use a real clone instead.
+      - name: Install git (missing from the ghdl/ghdl image)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
