@@ -1,0 +1,57 @@
+// RV32_TEST_KIND: memory
+//
+// Ported from RV32IM's tests/FPGA/core/asm_tests/full.S, section 3
+// ("Lógicos: XOR, OR, AND, e imediatos") — see
+// asm/arithmetic-basic/src.S for why this is split out from the
+// original single full.S file.
+
+    .section .text
+    .globl main
+
+main:
+    addi x5, x0, 0                # x5 = RESULTS_BASE
+
+    # x20 = 0x000000FF
+    addi x20, x0, 0x0F0
+    ori  x20, x20, 0x00F          # 0x0FF
+
+    # x21 = 0x000000F0
+    addi x21, x0, 0x0F0
+
+    # XOR
+    xor  x22, x20, x21
+    sw   x22, 0(x5)
+    addi x5, x5, 4
+
+    # OR
+    or   x23, x20, x21
+    sw   x23, 0(x5)
+    addi x5, x5, 4
+
+    # AND
+    and  x24, x20, x21
+    sw   x24, 0(x5)
+    addi x5, x5, 4
+
+    # XORI
+    xori x25, x20, 0x00F
+    sw   x25, 0(x5)
+    addi x5, x5, 4
+
+    # ORI
+    ori  x26, x20, 0x00F
+    sw   x26, 0(x5)
+    addi x5, x5, 4
+
+    # ANDI
+    andi x27, x20, 0x00F
+    sw   x27, 0(x5)
+    addi x5, x5, 4
+
+    # Signal PASS via the mailbox (see include/rv32_test.h /
+    # config.yaml memory.mailbox_addr — 0x00003FFC).
+    lui  x15, 0x4
+    addi x14, x0, 1
+    sw   x14, -4(x15)          // mailbox = 1
+
+    j rv32_wait_restart
