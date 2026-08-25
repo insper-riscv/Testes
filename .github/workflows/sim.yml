@@ -29,7 +29,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends git ca-certificates curl
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -41,7 +41,7 @@ jobs:
           tar -xf /tmp/riscv-gcc.tar.xz -C /opt/riscv --strip-components=1
           echo "/opt/riscv/bin" >> "$GITHUB_PATH"
 
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v10
 
       - name: Install Python dependencies (riscv-tools, editable from tools/Tools, + its sim extra)
         run: uv sync
@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload waveforms
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: waveforms
           path: "**/*.ghw"
