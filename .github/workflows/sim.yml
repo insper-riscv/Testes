@@ -50,7 +50,7 @@ jobs:
           tar -xf /tmp/riscv-gcc.tar.xz -C /opt/riscv --strip-components=1
           echo "/opt/riscv/bin" >> "$GITHUB_PATH"
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.0.1
 
       - name: Install Python dependencies (riscv-tools, editable from tools/Tools, + its sim extra)
         run: uv sync
