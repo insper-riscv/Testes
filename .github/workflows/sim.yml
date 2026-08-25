@@ -24,11 +24,14 @@ jobs:
       # when falling back to download using the GitHub REST API").
       # Installing git first lets checkout use a real clone instead.
       # curl and xz-utils are also missing (needed below to fetch and
-      # extract the RISC-V toolchain's .tar.xz).
-      - name: Install git, curl and xz-utils (missing from the ghdl/ghdl image)
+      # extract the RISC-V toolchain's .tar.xz), and so is libmpc3
+      # (pulls in libmpfr/libgmp as deps) — the prebuilt gcc's cc1 is
+      # dynamically linked against it and fails with "cannot open
+      # shared object file: libmpc.so.3" otherwise.
+      - name: Install git, curl, xz-utils and libmpc3 (missing from the ghdl/ghdl image)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates curl xz-utils
+          apt-get install -y --no-install-recommends git ca-certificates curl xz-utils libmpc3
 
       # Non-recursive: tools/Tools and vendor/riscv-arch-test are all
       # this pipeline touches. Going recursive would also clone
