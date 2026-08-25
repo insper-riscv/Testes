@@ -23,10 +23,11 @@ jobs:
       # `submodules: recursive` ("Input 'submodules' not supported
       # when falling back to download using the GitHub REST API").
       # Installing git first lets checkout use a real clone instead.
-      - name: Install git (missing from the ghdl/ghdl image)
+      # curl is also missing (needed below to fetch the RISC-V toolchain).
+      - name: Install git and curl (missing from the ghdl/ghdl image)
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates
+          apt-get install -y --no-install-recommends git ca-certificates curl
 
       - uses: actions/checkout@v5
         with:
