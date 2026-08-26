@@ -61,6 +61,17 @@ caiu → **Repository access → Selected repositories → só os repos que prec
 mesmo tocar hardware**. Sem isso, qualquer repo público da org alcança essa
 máquina através do mesmo runner.
 
+**O grupo tem que se chamar `FPGA`** (não o default "Default", nem qualquer outro
+nome tipo "Workstation - FPGA") — é esse o grupo que os workflows deste projeto
+esperam poder alcançar. Durante o registro interativo (`config.sh` sem
+`--runnergroup`), o CLI pergunta em qual grupo colocar o runner; escolha/crie o
+grupo `FPGA` ali. Se o runner já foi registrado num grupo errado, mova-o depois em
+Org Settings → Actions → Runner groups → `FPGA` → **Runners → Add runner** (ou
+mude o grupo do runner existente pela própria página do grupo). Um runner no
+grupo errado não dá erro claro — o job de um workflow que precisa dele
+simplesmente fica preso em "Queued" pra sempre, sem nenhuma mensagem explicando
+por quê.
+
 ## Fase 3 — Serviço systemd (autorun, sobrevive a reboot)
 
 O script `svc.sh` que vem no pacote do runner assume que o próprio usuário do
