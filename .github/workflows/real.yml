@@ -48,14 +48,19 @@ jobs:
           submodules: true
 
       - name: Checkout RV32IM (holds the real Quartus project)
-        # config.yaml's quartus.project_dir is "../RV32IM/..." relative
-        # to this checkout — on this workstation that's true by
-        # accident (the two folders happen to sit side by side), but a
-        # GitHub-hosted checkout starts empty, so this makes it true on
-        # the runner too. RV32IM is public, no auth needed to clone it.
+        # config.yaml's quartus.project_dir is "../tests/FPGA/core/quartus",
+        # relative to this checkout — true by accident on a workstation
+        # where this repo is nested at RV32IM/Tests/ (see
+        # HARDWARE_PROGRAMMING.md), so "../tests" IS RV32IM's own tests/
+        # directly, no "RV32IM" path segment in between. A bare CI
+        # checkout of just this repo has no such parent, so without the
+        # symlink below Quartus fails with "Top-level design entity
+        # 'core_fpga_test' is undefined" (it's compiling an empty/wrong
+        # directory). RV32IM is public, no auth needed to clone it.
         run: |
           rm -rf ../RV32IM
           git clone --depth 1 https://github.com/insper-riscv/RV32IM.git ../RV32IM
+          ln -s RV32IM/tests ../tests
 
       - name: Add Quartus to PATH
         # <<< ADJUST if Quartus is installed somewhere else on the
