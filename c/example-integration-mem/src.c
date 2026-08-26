@@ -15,7 +15,7 @@ static volatile unsigned int *const BUF = (volatile unsigned int *)0x00000010;
 
 int main(void) {
     for (int i = 0; i < 4; i++) {
-        BUF[i] = 0x11111111u * (unsigned int)(i + 1);
+        BUF[i] = i + 1;
     }
     RV32_PASS();
     return 0;
