@@ -4,7 +4,7 @@
 
 int main(void) {
     int a = 6, b = 7;
-    if (a * b == 42) {
+    if (a * b == 49) {
         RV32_PASS();
     }
     RV32_FAIL();
