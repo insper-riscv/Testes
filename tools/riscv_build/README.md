@@ -181,6 +181,14 @@ FPGA` (Repository access → Selected repositories → only this repo;
 `RV32IM`, same org, could reach this exact machine through the same
 runner).
 
+For the generic, project-agnostic side of this — creating the
+`runner` service account from scratch, registering it with GitHub,
+the systemd unit, the `/opt/altera_lite`/`/opt/riscv-foundation`
+bind-mount/cache pattern, the manual-dispatch secret, and the JTAG
+USB-autosuspend gotcha — see
+[docs/RUNNER_SETUP.md](../../docs/RUNNER_SETUP.md). What's specific to
+*this* project:
+
 **Hardware/board facts, already reflected in `config.yaml`/`link.ld`
 (and in the generated `rv32_test.h` — see "Writing a test" above):**
 - JTAG: `jtagconfig` reports hardware `USB-Blaster [1-4]`, device
@@ -195,92 +203,15 @@ runner).
   `ram_addr` buses, each its own space starting at `0x0`) — ROM is
   8192 words (32K), RAM is 4096 words (16K), mailbox at the last RAM
   word (`0x00003FFC`).
-
-**The runner runs as a dedicated, unprivileged Linux service account**
-(`runner`, no login password, no sudo of its own), home at
-`/opt/actions-runner` — deliberately *not* `/home/runner`, and
-deliberately *not* in the `picow` group, so it has zero standing
-access to anything under `/home/picow`:
-
-```bash
-sudo useradd -r -m -d /opt/actions-runner -s /bin/bash runner
-sudo passwd -l runner              # no password login; only reachable via sudo/systemd
-sudo usermod -aG plugdev runner    # USB-Blaster access; udev already makes the device 0666 anyway
-
-# Org Settings -> Actions -> Runners -> New runner gives the download URL + token.
-# --url is the ORG (this is an org-level runner) — the runner-group
-# restriction above is what actually limits which repos reach it.
-sudo -iu runner bash -lc '
-  cd /opt/actions-runner
-  curl -o actions-runner.tar.gz -L <download URL from that page>
-  tar xzf actions-runner.tar.gz
-  ./config.sh --url https://github.com/<org> --token <token from that same page> \
-      --labels self-hosted,quartus,fpga --name workstation-fpga --unattended
-'
-```
-
-Registering the token needs the **`workflow`** permission (fine-grained
-PAT: "Workflows", separate from "Contents"/"Actions") to be able to
-push `.github/workflows/*.yml` at all — without it, `git push` gets
-rejected with "refusing to allow a Personal Access Token to create or
-update workflow ... without `workflow` scope".
-
-Since `runner` isn't in the `picow` group, it can't reach Quartus at
-`/home/picow/altera_lite` either (`/home/picow` is `750`). Fixed with
-a bind mount instead of a group grant — `runner` never gets any
-permission on `/home/picow` itself, it just sees the same directory
-tree through a second, root-managed path under `/opt`:
-
-```bash
-sudo mkdir -p /opt/altera_lite
-echo '/home/picow/altera_lite /opt/altera_lite none bind 0 0' | sudo tee -a /etc/fstab
-sudo mount --bind /home/picow/altera_lite /opt/altera_lite
-```
-
-**Service**, written directly as the admin rather than via the bundled
-`svc.sh install` (which shells out to `sudo systemctl ...` itself —
-conflicts with `runner` having no sudo):
-
-```bash
-sudo tee /etc/systemd/system/gh-actions-runner.service <<'UNIT'
-[Unit]
-Description=GitHub Actions self-hosted runner (FPGA workstation)
-After=network.target
-
-[Service]
-Type=simple
-User=runner
-WorkingDirectory=/opt/actions-runner
-ExecStart=/opt/actions-runner/run.sh
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now gh-actions-runner
-```
-
-`real.yml`'s `workflow_dispatch` also gates on a repository secret
-(`FPGA_RUN_SECRET`, set under Settings → Secrets and variables →
-Actions, e.g. `openssl rand -hex 32`): repo write access already
-controls who can trigger it, but this adds a second check for anyone
-with write access who still shouldn't be able to run jobs on the
-physical board — pass the same value in the `confirm` input when
-dispatching manually. It only guards the manual path; a push to `main`
-is gated by branch protection instead.
-
-**Runner OS is Ubuntu 22.04** (glibc 2.35, confirmed via `lsb_release
--a`/`ldd --version`) — `real.yml` downloads the
-`riscv32-elf-ubuntu-22.04-gcc.tar.xz` riscv-collab asset specifically
-for this reason; the `ubuntu-24.04` one (needs glibc ≥2.38) fails to
-even start with a `GLIBC_2.38 not found` error. If this runner is ever
-reinstalled on a newer Ubuntu, update that asset name in `real.yml`
-and clear `/opt/riscv-foundation/riscv32-elf` (see the toolchain
-caching note below — it won't redetect the mismatch on its own, since
-it only compares release tags, not compatibility).
+- **Runner OS is Ubuntu 22.04** (glibc 2.35, confirmed via
+  `lsb_release -a`/`ldd --version`) — `real.yml` downloads the
+  `riscv32-elf-ubuntu-22.04-gcc.tar.xz` riscv-collab asset specifically
+  for this reason; the `ubuntu-24.04` one (needs glibc ≥2.38) fails to
+  even start with a `GLIBC_2.38 not found` error. If this runner is
+  ever reinstalled on a newer Ubuntu, update that asset name in
+  `real.yml` and clear `/opt/riscv-foundation/riscv32-elf` (the
+  toolchain cache won't redetect the mismatch on its own, since it
+  only compares release tags, not compatibility).
 
 ## Design decisions worth knowing
 

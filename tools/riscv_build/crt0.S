@@ -19,6 +19,19 @@ _start:
     sw   x0, -4(t0)         // mailbox_addr = 0x3FFC
     sw   x0, -8(t0)         // go_flag_addr  = 0x3FF8
 
+    /* HTIF's tohost/fromhost (link.ld) get the same "start clean on
+     * every _start entry" treatment — Spike treats any nonzero tohost
+     * as "test finished", so a stale value here would make the very
+     * next test's run under Spike look instantly done. Real linker
+     * symbols (not a fixed offset like mailbox/go_flag above), so
+     * loaded via `la`. */
+    la   t3, tohost
+    sw   x0, 0(t3)
+    sw   x0, 4(t3)
+    la   t3, fromhost
+    sw   x0, 0(t3)
+    sw   x0, 4(t3)
+
     /* .data: copy from its ROM load address to its RAM run address */
     la t0, _data_load
     la t1, _data_start
@@ -53,10 +66,29 @@ _start:
  * 0x00003FF8 here) without reprogramming the FPGA. A core sitting in
  * this loop notices and jumps back to _start, which clears both
  * mailbox_addr and go_flag_addr itself (see above) before running the
- * new program — so no cleanup is needed between runs. */
+ * new program — so no cleanup is needed between runs.
+ *
+ * Every test funnels through here exactly once per run — whether via
+ * RV32_PASS()/RV32_FAIL() (rv32_test.h) or a raw-asm test writing the
+ * mailbox by hand and jumping here directly (see
+ * test_section6_loadstore.S) — so this is also the one place that
+ * translates our mailbox convention into HTIF's tohost convention for
+ * Spike (see link.ld and mem_validator.generate_golden in the Tools
+ * repo): 1 = pass, 3 = fail ((1 << 1) | 1). Harmless on real
+ * hardware — nothing there reads tohost. */
 .global rv32_wait_restart
 rv32_wait_restart:
     lui  t0, 0x4
-    lw   t1, -8(t0)         // go_flag_addr = 0x3FF8
-    beqz t1, rv32_wait_restart
+    lw   t1, -4(t0)          // mailbox_addr = 0x3FFC
+    li   t2, 1
+    li   t3, 1                // HTIF pass
+    beq  t1, t2, 1f
+    li   t3, 3                // HTIF fail
+1:
+    la   t4, tohost
+    sw   t3, 0(t4)
+
+rv32_wait_restart_poll:
+    lw   t1, -8(t0)           // go_flag_addr = 0x3FF8
+    beqz t1, rv32_wait_restart_poll
     j    _start
