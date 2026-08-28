@@ -77,6 +77,35 @@ jobs:
         # there at all.
         run: echo "/opt/altera_lite/25.1std/quartus/bin" >> "$GITHUB_PATH"
 
+      - name: Check JTAG chain before wasting a compile on it
+        # A known failure mode on this board (see HARDWARE_PROGRAMMING.md):
+        # the onboard USB-Blaster's JTAG chain intermittently wedges —
+        # `jtagconfig` reports "Unable to read device chain - JTAG
+        # chain broken". For THIS specific symptom, only a physical
+        # power-cycle of the board is confirmed to clear it (killall
+        # jtagd was tried and tested during that investigation and did
+        # NOT help). Still worth one killall+recheck here anyway,
+        # cheaply, in case a *different* JTAG hiccup (stale/wedged
+        # jtagd session from something else entirely) produces the
+        # same "chain broken" message but responds to it — costs a few
+        # seconds either way, and only escalates to a hard failure if
+        # the retry doesn't clear it.
+        #
+        # Needs passwordless sudo for exactly this one command:
+        #   echo 'runner ALL=(root) NOPASSWD: /usr/bin/killall jtagd' \
+        #     | sudo tee /etc/sudoers.d/runner-jtagd
+        run: |
+          if jtagconfig 2>&1 | grep -qi "chain broken"; then
+            echo "jtagconfig reports the JTAG chain is broken — trying killall jtagd + recheck once before giving up..."
+            sudo killall jtagd || true
+            sleep 3
+            if jtagconfig 2>&1 | grep -qi "chain broken"; then
+              echo "::error::JTAG chain still broken after killall jtagd. This board's known failure mode needs a physical power-cycle (~10s off, then on) — not fixable from software. See HARDWARE_PROGRAMMING.md."
+              exit 1
+            fi
+            echo "Chain recovered after killall jtagd — continuing."
+          fi
+
       - name: Install RISC-V toolchain (riscv-collab, cached until a newer nightly exists)
         # Same "always latest, no pinned tag" reasoning as sim.yml, but
         # this runner is a persistent machine (sim.yml's isn't), so the
