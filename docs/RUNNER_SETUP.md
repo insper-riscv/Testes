@@ -196,6 +196,26 @@ repo sem dever poder acionar hardware físico:
   sudo udevadm trigger --subsystem-match=usb
   ```
 
+- **"JTAG chain broken" que autosuspend NÃO explica** — mesmo com autosuspend
+  desligado (item acima) e cabo/placa/porta USB do host já trocados, a chain
+  ainda pode ficar intermitentemente presa depois de um `quartus_pgm` (real
+  hardware, não CI) — nesse caso o único fix confirmado é **power-cycle físico
+  da placa** (interruptor vermelho, ~10s desligado). `killall jtagd` sozinho
+  não resolve esse caso específico. Investigação completa, com todas as
+  hipóteses testadas e descartadas, em
+  [HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md) — não repita esse
+  trabalho, comece por lá.
+
+  `real.yml` já checa `jtagconfig` antes de compilar e tenta um
+  `killall jtagd` + recheck automático primeiro (barato, pode ajudar em
+  travamentos de causa diferente mesmo que não ajude neste caso específico) —
+  só falha com uma mensagem clara pedindo power-cycle se isso não resolver.
+  Precisa de sudo sem senha só pra esse comando exato:
+  ```bash
+  echo 'runner ALL=(root) NOPASSWD: /usr/bin/killall jtagd' | \
+    sudo tee /etc/sudoers.d/runner-jtagd
+  ```
+
 ## Checklist final
 
 - [ ] `sudo systemctl status gh-actions-runner` → `active (running)`
