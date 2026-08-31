@@ -157,4 +157,20 @@ jobs:
         run: uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
 
       - name: Run tests on the FPGA
-        run: uv run riscv-tools --config tools/riscv_build/config.yaml run
+        # PYTHONUNBUFFERED: Python fully-buffers stdout when it isn't a
+        # TTY (always true under Actions' log capture), so without this
+        # a 40+ minute run can show a blank log the whole time even
+        # though it's progressing normally — not actually stuck.
+        # `tee` also mirrors into build/real/latest.log (same fixed path
+        # used for local `tail -f`), so a run kicked off by CI is
+        # watchable the same way as a local one, from the runner itself.
+        #
+        # set -o pipefail: this shell (`bash -e {0}`, Actions' default)
+        # does NOT set pipefail on its own — without it, `cmd | tee`
+        # always exits 0 (tee's own exit code), so a failing test suite
+        # would silently show this step as green.
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -o pipefail
+          uv run riscv-tools --config tools/riscv_build/config.yaml run | tee build/real/latest.log
