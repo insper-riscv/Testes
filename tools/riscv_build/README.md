@@ -73,7 +73,7 @@ Two optional header comments configure it:
 // RV32_TEST_KIND: unit          // default. Checked via the PASS/FAIL mailbox
                                   // alone. Builds for both real hardware and sim.
 // RV32_TEST_KIND: memory        // Mailbox + a full RAM dump compared against
-                                  // c/my-test/manifest.json (real hardware only —
+                                  // c/my-test/golden.json (real hardware only —
                                   // sim doesn't verify RAM contents).
 #include "rv32_test.h"
 
@@ -87,7 +87,7 @@ int main(void) {
 `memory.mailbox_addr` (see "Running locally" below). Regenerate it
 after changing that address; don't hand-edit the generated file.
 
-A `memory` test needs a matching `manifest.json` next to its
+A `memory` test needs a matching `golden.json` next to its
 `src.c`/`src.S`: byte address (hex string) -> expected value (0-255).
 `riscv-tools compile` fails fast if it's missing. See
 [`docs/creating-a-c-test.md`](https://github.com/insper-riscv/Tools/blob/main/docs/creating-a-c-test.md)
