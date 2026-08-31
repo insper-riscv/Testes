@@ -39,10 +39,14 @@ jobs:
             exit 1
           fi
 
-      # Non-recursive — see sim.yml for why: tools/Tools's own
-      # vendor/riscv-gnu-toolchain and vendor/riscv-isa-sim submodules
-      # (multi-GB, only needed by `generate-golden`/spike, never
-      # called here) would otherwise be pulled in too.
+      # Recursive (unlike sim.yml): compile now auto-generates C
+      # memory-kind tests' golden.json via Spike at build time (see
+      # cli.cmd_compile/_generate_c_golden), so tools/Tools's own
+      # vendor/riscv-isa-sim submodule is needed here. (Its sibling
+      # vendor/riscv-gnu-toolchain isn't — the RISC-V toolchain comes
+      # prebuilt via curl below instead — but there's no way to
+      # recurse into just one of a submodule's own submodules, so it
+      # gets cloned too and simply sits unused.)
       - uses: actions/checkout@v7
         with:
           submodules: true
@@ -149,6 +153,29 @@ jobs:
 
       - name: Install Python dependencies (riscv-tools, editable from tools/Tools)
         run: uv sync
+
+      - name: Build/update Spike (reference simulator, cached workstation-wide)
+        # Same /opt/riscv-foundation cache pattern as the gcc toolchain
+        # above — actions/checkout's default `clean: true` wipes
+        # untracked build artifacts (the built `spike` binary) from
+        # tools/Tools/vendor/riscv-isa-sim's own tree on every run, so
+        # RISCV_ISA_SIM_DIR points golden_generator.setup()/update() at
+        # a location outside this checkout instead, persisted via
+        # $GITHUB_ENV so the later `compile` step (which resolves Spike
+        # itself, for C memory tests' auto-generated golden.json — see
+        # cli.cmd_compile/_generate_c_golden) sees the same override.
+        # setup() builds only if nothing's there yet; update() rebuilds
+        # only if the submodule's pinned commit moved since the last
+        # build (see golden_generator/setup.py) — both cheap/no-op
+        # otherwise, safe to call unconditionally every run.
+        run: |
+          echo "RISCV_ISA_SIM_DIR=/opt/riscv-foundation/riscv-isa-sim" >> "$GITHUB_ENV"
+          export RISCV_ISA_SIM_DIR=/opt/riscv-foundation/riscv-isa-sim
+          uv run python -c "
+          from riscv_tools import golden_generator
+          golden_generator.setup()
+          golden_generator.update()
+          "
 
       - name: Generate rv32_test.h
         run: uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
