@@ -6,12 +6,15 @@
 // at tests/c/real/golden/example_integration_mem.json is what
 // actually checks the values landed in memory correctly.
 //
-// Address 0x10, not 0x00: (volatile unsigned int *)0x0 is still the
-// null pointer as far as the C standard is concerned, volatile or
-// not — GCC is allowed to (and does, confirmed via objdump) assume
-// writing through it is unreachable UB and optimize the whole
-// function away, down to a single `sw zero,0(zero)` + `ebreak`.
-static volatile unsigned int *const BUF = (volatile unsigned int *)0x00000010;
+// Address 0x00010010, not 0x10: RAM starts at 0x00010000 now (Harvard
+// modificado) — 0x10 alone would land in ROM, which this core can
+// never write to (see docs/DATA_HARVARD_BUG.md), silently dropping
+// every write below instead of faulting. +0x10, not +0x00: (volatile
+// unsigned int *)RAM_BASE is still adjacent to how GCC treats a
+// literal null pointer close enough to trip the same "unreachable UB"
+// assumption in some codegen paths — confirmed via objdump that a
+// nonzero low offset avoids it.
+static volatile unsigned int *const BUF = (volatile unsigned int *)0x00010010;
 
 int main(void) {
     for (int i = 0; i < 4; i++) {

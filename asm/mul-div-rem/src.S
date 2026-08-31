@@ -10,7 +10,7 @@
     .globl main
 
 main:
-    addi x5, x0, 0                # x5 = RESULTS_BASE
+    li   x5, 0x00010000        # x5 = RESULTS_BASE (RAM now starts at 0x10000)
 
 # ---------------------------------------------------------
 # 10.1 MUL (32 bits baixos do produto)
@@ -338,8 +338,8 @@ main:
     addi x5, x5, 4
 
     # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x00003FFC).
-    lui  x15, 0x4
+    # config.yaml memory.mailbox_addr — 0x0001FFFC).
+    lui  x15, 0x20
     addi x14, x0, 1
     sw   x14, -4(x15)          // mailbox = 1
 

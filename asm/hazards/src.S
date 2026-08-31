@@ -13,12 +13,14 @@
     .section .text
     .globl main
 
-    .equ RESULTS_BASE,    0x00000000
-    .equ TEST_DATA_BASE,  0x00000200
+    # RAM starts at 0x00010000 now (Harvard modificado) — both bases
+    # shifted up by that same offset, still 0x200 apart.
+    .equ RESULTS_BASE,    0x00010000
+    .equ TEST_DATA_BASE,  0x00010200
 
 main:
-    addi x5, x0, RESULTS_BASE
-    addi x8, x0, TEST_DATA_BASE
+    li   x5, RESULTS_BASE
+    li   x8, TEST_DATA_BASE
 
 # ---------------------------------------------------------
 # 11.1 Forwarding RAW EX/MEM: instrução usa resultado da anterior
@@ -60,8 +62,8 @@ main:
     addi x5, x5, 4
 
     # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x00003FFC).
-    lui  x15, 0x4
+    # config.yaml memory.mailbox_addr — 0x0001FFFC).
+    lui  x15, 0x20
     addi x14, x0, 1
     sw   x14, -4(x15)          // mailbox = 1
 

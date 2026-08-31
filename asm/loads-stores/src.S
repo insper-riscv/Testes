@@ -12,14 +12,16 @@
     .section .text
     .globl main
 
-    .equ RESULTS_BASE,    0x00000000
-    .equ TEST_DATA_BASE,  0x00000200
-    .equ TEMP_SLOT_BASE,  0x00000300
+    # RAM starts at 0x00010000 now (Harvard modificado) — all three
+    # bases shifted up by that same offset, same 0x100 spacing.
+    .equ RESULTS_BASE,    0x00010000
+    .equ TEST_DATA_BASE,  0x00010200
+    .equ TEMP_SLOT_BASE,  0x00010300
 
 main:
-    addi x5, x0, RESULTS_BASE
-    addi x8, x0, TEST_DATA_BASE
-    addi x9, x0, TEMP_SLOT_BASE
+    li   x5, RESULTS_BASE
+    li   x8, TEST_DATA_BASE
+    li   x9, TEMP_SLOT_BASE
 
     # ------------------------------------------------------
     # Seed TEST_DATA_BASE (same values full.S itself seeds)
@@ -101,8 +103,8 @@ main:
     addi x5, x5, 4
 
     # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x00003FFC).
-    lui  x21, 0x4
+    # config.yaml memory.mailbox_addr — 0x0001FFFC).
+    lui  x21, 0x20
     addi x22, x0, 1
     sw   x22, -4(x21)          // mailbox = 1
 
