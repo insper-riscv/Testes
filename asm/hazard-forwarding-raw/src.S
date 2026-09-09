@@ -11,8 +11,8 @@
     .section .text
     .globl main
 
-    # RAM starts at 0x00010000 now (Harvard modificado).
-    .equ RESULTS_BASE, 0x00010000
+    # RAM starts at 0x00008000 now (Harvard modificado).
+    .equ RESULTS_BASE, 0x00008000
 
 main:
     li   x5, RESULTS_BASE
@@ -24,8 +24,8 @@ main:
     sw   x13, 0(x5)             # esperado: 8
 
     # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x0001FFFC).
-    lui  x15, 0x20
+    # config.yaml memory.mailbox_addr — 0x0002FFFC).
+    lui  x15, 0x30
     addi x14, x0, 1
     sw   x14, -4(x15)          // mailbox = 1
 

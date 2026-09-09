@@ -11,7 +11,7 @@
     .globl main
 
 main:
-    li   x5, 0x00010000        # x5 = RESULTS_BASE (RAM now starts at 0x10000)
+    li   x5, 0x00008000        # x5 = RESULTS_BASE (RAM now starts at 0x8000)
 
     # SRA: -16 >> 2 = -4
     addi x18, x0, -16
@@ -20,8 +20,8 @@ main:
     sw   x20, 0(x5)
 
     # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x0001FFFC).
-    lui  x15, 0x20
+    # config.yaml memory.mailbox_addr — 0x0002FFFC).
+    lui  x15, 0x30
     addi x14, x0, 1
     sw   x14, -4(x15)          // mailbox = 1
 

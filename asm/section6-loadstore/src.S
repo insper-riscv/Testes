@@ -24,10 +24,10 @@
     .globl main
 main:
     // Base register, loaded (not x0) — matches full.S's TEMP_SLOT_BASE
-    // pattern. 0x10100 = RAM base (0x10000, Harvard modificado) +
+    // pattern. 0x8100 = RAM base (0x8000, Harvard modificado) +
     // 0x100 (arbitrary, just clear of every other test's addresses
-    // and the mailbox at 0x1FFFC).
-    li   x9, 0x10100
+    // and the mailbox at 0x2FFFC).
+    li   x9, 0x8100
 
     // --- full.S section 6, LUI+SW+LW sub-case, same instructions ---
     lui  x19, 0x7F000          // 0x7F000000
@@ -39,11 +39,11 @@ main:
     sw   x20, 0(x9)
 
     // Signal PASS via the mailbox (see include/rv32_test.h /
-    // config.yaml memory.mailbox_addr — 0x0001FFFC). Written directly
+    // config.yaml memory.mailbox_addr — 0x0002FFFC). Written directly
     // in assembly rather than #include-ing rv32_test.h and calling
     // RV32_PASS(): it's a `static inline` C function, so it has no
     // linkable symbol a separate .S file could `call`.
-    lui  x15, 0x20
+    lui  x15, 0x30
     addi x14, x0, 1
     sw   x14, -4(x15)          // mailbox = 1
 

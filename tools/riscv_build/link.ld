@@ -1,78 +1,86 @@
 /* Memory map for bare-metal RV32 test programs, matching RV32IM's
- * rv32im_pipeline_core: Harvard MODIFICADO. ROM and RAM are still two
- * physically independent memories (rom_addr/ram_addr are separate
- * buses, separate BRAM IPs), but the ROM now has a second read port
- * wired to the MEM stage (see rom2port.vhd/rv32im_pipeline_core.vhd),
- * and ROM/RAM sit in a single, non-overlapping address space so a
- * `lw` can be routed to the right one by address alone — bit 16
- * decides (0 = ROM, 1 = RAM; see is_rom_data in
- * rv32im_pipeline_core.vhd). This is what makes .data's ROM->RAM copy
- * loop below (crt0.S) actually work: before this, ROM and RAM both
- * started at 0x0 and a data-side `lw` could NEVER reach ROM at all,
- * no matter the address (see docs/DATA_HARVARD_BUG.md for the
- * original bug and investigation).
+ * rv32im_pipeline_core: 3 physical memories now -- BOOT_ROM (fixed,
+ * shared, NOT part of this link -- see boot_rom.S/boot_rom.ld),
+ * FLASH (this test's own .boot_header + .text, JTAG-rewritten per
+ * test) and RAM (this test's .data/.rodata/.bss/stack -- the only
+ * memory the MEM stage ever touches; nothing reads data-side straight
+ * out of FLASH anymore, see rv32im_pipeline_core.vhd).
  *
- * ORIGIN/LENGTH must match memory.rom_words / memory.ram_words /
- * memory.ram_base in config.yaml. RAM is 24 bytes shorter than the
- * raw IP depth:
- *  - the last two words are reserved for the PASS/FAIL mailbox and
- *    the restart "go" flag (see include/rv32_test.h) — fixed
- *    addresses, not linker symbols, hardcoded in crt0.S to match
- *    config.yaml (mailbox_addr/go_flag_addr = ram_base + ram_words*4
- *    - 4 / - 8);
- *  - the .tohost section below reserves another 16 bytes for HTIF's
- *    tohost/fromhost (see crt0.S) — real linker symbols this time,
- *    since Spike locates them by ELF symbol lookup, not by address.
- * Both must stay out of the stack's reach, which is why RAM's LENGTH
- * excludes them.
+ * ORIGIN/LENGTH must match memory.rom_base/rom_words/ram_base/
+ * ram_words in config.yaml, and FLASH's ORIGIN must match
+ * BOOT_ROM_SIZE_BYTES in rv32im_pipeline_core.vhd (that's where
+ * BOOT_ROM ends and FLASH begins in the shared instruction address
+ * space) and boot_rom.S's own hardcoded FLASH_BASE.
+ *
+ * RAM is 24 bytes shorter than the raw IP depth, reserved for:
+ *  - the PASS/FAIL mailbox + restart "go" flag (2 words, fixed
+ *    addresses hardcoded in boot_rom.S AND rv32_test.h -- both must
+ *    match config.yaml's memory.mailbox_addr/go_flag_addr);
+ *  - HTIF tohost/fromhost (16 bytes) -- ALSO just a fixed address
+ *    hardcoded in boot_rom.S now, not a resolvable ELF symbol here
+ *    anymore: nothing in this project's own sim (test_c_program.py)
+ *    looks tohost up by symbol, it watches the mailbox directly off
+ *    the ram_addr/ram_wdata bus, so there's no reason for every test
+ *    to carry a real .tohost section just for that (unlike ACT4's
+ *    OWN separate link.ld, which still needs it for Spike).
+ * All three (mailbox/go_flag/tohost+fromhost) must stay out of the
+ * stack's reach, which is why RAM's LENGTH excludes them -- see the
+ * ASSERT below tying _stack_top to boot_rom.S's own hardcoded sp.
+ *
+ * .rodata is no longer ROM-resident: BOOT_ROM/FLASH are IF-only now
+ * (see rv32im_pipeline_core.vhd, is_boot_rom_if/is_boot_rom_d) --
+ * there's no data path to either of them at all anymore, only to RAM.
+ * ALL of .rodata gets copied to RAM by boot_rom.S at boot now, same
+ * as .data always was -- exactly what
+ * tools/riscv_build/act/rv32im-min/link.ld already does for ACT4's
+ * own tests (see .rodata there), just extended here too.
+ *
+ * That "IF-only" constraint is also why .flash_entry (below) is CODE,
+ * not a data table: crt0.S used to emit a header table of
+ * .data/.bss bounds for boot_rom.S to `lw` -- broken, since a data
+ * read from a FLASH address silently reads RAM instead (confirmed by
+ * simulation). See crt0.S/boot_rom.S's own header comments for the
+ * actual (code-based) handoff.
  */
+
+INCLUDE boot_rom_symbols.ld
 
 MEMORY
 {
-    ROM (rx) : ORIGIN = 0x00000000, LENGTH = 64K        /* rom_words: 16384 * 4 bytes */
-    RAM (rw) : ORIGIN = 0x00010000, LENGTH = 64K - 24    /* ram_words: 16384 * 4 bytes, minus mailbox + go-flag (8) + tohost/fromhost (16) */
+    FLASH (rx) : ORIGIN = 0x00000800, LENGTH = 30K   /* = RAM's ORIGIN (0x8000) - FLASH's own ORIGIN (0x800) */
+    RAM   (rw) : ORIGIN = 0x00008000, LENGTH = 160K - 24
 }
 
 SECTIONS
 {
-    .text : { *(.text.start) *(.text*) } > ROM
-    .rodata : { *(.rodata*) } > ROM
+    /* Must be FIRST in FLASH -- boot_rom.S's _reset jumps to a
+     * hardcoded FLASH_BASE (ORIGIN(FLASH) itself), not via a linker
+     * symbol (BOOT_ROM can't see this link's own symbols). See
+     * crt0.S's own header comment for why this is CODE, not data. */
+    .flash_entry : { *(.flash_entry) } > FLASH
 
-    /* .data holds both regular initialized globals AND "small data"
-     * (.sdata) — RISC-V gcc redirects globals under a size threshold
-     * (default 8 bytes) into .sdata, addressed gp-relative instead of
-     * absolutely, for shorter code. __global_pointer$ is placed
-     * .sdata's own start + 0x800: RISC-V immediates are signed
-     * 12-bit (+/-2048=0x800), so gp reaching 0x800 past .sdata's
-     * start can address the back half of whatever came before it
-     * (regular .data, within reach) AND up to 0x800 past into .sbss
-     * (see below — .bss keeps .sdata's uninitialized counterpart
-     * immediately adjacent, same convention GNU ld's own default
-     * riscv linker scripts use). See docs/SMALL_DATA_SECTION_BUG.md
-     * for how this was found (small globals with .data/.bss having no
-     * *(.sdata*)/*(.sbss*) rule at all silently landed outside
-     * _data_start/_data_end's copied range) and crt0.S for gp's own
-     * init sequence.
+    .text : { *(.text.start) *(.text*) } > FLASH
+
+    /* .data now absorbs *(.rodata*) unconditionally (see header
+     * comment above) in addition to the small-data (.sdata) handling
+     * this already had -- gp still reaches +/-0x800 past its own
+     * start the same way, see docs/SMALL_DATA_SECTION_BUG.md and
+     * boot_rom.S (gp comes from this section's __global_pointer$
+     * value, loaded as a raw word, not pcrel-computed anymore).
      */
     .data : {
         _data_start = .;
         *(.data*)
         . = ALIGN(4);
         PROVIDE(__global_pointer$ = . + 0x800);
+        *(.rodata*)
         *(.srodata.cst16) *(.srodata.cst8) *(.srodata.cst4) *(.srodata.cst2)
         *(.srodata .srodata.*)
         *(.sdata .sdata.* .gnu.linkonce.s.*)
         _data_end = .;
-    } > RAM AT> ROM
+    } > RAM AT> FLASH
     _data_load = LOADADDR(.data);
 
-    /* .sbss right after .data (not after .bss) so it stays within
-     * __global_pointer$'s +/-0x800 reach — .bss proper can be
-     * arbitrarily large and would push .sbss out of range if it came
-     * first. _bss_start marks .sbss's own start, not .bss's — both
-     * are NOLOAD/zero-initialized, so crt0.S's single zero loop
-     * treats them as one contiguous region; no separate loop or
-     * symbol pair needed just because they're two output sections. */
     .sbss (NOLOAD) : {
         _bss_start = .;
         *(.dynsbss)
@@ -85,55 +93,10 @@ SECTIONS
         _bss_end = .;
     } > RAM
 
-    /* Thread-local storage — nothing in this project declares a
-     * __thread/_Thread_local variable today (both sections are always
-     * empty in practice), but tp (crt0.S) is initialized regardless
-     * so that changes silently if it ever happens, rather than
-     * repeating .sdata's mistake (see
-     * docs/SMALL_DATA_SECTION_BUG.md). RISC-V uses TLS "Variant I":
-     * tp = one past the end of the TCB. This bare-metal setup has no
-     * real TCB (no dynamic linking/DTV), so its size is 0 and tp
-     * equals _tls_base = .tdata's own start directly. */
-    .tdata : {
-        _tls_base = .;
-        _tdata_start = .;
-        *(.tdata .tdata.*)
-        _tdata_end = .;
-    } > RAM AT> ROM
-    _tdata_load = LOADADDR(.tdata);
+    /* No .tdata/.tbss/.tohost sections anymore -- see header comment
+     * (TLS: boot_rom.S doesn't init tp, nothing uses TLS; tohost:
+     * fixed address in boot_rom.S, not a symbol here). */
 
-    .tbss (NOLOAD) : {
-        _tbss_start = .;
-        *(.tbss .tbss.*)
-        _tbss_end = .;
-    } > RAM
-
-    /* HTIF (Host-Target InterFace): the convention Spike/riscv-tests
-     * use to detect a bare-metal program's completion in simulation
-     * — meaningless on real hardware, nothing there watches these
-     * addresses. Real ELF symbols (not a hardcoded offset like
-     * mailbox/go_flag), because Spike finds tohost/fromhost by symbol
-     * lookup rather than a fixed address — but the address itself is
-     * still pinned explicitly (ORIGIN(RAM) + LENGTH(RAM), 8-byte
-     * aligned by construction), not left to "wherever .bss happens to
-     * end". A test with empty/near-empty .data+.bss would otherwise
-     * leave the RAM location counter at 0, placing tohost at RAM
-     * address 0x0 — indistinguishable from a test's own data there.
-     * See crt0.S. */
-    /* No "> RAM" here on purpose: RAM's declared LENGTH already ends
-     * at ORIGIN(RAM)+LENGTH(RAM) (that's the whole point — it's what
-     * keeps .data/.bss/the stack out of this reserved tail), so a
-     * section placed AT that exact boundary would trip ld's "not
-     * within region RAM" region-overflow check even though the
-     * address itself is perfectly valid, real RAM. */
-    .tohost ORIGIN(RAM) + LENGTH(RAM) (NOLOAD) : {
-        PROVIDE(tohost = .);
-        . += 8;
-        PROVIDE(fromhost = .);
-        . += 8;
-    }
-
-    /* Stack grows down from the top of RAM; the mailbox word sits
-     * just past LENGTH(RAM), so the stack can never reach it. */
     _stack_top = ORIGIN(RAM) + LENGTH(RAM);
+    ASSERT(_stack_top == 0x0002FFE8, "RAM region drifted out of sync with boot_rom.S's hardcoded sp -- update both together, and config.yaml's memory.* too")
 }
