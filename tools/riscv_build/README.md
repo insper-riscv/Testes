@@ -183,11 +183,11 @@ runner).
 
 For the generic, project-agnostic side of this — creating the
 `runner` service account from scratch, registering it with GitHub,
-the systemd unit, the `/opt/altera_lite`/`/opt/riscv-foundation`
-bind-mount/cache pattern, the manual-dispatch secret, and the JTAG
-USB-autosuspend gotcha — see
-[docs/RUNNER_SETUP.md](../../docs/RUNNER_SETUP.md). What's specific to
-*this* project:
+the systemd unit, the `/opt/altera_lite`/`/opt/riscv-foundation` cache pattern, the
+manual-dispatch secret, and the JTAG USB-autosuspend gotcha — see
+[RUNNER_SETUP.md](https://github.com/insper-riscv/Infra/blob/main/RUNNER_SETUP.md)
+(repo `insper-riscv/Infra` — org-wide infra docs, not specific to this
+project). What's specific to *this* project:
 
 **Hardware/board facts, already reflected in `config.yaml`/`link.ld`
 (and in the generated `rv32_test.h` — see "Writing a test" above):**
