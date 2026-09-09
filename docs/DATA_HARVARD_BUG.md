@@ -108,7 +108,31 @@ hardware em si, é o que causa a falha de leitura.
    `.bss` (zero-init) continua funcionando normalmente — `crt0.S` zera com
    `sw` puro, sem precisar ler nada da ROM.
 
+## Correção definitiva: Harvard modificado
+
+As duas correções acima (`poll_interval_seconds` + checagem em tempo de
+compilação) eram uma **mitigação**: elas impediam `.data` não-vazio de
+corromper silenciosamente um teste, mas não faziam `.data` funcionar — o
+core continuava sem nenhum caminho do estágio MEM até a ROM.
+
+Isso mudou com o redesign de memória em 3 partes — BOOT_ROM (bootloader
+fixo) + FLASH (firmware de cada teste) + RAM (dado) —, que deu ao estágio
+MEM uma segunda porta de leitura até FLASH especificamente para o loop de
+cópia de `.data` no boot. `.data` com valor inicial não-zero funciona
+normalmente agora; a checagem em tempo de compilação e a restrição "só
+`.bss`" descritas acima não se aplicam mais.
+
+Ver [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md) para a arquitetura
+completa (mapa de memória, o limite do Quartus Lite que exigiu uma segunda
+cópia física de FLASH, índices JTAG, LEDs).
+
 ## Como escrever um teste que precisa de um valor inicial não-zero
+
+> **Nota**: a restrição abaixo é histórica — descreve como contornar o bug
+> **antes** da correção definitiva acima. Hoje um inicializador C comum em
+> escopo de arquivo (`static volatile unsigned int value = 0xCAFEBABEu;`)
+> funciona normalmente; o texto fica como registro de como o bug era
+> contornado enquanto não existia correção de hardware.
 
 Não use inicializador C em escopo de arquivo:
 
@@ -132,20 +156,27 @@ int main(void) {
 }
 ```
 
-## Testes desativados (`.off`)
+## Testes desativados (`.off`) — histórico, não reflete o estado atual
+
+> Esta seção descreve a situação **antes** da correção definitiva acima.
+> Com a correção de hardware, os cinco testes abaixo foram reativados (sem
+> arquivo `.off`) e passam normalmente, inclusive com o `static volatile ...
+> = 0xCAFEBABEu;` original em escopo de arquivo. O texto original fica como
+> registro de por que eles foram desligados enquanto o bug existia.
 
 Cinco testes existiam especificamente pra verificar que `.data` inicializa
 corretamente — `c/data-init-byte`, `c/data-init-halfword`,
 `c/data-init-word`, `c/data-init-word-array`, `c/data-initialization`. Como
-esse mecanismo é impossível neste hardware (não é um bug a corrigir, é uma
-característica do design do core), reescrevê-los pra "atribuir em `main()`"
-os faria testar outra coisa completamente (só "consigo escrever/ler uma
-variável", redundante com dezenas de outros testes) com um nome enganoso.
+esse mecanismo era impossível neste hardware (não era um bug a corrigir, era
+uma característica do design do core), reescrevê-los pra "atribuir em
+`main()`" os faria testar outra coisa completamente (só "consigo
+escrever/ler uma variável", redundante com dezenas de outros testes) com um
+nome enganoso.
 
-Cada pasta tem um arquivo `.off` (conteúdo = motivo, lido e impresso por
-`riscv-tools compile`) que faz o discovery de testes pular a pasta
+Cada pasta tinha um arquivo `.off` (conteúdo = motivo, lido e impresso por
+`riscv-tools compile`) que fazia o discovery de testes pular a pasta
 inteiramente, sem apagar o código-fonte original — ver `_discover_tests` em
-`Tools/src/riscv_tools/cli.py`. Isso é diferente de simplesmente remover os
-testes: o código continua no repositório, versionado, com o motivo exato de
-estar desligado registrado ali mesmo, caso o core ganhe suporte a um mapa de
+`Tools/src/riscv_tools/cli.py`. Isso era diferente de simplesmente remover os
+testes: o código continuava no repositório, versionado, com o motivo exato de
+estar desligado registrado ali mesmo, caso o core ganhasse suporte a um mapa de
 memória unificado no futuro.
