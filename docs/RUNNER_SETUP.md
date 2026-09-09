@@ -1,16 +1,23 @@
 # Configurando um runner self-hosted (guia passo a passo)
 
-Baseado no setup real dessa workstation (`picow-WS-C621E-SAGE-Series`). Todos os
-nomes/caminhos abaixo são os que estão de fato em uso aqui — confirmados direto no
-host, não é um template genérico.
+Guia genérico pra configurar um runner self-hosted do GitHub Actions numa
+workstation com acesso a hardware FPGA (Quartus + JTAG). Os caminhos abaixo
+(`/opt/actions-runner`, `/opt/altera_lite`, `/opt/riscv-foundation`) são uma
+convenção sugerida — ajuste conforme o setup da sua máquina.
 
 ## Visão geral
 
 ```
 /opt/actions-runner/      home do usuário de serviço "runner" (o runner do GitHub Actions em si)
-/opt/altera_lite/         bind mount do Quartus (picow → runner, sem dar acesso ao home do picow)
+/opt/altera_lite/         instalação real do Quartus, direto em /opt (pré-requisito, ver QUARTUS_INSTALL.md)
 /opt/riscv-foundation/    cache compartilhado de toolchains RISC-V (workstation inteira, não só um repo)
 ```
+
+## Pré-requisito — Instalar o Quartus Prime Lite
+
+O Quartus precisa estar instalado direto em `/opt/altera_lite` antes de
+seguir as fases abaixo — download, modo GUI/CLI, PATH global e atalho
+`.desktop` estão em [QUARTUS_INSTALL.md](QUARTUS_INSTALL.md).
 
 ## Fase 1 — Usuário de serviço dedicado
 
@@ -25,6 +32,34 @@ sudo usermod -aG plugdev runner    # acesso ao USB-Blaster (defesa em profundida
 
 - `-r` → UID/GID na faixa de sistema (aqui: `999`/`998`).
 - `-m -d /opt/actions-runner` → cria o home já no lugar certo, dono `runner:runner`.
+
+**Confira depois que a conta bateu certo** — nesta máquina o `/etc/passwd`
+acabou registrando `HOME=/home/runner` (diretório que nunca existiu) em vez
+de `/opt/actions-runner`, provavelmente porque o `-d` foi omitido ou perdido
+em algum momento depois da criação original. Isso não afeta o serviço
+`systemd` (Fase 3 já fixa `WorkingDirectory=/opt/actions-runner`
+explicitamente), mas quebra silenciosamente qualquer ferramenta que dependa
+de `$HOME` quando rodada manualmente via `sudo -u runner` — por exemplo, o
+`uv` (ver [SPIKE_SETUP.md](SPIKE_SETUP.md)) falha com `Failed to initialize
+cache at /home/runner/.cache/uv: Permission denied` porque tenta criar cache
+num diretório inexistente/sem dono certo.
+
+Verificar:
+```bash
+getent passwd runner   # confira o 6º campo (home)
+```
+
+Se estiver errado, corrigir:
+```bash
+sudo usermod -d /opt/actions-runner runner
+```
+
+O shell registrado também pode aparecer como `/usr/sbin/nologin` em vez do
+`/bin/bash` do comando acima (algum hardening aplicado depois, não
+documentado aqui) — isso é inofensivo pro `systemd` e pra `sudo -u runner
+bash -lc '...'` (que passa `bash` explicitamente, contornando o shell de
+login registrado), só não dá pra fazer `sudo su - runner` esperando cair
+num shell interativo utilizável sem também passar `-s /bin/bash`.
 
 ## Fase 2 — Registrar o runner no GitHub
 
@@ -42,8 +77,7 @@ sudo -iu runner bash -lc '
 '
 ```
 
-- `sudo -iu runner` roda como `runner`, mas usa o sudo de quem está logado — `runner`
-  nunca precisa ter sudo próprio pra isso.
+- `sudo -iu runner` roda como `runner`
 - **Se o token der erro de permissão do tipo "refusing to allow a Personal Access
   Token to create or update workflow ... without `workflow` scope"**: o token
   (fine-grained PAT) precisa da permissão **"Workflows"** habilitada (Read and
@@ -101,26 +135,22 @@ sudo systemctl enable --now gh-actions-runner
 sudo systemctl status gh-actions-runner --no-pager   # deve mostrar "active (running)"
 ```
 
-## Fase 4 — Acesso a ferramentas que só o usuário admin tem instaladas
+## Fase 4 — PATH do Quartus dentro do workflow
 
-Se o runner precisa de algo que já está instalado no home de outro usuário (ex:
-Quartus em `/home/picow/altera_lite`), **não** coloque `runner` no grupo desse
-usuário — isso dá acesso permanente a tudo dentro do home dele. Em vez disso,
-**bind mount** só o que precisa, num caminho neutro em `/opt`:
+O `/etc/profile.d/quartus.sh` ([QUARTUS_INSTALL.md](QUARTUS_INSTALL.md), passo 5) resolve o `PATH` pra
+**shells interativos/login** — ou seja, qualquer usuário abrindo um terminal
+normal já tem `quartus`/`quartus_pgm`/`jtagconfig` disponíveis.
 
-```bash
-sudo mkdir -p /opt/altera_lite
-echo '/home/picow/altera_lite /opt/altera_lite none bind 0 0' | sudo tee -a /etc/fstab
-sudo mount --bind /home/picow/altera_lite /opt/altera_lite
-```
+Isso **não** cobre o `runner`: o serviço roda via `systemd` (Fase 3), que não
+passa por `/etc/profile` nem por nenhum shell de login — o processo herda só o
+ambiente que o `systemd` monta pra unit, sem sourcing de rc files. Então o
+workflow precisa adicionar o caminho manualmente ao `$GITHUB_PATH`:
 
-`runner` nunca ganha nenhuma permissão sobre `/home/picow` em si — só enxerga essa
-árvore específica por um segundo caminho, gerenciado pelo root via `/etc/fstab`.
-
-No workflow (`.github/workflows/real.yml`), aponta pro caminho montado:
 ```yaml
 run: echo "/opt/altera_lite/25.1std/quartus/bin" >> "$GITHUB_PATH"
 ```
+
+(ver `.github/workflows/real.yml` pro passo exato usado aqui)
 
 ## Fase 5 — Cache compartilhado de toolchains (`/opt/riscv-foundation`)
 
@@ -133,15 +163,17 @@ sudo chown runner:runner /opt/riscv-foundation
 sudo chmod 2775 /opt/riscv-foundation   # setgid: arquivos novos herdam o grupo "runner"
 ```
 
-Pra um usuário admin (ex: `picow`) também poder escrever ali sem sudo toda vez:
+Pra outro usuário (não precisa ser admin) também poder escrever nesse cache
+sem `sudo` toda vez, basta colocar ele no grupo `runner` — isso não dá
+nenhum privilégio além do acesso a `/opt/riscv-foundation`:
 
 ```bash
-sudo usermod -aG runner picow
+sudo usermod -aG runner <usuario>
 ```
 
-Isso é seguro nessa direção (admin ganhando acesso a algo do runner) porque o
-admin já tem sudo irrestrito na máquina — é só conveniência, não um privilégio
-novo. É a direção oposta (`runner` no grupo do `picow`) que teria que ser evitada.
+É a direção oposta (`runner` no grupo de outro usuário) que teria que ser
+evitada — isso sim daria ao `runner` acesso a tudo que aquele usuário tem,
+não só ao cache.
 
 **Nota**: mudança de grupo só vale numa sessão de shell nova. Pra usar na sessão
 atual sem deslogar: `sg runner -c "<comando>"`.
@@ -161,60 +193,22 @@ repo sem dever poder acionar hardware físico:
 - No workflow, um `workflow_dispatch.inputs.confirm` comparado contra esse secret
   antes de qualquer passo que toque a placa (ver `real.yml`).
 
-## Fase 7 — Pegadinhas de hardware JTAG
+## Fase 7 — Permissão pro runner resetar o JTAG
 
-- **A porta USB do dongle muda de número** (`USB-Blaster [1-4]` → `[1-10]`) entre
-  replugs/reorganizações físicas — não confie num valor fixo no config, detecte
-  via `jtagconfig` em tempo de execução.
-- **Autosuspend USB pode derrubar a conexão JTAG sozinho, com o tempo** — se o
-  hub/controlador raiz (`usb1` ou similar) estiver com `power/control=auto`, ele
-  pode suspender a porta inteira depois de um tempo sem tráfego USB "normal"
-  (JTAG gera tráfego em rajadas, não contínuo — exatamente o padrão que dispara
-  autosuspend). Sintoma: `jtagconfig` mostra `Unable to read device chain -
-  JTAG chain broken` ou `Hardware not attached`, mesmo com cabo/placa firmes, e
-  some depois de um replug físico (que força reenumeração).
+`real.yml` checa `jtagconfig` antes de compilar e, se a chain estiver presa,
+tenta um `killall jtagd` + recheck automático antes de falhar com uma
+mensagem clara pedindo intervenção manual. Isso precisa de sudo sem senha só
+pra esse comando exato:
 
-  Diagnóstico:
-  ```bash
-  for dev in /sys/bus/usb/devices/*; do
-    [ -f "$dev/power/control" ] || continue
-    echo "$(basename "$dev")  control=$(cat "$dev/power/control")  product=$(cat "$dev/product" 2>/dev/null)"
-  done
-  ```
-  Procure o hub/controlador **pai** do dongle JTAG (não só o dongle em si — ele
-  pode estar em `on` enquanto o pai está em `auto`) com `control=auto`.
+```bash
+echo 'runner ALL=(root) NOPASSWD: /usr/bin/killall jtagd' | \
+  sudo tee /etc/sudoers.d/runner-jtagd
+```
 
-  Fix:
-  ```bash
-  echo on | sudo tee /sys/bus/usb/devices/usb1/power/control   # ajuste "usb1" pro seu caso
-  ```
-  Permanente (sobrevive a reboot):
-  ```bash
-  echo 'ACTION=="add", SUBSYSTEM=="usb", KERNEL=="usb1", TEST=="power/control", ATTR{power/control}="on"' | \
-    sudo tee /etc/udev/rules.d/52-usb1-no-autosuspend.rules
-  sudo udevadm control --reload-rules
-  sudo udevadm trigger --subsystem-match=usb
-  ```
-
-- **"JTAG chain broken" que autosuspend NÃO explica** — mesmo com autosuspend
-  desligado (item acima) e cabo/placa/porta USB do host já trocados, a chain
-  ainda pode ficar intermitentemente presa depois de um `quartus_pgm` (real
-  hardware, não CI) — nesse caso o único fix confirmado é **power-cycle físico
-  da placa** (interruptor vermelho, ~10s desligado). `killall jtagd` sozinho
-  não resolve esse caso específico. Investigação completa, com todas as
-  hipóteses testadas e descartadas, em
-  [HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md) — não repita esse
-  trabalho, comece por lá.
-
-  `real.yml` já checa `jtagconfig` antes de compilar e tenta um
-  `killall jtagd` + recheck automático primeiro (barato, pode ajudar em
-  travamentos de causa diferente mesmo que não ajude neste caso específico) —
-  só falha com uma mensagem clara pedindo power-cycle se isso não resolver.
-  Precisa de sudo sem senha só pra esse comando exato:
-  ```bash
-  echo 'runner ALL=(root) NOPASSWD: /usr/bin/killall jtagd' | \
-    sudo tee /etc/sudoers.d/runner-jtagd
-  ```
+Pegadinhas de hardware JTAG (porta USB mudando de número, autosuspend
+derrubando a conexão, "chain broken" que só resolve com power-cycle) estão
+em [HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md) — não é conteúdo de
+setup do runner, é comportamento do hardware em si.
 
 ## Checklist final
 
