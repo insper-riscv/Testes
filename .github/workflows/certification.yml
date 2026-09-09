@@ -42,10 +42,15 @@ jobs:
             git ca-certificates curl xz-utils libmpc3 build-essential \
             device-tree-compiler libboost-regex-dev libboost-system-dev
 
-      # Recursive: vendor/riscv-arch-test (ACT4 itself, pinned) AND
-      # tools/Tools's own vendor/riscv-isa-sim (Spike, used as ACT4's
-      # ref_model_exe — see rv32im-min/test_config.yaml) are both
-      # needed here, unlike sim.yml which only needs the former.
+      # Non-recursive, same as sim.yml: `submodules: true` only
+      # initializes THIS repo's own submodules (tools/Tools and
+      # vendor/riscv-arch-test), not tools/Tools's own
+      # vendor/riscv-isa-sim (Spike, used as ACT4's ref_model_exe —
+      # see rv32im-min/test_config.yaml) — confirmed by a plain `git
+      # submodule update --init` leaving that nested submodule
+      # uninitialized. Spike is cloned+built on its own outside the
+      # submodule tree instead (see "Build/update Spike" below), via
+      # RISCV_ISA_SIM_DIR.
       - uses: actions/checkout@v7
         with:
           submodules: true
@@ -60,16 +65,35 @@ jobs:
           git clone --depth 1 https://github.com/insper-riscv/RV32IM.git ../RV32IM
           ln -s RV32IM/src ../src
 
+      - name: Resolve latest riscv-gnu-toolchain release tag (for the cache key below)
+        # Same reasoning as sim.yml: follow the "latest" redirect
+        # without hitting api.github.com's tighter rate limit.
+        id: toolchain-tag
+        run: |
+          tag=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+            https://github.com/riscv-collab/riscv-gnu-toolchain/releases/latest)
+          echo "tag=${tag##*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache RISC-V GCC toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: /opt/riscv
+          key: riscv-gcc-ubuntu24.04-${{ steps.toolchain-tag.outputs.tag }}
+
       - name: Install RISC-V toolchain (riscv-collab, always latest nightly)
         # Same download as sim.yml — provides riscv32-unknown-elf-gcc,
         # which tools/riscv_build/act/rv32im-min/test_config.yaml's
         # own compiler_exe is set to match.
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           curl -fsSL -o /tmp/riscv-gcc.tar.xz \
-            https://github.com/riscv-collab/riscv-gnu-toolchain/releases/latest/download/riscv32-elf-ubuntu-24.04-gcc.tar.xz
+            "https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/${{ steps.toolchain-tag.outputs.tag }}/riscv32-elf-ubuntu-24.04-gcc.tar.xz"
           mkdir -p /opt/riscv
           tar -xf /tmp/riscv-gcc.tar.xz -C /opt/riscv --strip-components=1
-          echo "/opt/riscv/bin" >> "$GITHUB_PATH"
+
+      - name: Add RISC-V toolchain to PATH
+        run: echo "/opt/riscv/bin" >> "$GITHUB_PATH"
 
       # mise provisions Ruby+Bundler (and the pinned uv) for ACT4's
       # own UDB toolchain automatically — see vendor/riscv-arch-test's
@@ -101,16 +125,38 @@ jobs:
       - name: Install Python dependencies (riscv-tools, editable from tools/Tools, + its sim extra)
         run: uv sync
 
-      - name: Build Spike (ACT4's ref_model_exe — see rv32im-min/test_config.yaml)
-        # Same golden_generator.setup() this project's own real.yml
-        # uses to build Spike from tools/Tools's pinned vendor/
-        # riscv-isa-sim submodule — no workstation-wide cache here
-        # (unlike real.yml's persistent self-hosted runner), this
-        # container is thrown away after the run either way.
+      - name: Resolve pinned riscv-isa-sim commit (for the Spike cache key below)
+        # tools/Tools is checked out (its own vendor/riscv-isa-sim
+        # submodule isn't — see the checkout step above), so its
+        # gitlink pin for vendor/riscv-isa-sim is readable via
+        # `submodule status` without that submodule being initialized
+        # (shows as "-<sha> path" when uninitialized).
+        id: spike-pin
         run: |
+          commit=$(git -C tools/Tools submodule status vendor/riscv-isa-sim | sed -E 's/^[+ -]//' | awk '{print $1}')
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+
+      - name: Cache built Spike
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/riscv-isa-sim
+          key: spike-${{ steps.spike-pin.outputs.commit }}
+
+      - name: Build/update Spike (ACT4's ref_model_exe — see rv32im-min/test_config.yaml)
+        # Same golden_generator.setup()/update() real.yml uses on its
+        # self-hosted runner's persistent /opt, but pointed at this
+        # ephemeral runner's cache dir instead — RISCV_ISA_SIM_DIR
+        # clones+builds riscv-isa-sim there directly (bypassing the
+        # never-checked-out submodule entirely), and the cache step
+        # above makes that a no-op except when the pinned commit
+        # changes.
+        run: |
+          export RISCV_ISA_SIM_DIR=${{ runner.temp }}/riscv-isa-sim
           SPIKE_BIN=$(uv run python -c "
           from riscv_tools import golden_generator
-          print(golden_generator.setup())
+          p = golden_generator.setup()
+          golden_generator.update()
+          print(p)
           ")
           echo "$(dirname "$SPIKE_BIN")" >> "$GITHUB_PATH"
 
