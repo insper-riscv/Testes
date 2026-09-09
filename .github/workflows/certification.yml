@@ -76,7 +76,7 @@ jobs:
 
       - name: Cache RISC-V GCC toolchain
         id: cache-toolchain
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /opt/riscv
           key: riscv-gcc-ubuntu24.04-${{ steps.toolchain-tag.outputs.tag }}
@@ -137,7 +137,7 @@ jobs:
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
 
       - name: Cache built Spike
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/riscv-isa-sim
           key: spike-${{ steps.spike-pin.outputs.commit }}
