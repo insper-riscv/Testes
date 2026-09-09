@@ -14,23 +14,26 @@
  * their ROM load address to RAM before anything else runs, the same
  * way this project's own crt0.S does for its regular tests.
  *
- * ORIGIN/LENGTH must match this project's own memory.rom_words /
+ * ORIGIN/LENGTH do NOT match this project's own memory.rom_words /
  * memory.ram_words / memory.ram_base (tools/riscv_build/config.yaml)
- * — same physical ROM/RAM the regular test suite runs on.
+ * — unlike the regular test suite, ACT4 never runs on real hardware
+ * at all (see certify's own module docstring), so it isn't bound by
+ * real hardware's actual FLASH/RAM budget. Sized instead to comfortably
+ * fit the biggest official architectural test's own combinatorial
+ * coverage (found the hard way: I-jal-00 alone overflowed a
+ * real-hardware-sized 128K ROM by ~72KB) — must match config.yaml's
+ * act.sim_parameters.rom_addr_width/ram_addr_width (2**20/2**19 words).
  */
 
 MEMORY
 {
-  rom (rx) : ORIGIN = 0x00000000, LENGTH = 128K
+  rom (rx) : ORIGIN = 0x00000000, LENGTH = 4M
   /* Top 20 bytes reserved: tohost+fromhost (8+8, HTIF, see
    * rvmodel_macros.h) and a 4-byte "console" word RVMODEL_IO_WRITE_STR
    * writes to — both watched directly by tools/riscv_build/act/sim/
    * test_act.py off the raw ram_addr/ram_wdata bus, the same way
-   * test_c_program.py already watches this project's own mailbox.
-   * 128K/128K (not 64K/64K) to match config.yaml's memory.rom_words/
-   * ram_words — real hardware's ROM/RAM were doubled specifically to
-   * fit ACT4 test images (see config.yaml's own memory: comment). */
-  ram (rw) : ORIGIN = 0x00020000, LENGTH = 128K - 20
+   * test_c_program.py already watches this project's own mailbox. */
+  ram (rw) : ORIGIN = 0x00400000, LENGTH = 2M - 20
 }
 
 TEST_BASE = ORIGIN(rom);
