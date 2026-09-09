@@ -1,0 +1,14 @@
+name: rv32im-min
+# Same riscv-collab toolchain this project's own compile step uses
+# (toolchain.gcc in config.yaml) — objdump_exe omitted on purpose,
+# GHDL sim has nothing to disassemble against; ACT4 skips it cleanly
+# when unset (see README: "if not provided, objdump will be skipped").
+compiler_exe: riscv32-unknown-elf-gcc
+ref_model_exe: spike
+udb_config: rv32im-min.yaml
+linker_script: link.ld
+dut_include_dir: .
+# No CSR/trap/privilege support yet (see rvmodel_macros.h) — every
+# ACT4 test that needs a privilege mode is architecturally
+# inapplicable to this core today.
+include_priv_tests: False

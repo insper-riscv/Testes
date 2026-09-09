@@ -1,0 +1,131 @@
+name: certification (ACT4)
+
+# Validates this core against the OFFICIAL riscv-arch-test suite
+# (vendor/riscv-arch-test, ACT4 — a pinned submodule), as opposed to
+# sim.yml/real.yml which run this project's own hand-picked tests.
+# Scoped to I/M only today (this core has no CSR/trap/privilege
+# support yet) — see tools/riscv_build/act/rv32im-min/ and
+# config.yaml's own act: section for how that scope grows later.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      extensions:
+        description: "Comma-separated EXTENSIONS= override (default: config.yaml's act.extensions)"
+        required: false
+
+concurrency:
+  group: certification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  act4-im:
+    # Same "no hardware needed" tier as sim.yml — ACT4 tests run
+    # entirely under cocotb/GHDL, never on the FPGA.
+    runs-on: ubuntu-latest
+    container:
+      image: ghdl/ghdl:6.0.0-mcode-ubuntu-24.04
+
+    steps:
+      # Same reasoning as sim.yml: the ghdl/ghdl image has no git
+      # (actions/checkout needs it for `submodules: true` — the
+      # GitHub REST API fallback doesn't support submodules), and no
+      # curl/xz-utils (toolchain download below) or libmpc3 (gcc's
+      # cc1 dynamically links against it). build-essential is new
+      # here specifically for Spike's build (device-tree-compiler +
+      # boost, below) — sim.yml doesn't need Spike at all.
+      - name: Install system dependencies (git, curl, xz-utils, libmpc3, Spike build deps)
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            git ca-certificates curl xz-utils libmpc3 build-essential \
+            device-tree-compiler libboost-regex-dev libboost-system-dev
+
+      # Recursive: vendor/riscv-arch-test (ACT4 itself, pinned) AND
+      # tools/Tools's own vendor/riscv-isa-sim (Spike, used as ACT4's
+      # ref_model_exe — see rv32im-min/test_config.yaml) are both
+      # needed here, unlike sim.yml which only needs the former.
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      - name: Checkout RV32IM (holds the VHDL sources)
+        # Same symlink trick as sim.yml/real.yml — config.yaml's
+        # sim.vhdl_sources (reused as-is by certify.run_suite, see its
+        # own module docstring) are "../src/...", relative to this
+        # checkout, true only once RV32IM is cloned as a sibling.
+        run: |
+          rm -rf ../RV32IM
+          git clone --depth 1 https://github.com/insper-riscv/RV32IM.git ../RV32IM
+          ln -s RV32IM/src ../src
+
+      - name: Install RISC-V toolchain (riscv-collab, always latest nightly)
+        # Same download as sim.yml — provides riscv32-unknown-elf-gcc,
+        # which tools/riscv_build/act/rv32im-min/test_config.yaml's
+        # own compiler_exe is set to match.
+        run: |
+          curl -fsSL -o /tmp/riscv-gcc.tar.xz \
+            https://github.com/riscv-collab/riscv-gnu-toolchain/releases/latest/download/riscv32-elf-ubuntu-24.04-gcc.tar.xz
+          mkdir -p /opt/riscv
+          tar -xf /tmp/riscv-gcc.tar.xz -C /opt/riscv --strip-components=1
+          echo "/opt/riscv/bin" >> "$GITHUB_PATH"
+
+      # mise provisions Ruby+Bundler (and the pinned uv) for ACT4's
+      # own UDB toolchain automatically — see vendor/riscv-arch-test's
+      # own .mise.toml/README.md ("Prerequisites: 2. mise (Tool
+      # Manager)") and Makefile (`ifneq ($(MISE),)` skips its own
+      # Bundle-on-PATH check entirely once mise is present).
+      - name: Install mise (provisions Ruby/Bundler for ACT4's UDB toolchain)
+        run: |
+          curl -fsSL https://mise.jdx.dev/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: mise install (Ruby/Bundler/uv, pinned in vendor/riscv-arch-test/.mise.toml)
+        working-directory: vendor/riscv-arch-test
+        run: |
+          mise trust .mise.toml
+          mise install
+
+      - name: bundle install (UDB gems)
+        # AGENTS.md: "UDB Ruby deps are under framework/src/act/data/
+        # Gemfile*; first ACT/UDB use may run `bundle install`" — run
+        # it explicitly here rather than relying on a Makefile target
+        # to trigger it as a side effect the first time `certify`
+        # calls `make`.
+        working-directory: vendor/riscv-arch-test/framework/src/act/data
+        run: mise exec -- bundle install
+
+      - uses: astral-sh/setup-uv@v10.0.1
+
+      - name: Install Python dependencies (riscv-tools, editable from tools/Tools, + its sim extra)
+        run: uv sync
+
+      - name: Build Spike (ACT4's ref_model_exe — see rv32im-min/test_config.yaml)
+        # Same golden_generator.setup() this project's own real.yml
+        # uses to build Spike from tools/Tools's pinned vendor/
+        # riscv-isa-sim submodule — no workstation-wide cache here
+        # (unlike real.yml's persistent self-hosted runner), this
+        # container is thrown away after the run either way.
+        run: |
+          SPIKE_BIN=$(uv run python -c "
+          from riscv_tools import golden_generator
+          print(golden_generator.setup())
+          ")
+          echo "$(dirname "$SPIKE_BIN")" >> "$GITHUB_PATH"
+
+      - name: Generate rv32_test.h
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
+
+      - name: Run ACT4 certification (build + cocotb/GHDL)
+        run: |
+          uv run riscv-tools --config tools/riscv_build/config.yaml certify \
+            ${{ inputs.extensions && format('--extensions {0}', inputs.extensions) || '' }}
+
+      - name: Upload waveforms
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: act4-waveforms
+          path: "**/*.ghw"
+          if-no-files-found: ignore
