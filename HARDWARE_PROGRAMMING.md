@@ -124,7 +124,7 @@ Se `jtagconfig` mostra a placa saudável mas leituras/escritas via
 In-System Memory Content Editor (mailbox, ROM/RAM) continuam travando ou
 nunca respondendo, e só power-cycle físico resolve (reprogramar sozinho
 não) — não é este bug. Ver
-[docs/PLL_LOCK_LOSS_BUG.md](docs/PLL_LOCK_LOSS_BUG.md): o reset do PLL
+[docs/bugs/PLL_LOCK_LOSS_BUG.md](docs/bugs/PLL_LOCK_LOSS_BUG.md): o reset do PLL
 estava amarrado em `'0'` permanentemente, então qualquer perda de lock
 (ruído de alimentação, etc.) travava o core pra sempre, mesmo com o TAP
 JTAG básico (o que `jtagconfig` escaneia) continuando saudável.
