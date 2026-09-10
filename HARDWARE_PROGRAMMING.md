@@ -1,10 +1,10 @@
-# Programando a placa real — leia antes de mexer no pipeline de hardware
+# Programando a placa real: leia antes de mexer no pipeline de hardware
 
 > **Regra permanente:** `quartus_sh --flow compile` e `quartus_pgm` **nunca**
 > podem ser lançados como dois `subprocess.run()` (ou dois processos-pai)
 > separados em Python. Eles têm que rodar dentro do **mesmo processo de
 > shell**, um encadeado no outro (`cmd1 && cmd2`). Ver motivo completo abaixo.
-> Quebrar essa regra reintroduz um bug já diagnosticado e corrigido — não
+> Quebrar essa regra reintroduz um bug já diagnosticado e corrigido; não
 > reverta [`tools/Tools/src/riscv_tools/quartus_program/core.py`](tools/Tools/src/riscv_tools/quartus_program/core.py)
 > para duas chamadas separadas sem reler este documento inteiro.
 
@@ -32,7 +32,7 @@ cd tests/FPGA/core/quartus && \
 ```
 
 Toolchain RISC-V: use sempre `/opt/riscv-foundation/riscv32-elf/bin` (cache
-já compilado, workstation-wide) — não o `riscv64-unknown-elf-gcc` do sistema
+já compilado, workstation-wide); não o `riscv64-unknown-elf-gcc` do sistema
 nem o submódulo `Tools/vendor/riscv-gnu-toolchain` (fonte, precisaria de
 build de dezenas de minutos).
 
@@ -60,11 +60,11 @@ Investigação extensiva nesta sessão eliminou, em ordem:
   placa fisicamente durante o problema.
 - **Contenção com CI**: o `gh-actions-runner` (self-hosted, dispara
   `real.yml`/`fpga-core-tests.yml` a cada push no `main` do RV32IM) chegou a
-  rodar jobs `test-real` bem próximos no tempo das tentativas manuais — mas
+  rodar jobs `test-real` bem próximos no tempo das tentativas manuais, mas
   o problema **persistiu identicamente com o runner parado**, então não era
   isso.
 - **Estado do `jtagd`**: tentativas de matar/reiniciar o `jtagd` antes do
-  `quartus_pgm`, com delays de 3s e depois 10s, não mudaram nada — o erro se
+  `quartus_pgm`, com delays de 3s e depois 10s, não mudaram nada; o erro se
   repetiu de forma idêntica.
 - **Tempo de espera entre compile e pgm**: a duração do delay (0s, 3s, 10s)
   não teve efeito algum. Isso foi confirmado de forma definitiva depois: uma
@@ -95,7 +95,7 @@ documentado e consistente com isso: ferramentas de linha de comando da
 Quartus (`quartus_pgm`, `quartus_stp`) às vezes não inicializam o ambiente
 JTAG da mesma forma que a GUI do Quartus Programmer, e a primeira tentativa
 "fria" numa sessão pode falhar onde uma segunda (ou uma sessão de shell
-diferente) funciona — ver fontes abaixo. É plausível que o `subprocess.run()`
+diferente) funciona; ver fontes abaixo. É plausível que o `subprocess.run()`
 do Python herde algo do ambiente/sessão do processo pai (variável de
 ambiente, terminal/pty, ordem de finalização de descritores de arquivo) de
 um jeito que interfere nessa inicialização, enquanto um `bash -c` encadeado
@@ -104,9 +104,9 @@ não.
 Fontes consultadas (nenhuma documenta o caso exato, mas mostram o padrão
 "CLI JTAG cold-start" é conhecido):
 
-- [Error (213019): Can't scan JTAG chain. Error code 87 — Intel Community](https://community.intel.com/t5/FPGA-SoC-And-CPLD-Boards-And/Error-213019-Can-t-scan-JTAG-chain-Error-code-87-while-uploading/m-p/198826)
-- [Issue with quartus_pgm Command-Line .jic File Programming on DE0-Nano — Intel Community](https://community.intel.com/t5/FPGA-SoC-And-CPLD-Boards-And/Issue-with-quartus-pgm-Command-Line-jic-File-Programming-on-DE0/td-p/1700547)
-- [Chain description file (CDF) working in Quartus Programmer GUI but not in CMD tools — Intel Community](https://community.intel.com/t5/Intel-Quartus-Prime-Software/Chain-description-file-CDF-working-in-Quartus-Programmer-GUI-but/td-p/210791)
+- [Error (213019): Can't scan JTAG chain. Error code 87 (Intel Community)](https://community.intel.com/t5/FPGA-SoC-And-CPLD-Boards-And/Error-213019-Can-t-scan-JTAG-chain-Error-code-87-while-uploading/m-p/198826)
+- [Issue with quartus_pgm Command-Line .jic File Programming on DE0-Nano (Intel Community)](https://community.intel.com/t5/FPGA-SoC-And-CPLD-Boards-And/Issue-with-quartus-pgm-Command-Line-jic-File-Programming-on-DE0/td-p/1700547)
+- [Chain description file (CDF) working in Quartus Programmer GUI but not in CMD tools (Intel Community)](https://community.intel.com/t5/Intel-Quartus-Prime-Software/Chain-description-file-CDF-working-in-Quartus-Programmer-GUI-but/td-p/210791)
 
 ### A correção aplicada
 
@@ -123,7 +123,7 @@ chamadas `subprocess.run()` separadas. Confirmado: `uv run riscv-tools
 Se `jtagconfig` mostra a placa saudável mas leituras/escritas via
 In-System Memory Content Editor (mailbox, ROM/RAM) continuam travando ou
 nunca respondendo, e só power-cycle físico resolve (reprogramar sozinho
-não) — não é este bug. Ver
+não): não é este bug. Ver
 [docs/bugs/PLL_LOCK_LOSS_BUG.md](docs/bugs/PLL_LOCK_LOSS_BUG.md): o reset do PLL
 estava amarrado em `'0'` permanentemente, então qualquer perda de lock
 (ruído de alimentação, etc.) travava o core pra sempre, mesmo com o TAP
