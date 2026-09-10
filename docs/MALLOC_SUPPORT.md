@@ -78,7 +78,7 @@ void free(void *ptr) { (void)ptr; }   // bump allocator, nunca recicla
 - **Não precisou de símbolo novo no linker script**: `_bss_end` (início do
   heap) e `_stack_top` (limite superior) já existiam em `link.ld`/
   `golden.ld` desde o redesign BOOT_ROM+FLASH (ver
-  `docs/MEMORY_ARCHITECTURE.md`).
+  [MEMORY_ARCHITECTURE.md](MEMORY_ARCHITECTURE.md)).
 - Aloca só pra frente (bump pointer), `free()` é no-op; nenhum teste
   deste projeto aloca/libera repetidamente ou depende de reciclar memória
   no meio da execução, então um free-list de verdade seria complexidade

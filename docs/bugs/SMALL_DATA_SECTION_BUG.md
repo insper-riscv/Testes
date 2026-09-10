@@ -8,7 +8,7 @@ mailbox (`no mailbox result after 15.0s`). Reproduzido **3 de 3 vezes**,
 isolado (`--only data-init-byte --skip-reconfigure`, placa recém-programada,
 nenhum outro teste rodando antes), descartando de vez a hipótese de ser mais
 um caso do bug de JTAG intermitente já documentado em
-[HARDWARE_PROGRAMMING.md](../../HARDWARE_PROGRAMMING.md): aquele quebra a
+[HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md): aquele quebra a
 *conexão* JTAG (`jtagconfig` para de enxergar a placa); este bug faz o
 *programa RISC-V* travar, com a JTAG continuando saudável o tempo todo.
 

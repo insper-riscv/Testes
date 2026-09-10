@@ -22,8 +22,7 @@ peças (só GHDL e a extra `sim` do `riscv-tools`).
 | `vendor/riscv-arch-test/` | Submódulo do [ACT4](https://github.com/riscv-non-isa/riscv-arch-test) (RISC-V Architectural Certification Tests, RISC-V Foundation) |
 | `tests/python/` | Testes de simulação por entidade VHDL (cocotb + GHDL), separados da suíte `asm`/`c` acima; ver [tests/python/README.md](tests/python/README.md) |
 | `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação), `certification.yml` (ACT4) |
-| `docs/` | Arquitetura de memória, bugs investigados, referência de boot |
-| `HARDWARE_PROGRAMMING.md` | Leitura obrigatória antes de mexer no pipeline de compilar+programar a placa |
+| `docs/` | Arquitetura de memória, bugs investigados, referência de boot, guia de programação da placa |
 
 ## Uso rápido
 
@@ -43,7 +42,7 @@ de hardware, como escrever um teste novo).
 
 ## Docs
 
-- [HARDWARE_PROGRAMMING.md](HARDWARE_PROGRAMMING.md): regra permanente
+- [docs/HARDWARE_PROGRAMMING.md](docs/HARDWARE_PROGRAMMING.md): regra permanente
   sobre compilar+programar a placa, e o bug de JTAG já diagnosticado
 - [docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md): arquitetura BOOT_ROM + FLASH + RAM
 - [docs/CRT0_BOOT_REFERENCE.md](docs/CRT0_BOOT_REFERENCE.md): estado de boot do `crt0.S`

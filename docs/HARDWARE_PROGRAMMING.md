@@ -5,7 +5,7 @@
 > separados em Python. Eles têm que rodar dentro do **mesmo processo de
 > shell**, um encadeado no outro (`cmd1 && cmd2`). Ver motivo completo abaixo.
 > Quebrar essa regra reintroduz um bug já diagnosticado e corrigido; não
-> reverta [`tools/Tools/src/riscv_tools/quartus_program/core.py`](tools/Tools/src/riscv_tools/quartus_program/core.py)
+> reverta [`tools/Tools/src/riscv_tools/quartus_program/core.py`](../tools/Tools/src/riscv_tools/quartus_program/core.py)
 > para duas chamadas separadas sem reler este documento inteiro.
 
 ## Como compilar + programar a placa (forma correta)
@@ -110,7 +110,7 @@ Fontes consultadas (nenhuma documenta o caso exato, mas mostram o padrão
 
 ### A correção aplicada
 
-Em [`tools/Tools/src/riscv_tools/quartus_program/core.py`](tools/Tools/src/riscv_tools/quartus_program/core.py),
+Em [`tools/Tools/src/riscv_tools/quartus_program/core.py`](../tools/Tools/src/riscv_tools/quartus_program/core.py),
 `full_reconfigure()` monta `quartus_sh --flow compile ... && quartus_pgm ...`
 como uma única string de shell e a executa com **uma** chamada
 `subprocess.run(["bash", "-c", script], check=True)`, em vez de duas
@@ -124,7 +124,7 @@ Se `jtagconfig` mostra a placa saudável mas leituras/escritas via
 In-System Memory Content Editor (mailbox, ROM/RAM) continuam travando ou
 nunca respondendo, e só power-cycle físico resolve (reprogramar sozinho
 não): não é este bug. Ver
-[docs/bugs/PLL_LOCK_LOSS_BUG.md](docs/bugs/PLL_LOCK_LOSS_BUG.md): o reset do PLL
+[bugs/PLL_LOCK_LOSS_BUG.md](bugs/PLL_LOCK_LOSS_BUG.md): o reset do PLL
 estava amarrado em `'0'` permanentemente, então qualquer perda de lock
 (ruído de alimentação, etc.) travava o core pra sempre, mesmo com o TAP
 JTAG básico (o que `jtagconfig` escaneia) continuando saudável.

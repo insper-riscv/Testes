@@ -33,7 +33,7 @@ programa, permitindo `.data` funcionar normalmente. É uma escolha de design
 consistente (a mesma suíte de 42 testes rodada várias vezes sempre parava
 exatamente nesse teste, com todo o resto passando limpo ao redor), o que
 descartou coincidência de instabilidade de JTAG (ver
-[HARDWARE_PROGRAMMING.md](../../HARDWARE_PROGRAMMING.md) pro problema,
+[HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md) pro problema,
 diferente, de "chain broken" na etapa de programação).
 
 ### 2. `gp`/`.sdata`: correção real, mas não suficiente
@@ -88,7 +88,7 @@ tinha `poll_interval_seconds: 0.5`: com um timeout de 15s, isso permite até
 **~30 chamadas `quartus_stp` separadas**, cada uma abrindo e fechando sua
 própria sessão de JTAG/In-System Memory Editor do zero, em sequência rápida.
 Essa é a mesma classe de fragilidade já documentada pro handoff
-`quartus_sh`→`quartus_pgm` (ver HARDWARE_PROGRAMMING.md), só que multiplicada
+`quartus_sh`→`quartus_pgm` (ver [HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md)), só que multiplicada
 por ~30 tentativas numa janela de 15s em vez de duas tentativas isoladas.
 
 A leitura manual (uma chamada, com folga real de tempo) funcionou de

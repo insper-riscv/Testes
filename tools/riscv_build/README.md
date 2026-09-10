@@ -233,7 +233,7 @@ project). What's specific to *this* project:
   then JTAG-reloads each test's ROM content live on that same
   bitstream (falling back to a full recompile+reprogram only if a
   test's mailbox never responds; see `riscv-tools`'
-  `orchestrator`/`docs/configuration.md`). Simpler than recompiling
+  [orchestrator](../Tools/docs/modules/orchestrator.md)/[docs/configuration.md](../Tools/docs/configuration.md)). Simpler than recompiling
   per test, and the fallback still exists for when the board itself
   wedges.
 - **JTAG readback**: reading the PASS/FAIL mailbox and dumping RAM
