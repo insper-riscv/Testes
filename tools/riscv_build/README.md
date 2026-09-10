@@ -4,9 +4,10 @@ Compiles bare-metal test programs (C under `c/`, assembly under
 `asm/`) and runs them two ways, and reports PASS/FAIL:
 
 - **real**: every test, on an actual FPGA over JTAG.
-- **sim**: `unit`-kind tests only, in a GHDL/cocotb simulation, no
-  hardware needed (`memory`-kind tests need a real RAM dump, see
-  "Writing a test" below).
+- **sim**: every test, in a GHDL/cocotb simulation, no hardware
+  needed; a `memory`-kind test's RAM is reconstructed from the bus
+  writes the simulation observes and compared against `golden.json`,
+  the same check the real suite does from a JTAG dump.
 
 Both are driven by [`riscv-tools`](https://github.com/insper-riscv/Tools),
 vendored here as the `tools/Tools` git submodule, not a copy. This
@@ -73,8 +74,9 @@ Two optional header comments configure it:
 // RV32_TEST_KIND: unit          // default. Checked via the PASS/FAIL mailbox
                                   // alone. Builds for both real hardware and sim.
 // RV32_TEST_KIND: memory        // Mailbox + a full RAM dump compared against
-                                  // c/my-test/golden.json (real hardware only;
-                                  // sim doesn't verify RAM contents).
+                                  // c/my-test/golden.json. Verified on both
+                                  // real hardware (JTAG dump) and sim (bus-
+                                  // snooped writes).
 #include "rv32_test.h"
 
 int main(void) {
@@ -150,9 +152,10 @@ uv run python tests/python/runner.py ALU      # just one
 ```
 
 `compile` iterates every `<name>/src.c`/`<name>/src.S` folder under
-`c/`/`asm/` and writes `build/{real,sim}/manifest.json` (`--emit mif`
-builds every test, `--emit hex` skips `memory`-kind ones), which
-`run`/`sim` then consume.
+`c/`/`asm/` and writes `build/{real,sim}/manifest.json`; both
+`--emit mif` and `--emit hex` build every test regardless of kind and
+attach a `memory`-kind test's `golden.json` to its manifest entry,
+which `run`/`sim` then consume.
 
 ## CI
 
@@ -257,3 +260,7 @@ FAIL test, see above). What's still open:
 | File | What |
 |---|---|
 | `.github/workflows/real.yml` | `riscv32-elf-ubuntu-22.04-gcc.tar.xz` asset name and `/opt/altera_lite/...` PATH, if this ever moves to a different/newer runner OS or a different Quartus install location |
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).

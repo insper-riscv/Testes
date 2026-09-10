@@ -204,3 +204,7 @@ completo (não uma falha limpa) em testes com poucas variáveis pequenas.
 `nm -S`/`readelf -S` no `.elf` gerado (procurando por `.sdata`/`.sbss`, ou
 `_data_start == _data_end` com objetos reais em `.data`) é o jeito mais
 rápido de confirmar se é isso de novo.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).

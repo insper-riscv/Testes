@@ -115,3 +115,7 @@ certa, é uma recuperação bem mais rápida.
 Isso não substitui a regra de `quartus_sh`+`quartus_pgm` em um único
 processo de shell (ver [HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md)):
 são dois bugs de hardware/plataforma distintos, ambos reais.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).

@@ -103,3 +103,7 @@ volta.
 Verificado localmente: `python3 tests/python/runner.py all` agora termina
 com exit code 0 (13 testes passam, 10 pulados, 0 erros): o mesmo comando
 que o `sim.yml` do CI roda.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).

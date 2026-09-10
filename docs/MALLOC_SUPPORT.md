@@ -128,3 +128,7 @@ regressão em nenhum teste pré-existente. Também confirmado que a causa
 raiz do problema de CI foi mesmo essa (não outra coisa): baixei o release
 exato que o `sim.yml` usa e inspecionei o `libc.a` com `readelf -A` antes
 de decidir a solução, em vez de só supor.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../LICENSE).

@@ -180,3 +180,7 @@ inteiramente, sem apagar o código-fonte original: ver `_discover_tests` em
 testes: o código continuava no repositório, versionado, com o motivo exato de
 estar desligado registrado ali mesmo, caso o core ganhasse suporte a um mapa de
 memória unificado no futuro.
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).
