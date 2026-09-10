@@ -1,0 +1,57 @@
+# RISC-V Workstation Tests
+
+Suíte de testes de hardware real e simulação do núcleo RISC-V
+`RV32IM`, dirigida pelo pacote [`riscv-tools`](tools/Tools/README.md)
+(vendorado como submódulo em `tools/Tools`). Este README não descreve
+nada sozinho: é um índice, cada assunto tem seu próprio documento.
+
+## Pré-requisitos
+
+Rodar os testes de hardware real exige uma workstation com Quartus,
+um runner self-hosted do GitHub Actions e as toolchains RISC-V/Spike
+já configuradas: ver [insper-riscv/Infra](https://github.com/insper-riscv/Infra).
+Rodar só a suíte de simulação (`sim`) não precisa de nenhuma dessas
+peças (só GHDL e a extra `sim` do `riscv-tools`).
+
+## Estrutura
+
+| Caminho | Conteúdo |
+| :--- | :--- |
+| `asm/`, `c/` | Os 84 testes da suíte (51 em assembly, 33 em C), um `<name>/src.S` ou `<name>/src.c` por pasta |
+| `tools/riscv_build/` | Configuração deste projeto pro `riscv-tools` (`config.yaml`, `crt0.S`, `link.ld`, `boot_rom.S`) |
+| `tools/Tools/` | Submódulo do pacote [`riscv-tools`](tools/Tools/README.md) |
+| `vendor/riscv-arch-test/` | Submódulo do ACT4 (RISC-V Architectural Certification Tests) |
+| `tests/python/` | Testes de simulação por entidade VHDL (cocotb + GHDL), separados da suíte `asm`/`c` acima; ver [tests/python/README.md](tests/python/README.md) |
+| `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação), `certification.yml` (ACT4) |
+| `docs/` | Arquitetura de memória, bugs investigados, referência de boot |
+| `HARDWARE_PROGRAMMING.md` | Leitura obrigatória antes de mexer no pipeline de compilar+programar a placa |
+
+## Uso rápido
+
+```bash
+uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
+uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif   # hardware real
+uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex   # simulação
+uv run riscv-tools --config tools/riscv_build/config.yaml run                  # suíte de hardware real
+uv run riscv-tools --config tools/riscv_build/config.yaml sim                  # suíte de simulação
+uv run riscv-tools --config tools/riscv_build/config.yaml certify              # ACT4
+```
+
+Ver [tools/Tools/README.md](tools/Tools/README.md) pra referência
+completa de cada subcomando e [tools/riscv_build/README.md](tools/riscv_build/README.md)
+pras convenções específicas deste projeto (formato dos testes, fatos
+de hardware, como escrever um teste novo).
+
+## Docs
+
+- [HARDWARE_PROGRAMMING.md](HARDWARE_PROGRAMMING.md): regra permanente
+  sobre compilar+programar a placa, e o bug de JTAG já diagnosticado
+- [docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md): arquitetura BOOT_ROM + FLASH + RAM
+- [docs/CRT0_BOOT_REFERENCE.md](docs/CRT0_BOOT_REFERENCE.md): estado de boot do `crt0.S`
+- [docs/MALLOC_SUPPORT.md](docs/MALLOC_SUPPORT.md): suporte a `malloc`/`free`
+- [docs/PLL_LOCK_LOSS_BUG.md](docs/PLL_LOCK_LOSS_BUG.md), [docs/SMALL_DATA_SECTION_BUG.md](docs/SMALL_DATA_SECTION_BUG.md), [docs/DATA_HARVARD_BUG.md](docs/DATA_HARVARD_BUG.md): bugs de hardware já investigados e corrigidos
+- [docs/PER_ENTITY_TESTS_CI_BREAKAGE.md](docs/PER_ENTITY_TESTS_CI_BREAKAGE.md): bugs no CI dos testes por entidade
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](LICENSE).
