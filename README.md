@@ -45,7 +45,7 @@ de hardware, como escrever um teste novo).
 - [docs/HARDWARE_PROGRAMMING.md](docs/HARDWARE_PROGRAMMING.md): regra permanente
   sobre compilar+programar a placa, e o bug de JTAG já diagnosticado
 - [docs/MEMORY_ARCHITECTURE.md](docs/MEMORY_ARCHITECTURE.md): arquitetura BOOT_ROM + FLASH + RAM
-- [docs/CRT0_BOOT_REFERENCE.md](docs/CRT0_BOOT_REFERENCE.md): estado de boot do `crt0.S`
+- [docs/CRT0_BOOT_REFERENCE.md](docs/CRT0_BOOT_REFERENCE.md): estado de boot, `crt0.S` + `boot_rom.S`
 - [docs/MALLOC_SUPPORT.md](docs/MALLOC_SUPPORT.md): suporte a `malloc`/`free`
 - [docs/bugs/PLL_LOCK_LOSS_BUG.md](docs/bugs/PLL_LOCK_LOSS_BUG.md), [docs/bugs/SMALL_DATA_SECTION_BUG.md](docs/bugs/SMALL_DATA_SECTION_BUG.md), [docs/bugs/DATA_HARVARD_BUG.md](docs/bugs/DATA_HARVARD_BUG.md): bugs de hardware já investigados e corrigidos
 - [docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md](docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md): bugs no CI dos testes por entidade
