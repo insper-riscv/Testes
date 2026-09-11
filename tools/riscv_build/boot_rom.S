@@ -5,35 +5,28 @@
  * plays: it doesn't know or care what firmware (FLASH content) it's
  * booting, it just knows the fixed protocol FLASH exposes.
  *
- * IMPORTANT: BOOT_ROM and FLASH are BOTH fetch-only (IF stage) --
- * nothing in this design gives the MEM stage a data path to either of
- * them (see rv32im_pipeline_core.vhd: only RAM is wired to the MEM
- * stage). That means this fixed bootloader CANNOT `lw` a per-test
- * "header table" out of FLASH the way an earlier version of this file
- * tried to (silently reads RAM instead, since MEM-stage addresses
- * only ever reach RAM -- confirmed by simulation: t1..t6 all came
- * back zero and `jr t6` looped back to address 0).
+ * link.ld gives every section a FIXED address and a FIXED size
+ * budget, the same for every test (like a real CPU's own memory
+ * map), so _data_start/_data_end/_bss_start/_bss_end/gp are the same
+ * numeric constant for every test -- hardcoded directly below rather
+ * than read from anywhere. link.ld's own ASSERTs are the single
+ * source of truth for these numbers; if any of them ever fires
+ * (a budget changed), update the matching literal here too:
  *
- * Instead, the handoff is CODE, not data: every test's own crt0.S
- * emits a tiny "entry trampoline" (see link.ld's .flash_entry, placed
- * first in FLASH, at FLASH_BASE) that `la`s that test's own
- * .data/.bss bounds, gp, and main's address into t1-t6/gp using
- * ordinary instruction fetch (no MEM-stage access needed -- `la`
- * expands to auipc+addi, pure code), then jumps to _boot_continue
- * below (a FIXED address, see boot_rom_symbols.ld) to finish the
- * job. _reset itself only ever touches things that are the SAME for
- * every test (sp, mailbox/go_flag/tohost/fromhost -- all fixed
- * addresses), so it doesn't need any per-test data either.
+ *   _data_load  = 0x00002004  (FLASH, LMA of .data+.sdata combined)
+ *   _data_start = 0x00008000  (RAM, VMA of .data)
+ *   _data_end   = 0x00008800  (RAM, VMA end of .data+.sdata combined)
+ *   _bss_start  = 0x00008800  (RAM, VMA of .sbss)
+ *   _bss_end    = 0x00008E00  (RAM, VMA end of .sbss+.bss combined)
+ *   gp          = 0x00008C00  (.sdata's start + 0x800)
  *
- * Register contract _flash_entry hands off to _boot_continue with
- * (see a test's own crt0.S):
- *   t1 = _data_load    (source, in FLASH -- LMA of .data)
- *   t2 = _data_start    (dest, in RAM -- VMA of .data)
- *   t3 = _data_end
- *   t4 = _bss_start     (in RAM)
- *   t5 = _bss_end
- *   t6 = main's address (in FLASH)
- *   gp = __global_pointer$'s value (already loaded by _flash_entry)
+ * The only thing that still varies per test is main's own address
+ * (wherever that test's code lands inside the fixed .text budget),
+ * so crt0.S's .flash_header (at FLASH_BASE, 0x00000800) carries just
+ * that one word now. _reset reads it with a plain `lw`: the MEM
+ * stage's second FLASH read port (rv32im_pipeline_core.vhd's
+ * flash_addr2/FLASH_MEM, added for the .data copy loop below) reaches
+ * any FLASH-range address, so an ordinary data read works here.
  *
  * tp (thread pointer) is intentionally NOT initialized here -- no
  * test in this project uses TLS (see the old crt0.S history for why
@@ -42,11 +35,11 @@
  * This file must stay under BOOT_ROM_SIZE (link.ld / config.yaml
  * memory.boot_rom_words / rv32im_pipeline_core.vhd's
  * BOOT_ROM_SIZE_BYTES -- all three must agree). boot_rom.ld reserves
- * fixed offsets for _reset (0x0), rv32_wait_restart (0x100) and
- * _boot_continue (0x180) -- see boot_rom_symbols.ld, INCLUDEd by
- * every test's own link.ld so both RV32_PASS()/RV32_FAIL()
- * (rv32_test.h) and crt0.S's own .flash_entry can reference them as
- * ordinary external symbols without linking against this file.
+ * a fixed offset for rv32_wait_restart (0x100) -- see
+ * boot_rom_symbols.ld, INCLUDEd by every test's own link.ld so both
+ * RV32_PASS()/RV32_FAIL() (rv32_test.h) and _reset's own FLASH_BASE
+ * read can reference fixed addresses without linking against this
+ * file.
  */
 
     .section .text.reset
@@ -81,17 +74,22 @@ _reset:
     .global tohost
     .global fromhost
 
-    j    0x00000800               // FLASH_BASE -- that test's own .flash_entry
+    // Fixed memory map (see this file's own header comment): every
+    // test's .data/.sdata/.sbss/.bss land at the exact same addresses,
+    // so these are plain immediates, not read from anywhere.
+    li   t1, 0x00002004            // _data_load
+    li   t2, 0x00008000            // _data_start
+    li   t3, 0x00008800            // _data_end
+    li   t4, 0x00008800            // _bss_start
+    li   t5, 0x00008E00            // _bss_end
+    li   gp, 0x00008C00            // __global_pointer$
 
-    /* Register contract from _flash_entry (see boot_rom.S's own
-     * header comment): t1=data_load t2=data_start t3=data_end
-     * t4=bss_start t5=bss_end t6=main gp=__global_pointer$ value.
-     * Fixed at boot_rom.ld's offset 0x180 -- see boot_rom_symbols.ld.
-     */
-    .section .text.boot_continue
-    .global _boot_continue
-_boot_continue:
-    // .data copy: FLASH (data_load) -> RAM (data_start..data_end)
+    // Read this test's own main() address -- the one thing that
+    // still varies per test -- from crt0.S's _flash_header.
+    li   t0, 0x00000800            // FLASH_BASE
+    lw   t6, 0(t0)                  // main's address
+
+    // .data+.sdata copy: FLASH (data_load) -> RAM (data_start..data_end)
 copy_loop:
     bge  t2, t3, copy_done
     lw   a0, 0(t1)
@@ -101,7 +99,7 @@ copy_loop:
     j    copy_loop
 copy_done:
 
-    // .bss zero: bss_start..bss_end
+    // .sbss+.bss zero: bss_start..bss_end
 bss_loop:
     bge  t4, t5, bss_done
     sw   x0, 0(t4)

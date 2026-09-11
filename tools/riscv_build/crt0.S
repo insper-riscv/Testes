@@ -1,40 +1,32 @@
-/* crt0.S -- emits .flash_entry, the tiny trampoline that hands this
- * test's own boot-time constants to the fixed, shared boot_rom.S.
+/* crt0.S -- emits .flash_header, a 1-word DATA table (no code at all)
+ * carrying just this test's own main() address for the fixed, shared
+ * boot_rom.S to read.
  *
- * All the actual startup WORK (the .data copy loop, .bss zero loop,
- * mailbox/go_flag/tohost/fromhost clear) lives in boot_rom.S, which
- * is programmed into BOOT_ROM once and never JTAG-rewritten per test
- * -- see its own header comment. Since BOOT_ROM can't see THIS test's
- * own linker symbols (a different test's .data/.bss bounds and
- * __global_pointer$ value are all different), and — critically — the
- * MEM stage has no data path to FLASH at all anymore (only RAM,
- * see rv32im_pipeline_core.vhd), this trampoline can't just leave a
- * data table for boot_rom.S to `lw`. Instead it's CODE: plain
- * instruction fetch (IF stage only) loads this test's own bounds
- * into registers, then jumps into boot_rom.S's _boot_continue (a
- * FIXED address, see boot_rom_symbols.ld, INCLUDEd by link.ld) to
- * finish the job using them.
+ * Every other boot-time constant used to live here too (.data/.bss
+ * bounds, gp), but link.ld now gives every section a FIXED address
+ * and a FIXED size budget, the same for every test -- so those
+ * values are the same fixed numbers for every test too, and
+ * boot_rom.S hardcodes them directly instead of reading them from
+ * here (see its own header comment for the actual numbers). main's
+ * address is the one thing that still varies per test, since it
+ * depends on where that test's own code lands inside the fixed .text
+ * budget.
  *
- * .option norelax: none of gp/sp/etc are valid registers yet at this
- * point, so `la` must NOT get relaxed into a (currently garbage)
- * gp-relative load — same hazard/idiom the old crt0.S already used
- * for its own gp setup (see docs/SMALL_DATA_SECTION_BUG.md).
+ * All the actual startup WORK (reading this header, the .data copy
+ * loop, .bss zero loop, mailbox/go_flag/tohost/fromhost clear) lives
+ * in boot_rom.S, which is programmed into BOOT_ROM once and never
+ * JTAG-rewritten per test -- see its own header comment. boot_rom.S
+ * reads this header with a plain `lw` from a fixed FLASH address
+ * (FLASH_BASE, where .flash_header is placed by link.ld): the MEM
+ * stage's second FLASH read port (rv32im_pipeline_core.vhd's
+ * flash_addr2/FLASH_MEM) already reaches any FLASH-range address, so
+ * an ordinary data read works here, no code/register handoff needed.
  *
- * rv32_wait_restart no longer lives here either -- it's in boot_rom.S
- * too, referenced (by RV32_PASS()/RV32_FAIL(), rv32_test.h) via
- * link.ld's `INCLUDE boot_rom_symbols.ld`.
+ * rv32_wait_restart lives in boot_rom.S too, referenced (by
+ * RV32_PASS()/RV32_FAIL(), rv32_test.h) via link.ld's
+ * `INCLUDE boot_rom_symbols.ld`.
  */
-    .section .flash_entry, "ax"
-    .global _flash_entry
-_flash_entry:
-    .option push
-    .option norelax
-    la   t1, _data_load
-    la   t2, _data_start
-    la   t3, _data_end
-    la   t4, _bss_start
-    la   t5, _bss_end
-    la   gp, __global_pointer$   // gp's VALUE is __global_pointer$'s own address
-    la   t6, main
-    .option pop
-    j    _boot_continue
+    .section .flash_header, "a"
+    .global _flash_header
+_flash_header:
+    .word main
