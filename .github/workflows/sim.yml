@@ -99,6 +99,12 @@ jobs:
           uv run riscv-tools --config tools/riscv_build/config.sdram-flash.yaml compile --emit hex
           uv run riscv-tools --config tools/riscv_build/config.sdram-flash.yaml sim --exclude cpi-kernels,hex-id
 
+      - name: The same programs with a slow FLASH chip
+        # 120 clocks to the first word and 20 between the others, against 24 and 4: nothing may depend on the latency.
+        run: |
+          uv run riscv-tools --config tools/riscv_build/config.sdram-flash-slow.yaml sim \
+            --only flash-const,cache-sweep,code-sweep,selfmod-repeat,sdram-copy,sdram-loop
+
       - name: Run per-entity VHDL unit tests (tests/python/)
         run: uv run python tests/python/runner.py
 
