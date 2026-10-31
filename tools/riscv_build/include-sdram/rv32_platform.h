@@ -19,13 +19,13 @@
     li   t1, 1; \
     sw   t1, 0(t0); \
     sw   x0, 4(t0); \
-    j    rv32_wait_restart
+    tail rv32_wait_restart
 #define RVMODEL_HALT_FAIL(code) \
     li   t0, RV32_TOHOST; \
     li   t1, ((code) << 1) | 1; \
     sw   t1, 0(t0); \
     sw   x0, 4(t0); \
-    j    rv32_wait_restart
+    tail rv32_wait_restart
 #endif
 
 #endif

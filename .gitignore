@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 build/
 build-sdram/
+build-flash/
+build-sdram-flash/
 cache/
 sim_build/
 .venv/
