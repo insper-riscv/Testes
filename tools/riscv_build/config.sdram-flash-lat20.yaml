@@ -1,0 +1,10 @@
+# The programs that use the SDRAM, on the platform with the FLASH behind the caches, with a FLASH chip of
+# 20 clocks to the first word and 4 between the others: the result must not depend on the latency.
+extends: config.sdram-flash.yaml
+
+sim:
+  parameters:
+    FLASH_FIRST_LATENCY: "20"
+    FLASH_NEXT_LATENCY: "4"
+  env:
+    SIM_TIMEOUT_CYCLES: "6000000"
