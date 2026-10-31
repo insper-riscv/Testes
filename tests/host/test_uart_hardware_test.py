@@ -144,28 +144,28 @@ class UartHardwareTestUnitTests(unittest.TestCase):
                 uart_hw.DEFAULT_PAYLOAD, uart_hw.DEFAULT_PAYLOAD, b"!"
             )
 
-    def test_validate_mailbox_accepts_only_pass(self) -> None:
-        uart_hw.validate_mailbox(mailbox.PASS)
+    def test_validate_tohost_accepts_only_pass(self) -> None:
+        uart_hw.validate_tohost(mailbox.PASS)
         with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "FAIL"):
-            uart_hw.validate_mailbox(mailbox.FAIL)
+            uart_hw.validate_tohost((5 << 1) | 1)
         with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "did not finish"):
-            uart_hw.validate_mailbox(0)
+            uart_hw.validate_tohost(0)
 
-    def test_wait_for_mailbox_retries_a_running_firmware(self) -> None:
+    def test_wait_for_tohost_retries_a_running_firmware(self) -> None:
         link = mock.sentinel.link
         cfg = mock.sentinel.cfg
         with (
             mock.patch.object(
                 uart_hw,
-                "read_result_mailbox",
+                "read_result_tohost",
                 side_effect=[0, mailbox.PASS],
-            ) as read_mailbox,
+            ) as read_tohost_mock,
             mock.patch.object(uart_hw.time, "sleep") as sleep,
         ):
-            value = uart_hw.wait_for_result_mailbox(link, cfg, 1.0)
+            value = uart_hw.wait_for_result_tohost(link, cfg, 1.0)
 
         self.assertEqual(value, mailbox.PASS)
-        self.assertEqual(read_mailbox.call_count, 2)
+        self.assertEqual(read_tohost_mock.call_count, 2)
         sleep.assert_called_once()
 
     def test_load_and_start_flushes_before_restart_pulse(self) -> None:
@@ -179,7 +179,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             },
             "memory": {
                 "ram_base": 0x8000,
-                "go_flag_addr": 0x2FFF8,
+                "fromhost_addr": 0x2FFF0,
             },
         }
         with (
@@ -195,7 +195,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             ),
             mock.patch.object(
                 uart_hw.mailbox,
-                "pulse_go_flag",
+                "pulse_fromhost",
                 side_effect=lambda *_: events.append("pulse"),
             ) as pulse,
         ):
@@ -203,7 +203,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
 
         self.assertEqual(events, ["write", "flush", "pulse"])
         write_rom.assert_called_once_with(link, [1, 3], mif)
-        pulse.assert_called_once_with(link, 2, 0x8000, 0x2FFF8)
+        pulse.assert_called_once_with(link, 2, 0x8000, 0x2FFF0)
 
     def test_uart_tx_bytes_emitted_during_restart_are_not_lost(self) -> None:
         read_end, write_end = os.pipe()
@@ -214,7 +214,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             },
             "memory": {
                 "ram_base": 0x8000,
-                "go_flag_addr": 0x2FFF8,
+                "fromhost_addr": 0x2FFF0,
             },
         }
 
@@ -227,7 +227,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
                 mock.patch.object(uart_hw.termios, "tcflush"),
                 mock.patch.object(
                     uart_hw.mailbox,
-                    "pulse_go_flag",
+                    "pulse_fromhost",
                     side_effect=pulse_while_returning,
                 ),
             ):

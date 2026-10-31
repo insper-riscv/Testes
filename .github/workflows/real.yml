@@ -172,7 +172,7 @@ jobs:
           uv run python tools/riscv_build/uart_hardware_test.py \
             --port "$UART_PORT" --skip-program
 
-      - name: Run mailbox-only tests on the FPGA
+      - name: Run the tohost-only tests on the FPGA
         # PYTHONUNBUFFERED: Python fully-buffers stdout when it isn't a
         # TTY (always true under Actions' log capture), so without this
         # a 40+ minute run can show a blank log the whole time even
