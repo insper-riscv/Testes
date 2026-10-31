@@ -13,9 +13,10 @@ jobs:
   test-sim:
     # Needs no hardware and no Quartus license (GHDL is open source), so
     # it runs on a GitHub-hosted runner, independent of any workstation.
-    # The image is the ci-elf image of insper-riscv/Infra: GHDL, the RISC-V GCC with picolibc, Spike
-    # and uv already on PATH, so nothing is built or installed here. It is
-    # the latest publication; to pin one, use its sha- tag.
+    # insper-riscv/Infra's ELF image has GHDL, the RISC-V GCC with
+    # picolibc, Spike and uv already on PATH, so nothing is built or
+    # installed here. It is the latest publication; to pin one, use its
+    # sha- tag.
     runs-on: ubuntu-26.04
     container:
       image: ghcr.io/insper-riscv/ci-elf:latest
@@ -25,14 +26,15 @@ jobs:
         with:
           submodules: true
 
-      - name: Checkout Core, Memory and TopLevel (the VHDL sources and the platform)
+      - name: Checkout Core, Memory, Peripherals and TopLevel
         # config.yaml extends ../../../TopLevel/platforms/internal-mem/config.yaml, and
         # the platform's paths are relative to this project's root:
-        # "../Core/..." (the core), "../Memory/..." (the memories) and
-        # "../TopLevel/..." (the simulation top, the runtime and the testbench).
+        # "../Core/..." (the core), "../Memory/..." (the memories),
+        # "../Peripherals/..." (the UART) and "../TopLevel/..." (the
+        # simulation top, the runtime and the testbench).
         # True by accident on a workstation where this repo is nested at
         # RV32IM/Tests/ (see TopLevel's docs/HARDWARE_PROGRAMMING.md), but a bare
-        # CI checkout of just this repo has no parent: clone the three next to it.
+        # CI checkout of just this repo has no parent: clone the others next to it.
         # main of each, or the branch .github/sibling-branches names (companion pull requests).
         run: .github/scripts/clone-siblings.sh
 
@@ -61,11 +63,9 @@ jobs:
         run: uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex
 
       - name: Run sim tests
-        # The default simulation top has no physical UART pins. The three UART
-        # programs run in sim-fpga.yml against core_fpga_test instead.
-        run: |
-          uv run riscv-tools --config tools/riscv_build/config.yaml sim \
-            --exclude uart-echo,uart-tx,uart-errors
+        # The generic top exposes UART_RX/UART_TX. The same invocation runs
+        # uart-tx, uart-echo and uart-errors beside every other program.
+        run: uv run riscv-tools --config tools/riscv_build/config.yaml sim
 
       - name: Existing programs on the SDRAM platform
         # The SDRAM platform adds the 64 MB SDRAM (bridge, controller and chip model of Memory) to the
