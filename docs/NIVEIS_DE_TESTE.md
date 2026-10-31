@@ -21,7 +21,7 @@ Três termos aparecem ao longo do texto:
 | Termo | Significado |
 | :--- | :--- |
 | Golden | o resultado esperado de um programa: o conteúdo da memória ao final da execução, gerado pelo Spike (simulador de referência) ou versionado junto do teste |
-| Mailbox | a palavra da memória em que o programa escreve o veredito (PASS ou FAIL) ao terminar, lida pelo testbench ou pelo JTAG |
+| `tohost` | a palavra de 64 bits da memória em que o programa escreve o veredito ao terminar (1 é PASS, `(código << 1) | 1` é FAIL), lida pelo testbench ou pelo JTAG |
 | Tick | a unidade de tempo da simulação; o clock base tem três ticks por ciclo do core |
 
 ## 2. Nível 0: consistência estática
@@ -71,13 +71,13 @@ Os testes da SDRAM rodam contra um modelo do chip que **aborta a simulação** e
 O topo de simulação reúne o core, a boot ROM e a FLASH, e roda os 89 programas da suíte (52 em assembly e 37 em C). O fluxo de cada programa é:
 
 1. `riscv-tools compile --emit hex` compila o programa com o GCC RISC-V (picolibc) e gera as imagens de memória.
-2. `riscv-tools sim` carrega a imagem, roda o core até o programa escrever o veredito no mailbox e compara o resultado com o golden.
+2. `riscv-tools sim` carrega a imagem, roda o core até o programa escrever o veredito no `tohost` e compara o resultado com o golden.
 
 | Tipo de programa | Quantidade | Golden |
 | :--- | ---: | :--- |
 | Assembly | 52 | versionado junto do teste |
 | C com conferência de memória | 30 | gerado pelo Spike |
-| C que só sinaliza PASS ou FAIL | 7 | nenhum; vale o veredito do mailbox |
+| C que só sinaliza PASS ou FAIL | 7 | nenhum; vale o veredito do `tohost` |
 
 O tempo de cada programa, em ticks, também é registrado, e serve de base para medir o custo de uma mudança de memória.
 
