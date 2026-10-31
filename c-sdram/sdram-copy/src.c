@@ -19,7 +19,7 @@ int main(void) {
     for (unsigned int i = 0; i < WORDS; i++) m[i] = src[i];
     for (unsigned int i = 0; i < WORDS; i++) dst[i] = m[i];
     for (unsigned int i = 0; i < WORDS; i++) {
-        if (dst[i] != src[i]) RV32_FAIL();
+        if (dst[i] != src[i]) RV32_FAIL(1);
     }
 
     // RAM to SDRAM by byte, SDRAM to RAM by word
@@ -27,13 +27,13 @@ int main(void) {
     for (unsigned int i = 0; i < WORDS * 4; i++) mb[4096 + i] = sb[i];
     for (unsigned int i = 0; i < WORDS; i++) dst[i] = m[1024 + i];
     for (unsigned int i = 0; i < WORDS; i++) {
-        if (dst[i] != src[i]) RV32_FAIL();
+        if (dst[i] != src[i]) RV32_FAIL(2);
     }
 
     // SDRAM to SDRAM, overlapping a row boundary of the chip (512 words per row)
     for (unsigned int i = 0; i < WORDS; i++) m[400 + i] = m[i];
     for (unsigned int i = 0; i < WORDS; i++) {
-        if (m[400 + i] != src[i]) RV32_FAIL();
+        if (m[400 + i] != src[i]) RV32_FAIL(3);
     }
 
     RV32_PASS();

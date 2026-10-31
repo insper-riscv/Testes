@@ -49,7 +49,7 @@ static void finish(const char *name, struct sample s) {
     // the UART holds a few bytes: give the host time to drain them before the next line
     for (volatile unsigned int w = 0; w < DRAIN_SPINS; w++) {
     }
-    if (instret == 0 || cycles < instret || cycles > 200u * instret) RV32_FAIL();
+    if (instret == 0 || cycles < instret || cycles > 200u * instret) RV32_FAIL(1);
 }
 
 int main(void) {

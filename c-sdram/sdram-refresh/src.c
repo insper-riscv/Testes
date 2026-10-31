@@ -13,7 +13,7 @@ int main(void) {
     for (volatile unsigned int t = 0; t < 1000; t++) { }                      // far more than a refresh period (7.8 us); t lives in the SDRAM, so each pass costs tens of cycles
 
     for (unsigned int i = 0; i < 256; i++) {
-        if (m[i * 512] != rv32_sdram_data(i)) RV32_FAIL();
+        if (m[i * 512] != rv32_sdram_data(i)) RV32_FAIL(1);
     }
 
     RV32_PASS();

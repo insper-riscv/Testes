@@ -13,23 +13,23 @@ int main(void) {
     volatile signed char    *bs = (volatile signed char *)RV32_SDRAM;
 
     w[0] = 0x11223344u;
-    if (b[0] != 0x44 || b[1] != 0x33 || b[2] != 0x22 || b[3] != 0x11) RV32_FAIL();
-    if (h[0] != 0x3344 || h[1] != 0x1122) RV32_FAIL();
+    if (b[0] != 0x44 || b[1] != 0x33 || b[2] != 0x22 || b[3] != 0x11) RV32_FAIL(1);
+    if (h[0] != 0x3344 || h[1] != 0x1122) RV32_FAIL(2);
 
     b[1] = 0xAA;
-    if (w[0] != 0x1122AA44u) RV32_FAIL();
+    if (w[0] != 0x1122AA44u) RV32_FAIL(3);
     h[1] = 0xBEEF;
-    if (w[0] != 0xBEEFAA44u) RV32_FAIL();
+    if (w[0] != 0xBEEFAA44u) RV32_FAIL(4);
     b[3] = 0x01;
     b[0] = 0x80;
-    if (w[0] != 0x01EFAA80u) RV32_FAIL();
+    if (w[0] != 0x01EFAA80u) RV32_FAIL(5);
 
     // sign extension
-    if (bs[0] != -128) RV32_FAIL();
-    if (b[0] != 128) RV32_FAIL();
+    if (bs[0] != -128) RV32_FAIL(6);
+    if (b[0] != 128) RV32_FAIL(7);
     w[1] = 0x0000F00Fu;
-    if (hs[2] != -4081) RV32_FAIL();
-    if (h[2] != 0xF00F) RV32_FAIL();
+    if (hs[2] != -4081) RV32_FAIL(8);
+    if (h[2] != 0xF00F) RV32_FAIL(9);
 
     // every byte lane of consecutive words, and a store next to a word that must not change
     for (unsigned int i = 0; i < 64; i++) w[16 + i] = 0xFFFFFFFFu;
@@ -37,7 +37,7 @@ int main(void) {
     for (unsigned int i = 0; i < 64; i++) {
         unsigned int want = 0xFFFFFFFFu & ~(0xFFu << (8 * (i & 3)));
         want |= (unsigned int)i << (8 * (i & 3));
-        if (w[16 + i] != want) RV32_FAIL();
+        if (w[16 + i] != want) RV32_FAIL(10);
     }
 
     RV32_PASS();

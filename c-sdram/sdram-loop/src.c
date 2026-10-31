@@ -20,7 +20,7 @@ int main(void) {
         sum += m[i];
         i++;
     }
-    if (sum != want) RV32_FAIL();
+    if (sum != want) RV32_FAIL(1);
 
     // read from the end, with an early exit that depends on the loaded value
     unsigned int n = 0;
@@ -28,7 +28,7 @@ int main(void) {
         if (m[j] == (0u ^ 0x5555u)) break;      // m[0]
         n++;
     }
-    if (n != 511) RV32_FAIL();
+    if (n != 511) RV32_FAIL(2);
 
     // nested: a row of loads inside an outer loop that also stores
     for (unsigned int r = 0; r < 8; r++) {
@@ -37,11 +37,11 @@ int main(void) {
     unsigned int tot = 0;
     for (unsigned int r = 0; r < 8; r++) {
         for (unsigned int c = 0; c < 16; c++) {
-            if (m[1024 + r * 16 + c] != r + c) RV32_FAIL();
+            if (m[1024 + r * 16 + c] != r + c) RV32_FAIL(3);
             tot += m[1024 + r * 16 + c];
         }
     }
-    if (tot != 1408) RV32_FAIL();        // 16 * (0+1+...+7) + 8 * (0+1+...+15)
+    if (tot != 1408) RV32_FAIL(4);        // 16 * (0+1+...+7) + 8 * (0+1+...+15)
 
     RV32_PASS();
 }

@@ -24,7 +24,7 @@ int main(void) {
     volatile u32 size_lesser = sizeof(Lesser);
     volatile u32 size_greater = sizeof(Greater);
 
-    if (size_lesser != 8 || size_greater != 12) RV32_FAIL();
+    if (size_lesser != 8 || size_greater != 12) RV32_FAIL(1);
 
     RV32_PASS();
 }

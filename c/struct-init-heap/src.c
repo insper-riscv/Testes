@@ -21,11 +21,11 @@ typedef struct {
 
 int main(void) {
     if (sizeof(Test) != 16) 
-        RV32_FAIL();
+        RV32_FAIL(1);
 
     Test* a = malloc(sizeof(Test));
 
-    if (a == NULL) RV32_FAIL();
+    if (a == NULL) RV32_FAIL(2);
 
     a->a =  32;
     a->b = -32;
@@ -41,7 +41,7 @@ int main(void) {
         a->d != -16 ||
         a->e !=   8 ||
         a->f !=  -8
-    ) RV32_FAIL();
+    ) RV32_FAIL(3);
 
     RV32_PASS();    
 }

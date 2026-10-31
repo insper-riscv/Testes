@@ -26,7 +26,7 @@ static void pause(void) {
 
 static void show(unsigned int value) {
     *DISPLAY = value;
-    if (*DISPLAY != value) RV32_FAIL();
+    if (*DISPLAY != value) RV32_FAIL(1);
 }
 
 int main(void) {

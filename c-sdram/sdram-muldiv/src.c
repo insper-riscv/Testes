@@ -32,12 +32,12 @@ int main(void) {
         sum += (m[i] * 7u + 1u) / m[i + 1];        // div whose divisor is loaded next
         sum += (m[i + 2] * 13u) % m[i + 1];        // rem right after a load
     }
-    if (sum != want) RV32_FAIL();
+    if (sum != want) RV32_FAIL(1);
 
     // a store right after a multiply, to the SDRAM, then read back
     for (unsigned int i = 0; i < N; i++) m[256 + i] = ref_a[i] * ref_a[i];
     for (unsigned int i = 0; i < N; i++) {
-        if (m[256 + i] != ref_a[i] * ref_a[i]) RV32_FAIL();
+        if (m[256 + i] != ref_a[i] * ref_a[i]) RV32_FAIL(2);
     }
 
     RV32_PASS();
