@@ -35,11 +35,8 @@ site:
     lw   x29, 0x300(x5)
     sw   x29, 28(x5)
 
-    li   x15, RV32_RAM_END
-    addi x14, x0, 1
-    sw   x14, -4(x15)          // mailbox = 1
-
-    j rv32_wait_restart
+    # End of the test: tohost = 1 (HTIF pass), then wait for the host.
+    RVMODEL_HALT_PASS
 
     .balign 4
 handler:
