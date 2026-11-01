@@ -17,10 +17,10 @@ int main(void) {
     const struct stdout_buffer *out = (const struct stdout_buffer *)STDOUT_BASE;
 
     for (int i = 0; i < 1024; i++) putchar('a');
-    if (out->length != 1024 || out->truncated != 0) RV32_FAIL();
+    if (out->length != 1024 || out->truncated != 0) RV32_FAIL(1);
 
     putchar('b');
-    if (out->length != 1024 || out->truncated != 1) RV32_FAIL();
-    if (out->data[0] != 'a' || out->data[1023] != 'a') RV32_FAIL();
+    if (out->length != 1024 || out->truncated != 1) RV32_FAIL(2);
+    if (out->data[0] != 'a' || out->data[1023] != 'a') RV32_FAIL(3);
     RV32_PASS();
 }

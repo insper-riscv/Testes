@@ -24,10 +24,10 @@ int main(void) {
     puts("second line");
     putchar('x');
 
-    if (out->length != sizeof(expected) - 1) RV32_FAIL();
+    if (out->length != sizeof(expected) - 1) RV32_FAIL(1);
     for (unsigned int i = 0; i < out->length; i++) {
-        if (out->data[i] != expected[i]) RV32_FAIL();
+        if (out->data[i] != expected[i]) RV32_FAIL(2);
     }
-    if (out->truncated != 0) RV32_FAIL();
+    if (out->truncated != 0) RV32_FAIL(3);
     RV32_PASS();
 }

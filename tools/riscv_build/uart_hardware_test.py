@@ -4,7 +4,7 @@ The script deliberately uses only the Python standard library for the serial
 side.  It verifies that the existing Quartus bitstream was built from the
 ``uart-echo`` image, opens the Pico/Debug Probe UART in raw 115200 8N1 mode,
 reprograms that bitstream to start from a clean state, and checks the exact
-echo plus the JTAG mailbox. It can then replace FLASH over JTAG with
+echo plus the JTAG tohost. It can then replace FLASH over JTAG with
 ``uart-tx`` and ``uart-errors``, restart through the boot ROM, and validate
 TX/RX, sticky error flags, W1C clearing and a raw byte burst without another
 Quartus compile.
@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from riscv_tools import mailbox, quartus_program, rom_writer
+from riscv_tools import htif, quartus_program, rom_writer
 from riscv_tools.jtag import JtagLink, detect_jtag_hardware
 from riscv_tools.settings import load_config
 
@@ -37,7 +37,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPOSITORY_ROOT / "tools/riscv_build/config.yaml"
 DEFAULT_PORT = Path("/dev/ttyACM0")
 DEFAULT_PAYLOAD = b"RX test\r\n"
-UART_TX_EXPECTED = b"UART OK\r\n"
+UART_TX_EXPECTED = b"Hello, world!\r\n"
 UART_ERRORS_PREFIX = b"ATR"
 UART_ERRORS_READY = b"OB"
 UART_ERRORS_RX_INPUT = bytes((0x12, 0x34))
@@ -46,7 +46,7 @@ UART_ERRORS_FINAL = b"P"
 DEFAULT_TIMEOUT_SECONDS = 2.0
 STARTUP_DELAY_SECONDS = 0.20
 QUIET_WINDOW_SECONDS = 0.10
-MAILBOX_POLL_SECONDS = 0.05
+TOHOST_POLL_SECONDS = 0.05
 BAUD_RATE = 115_200
 ECHO_BYTE_COUNT = 9
 UART_ECHO_TEST = "uart-echo"
@@ -56,7 +56,7 @@ ALL_TESTS = "all"
 
 
 class UartHardwareTestError(RuntimeError):
-    """A failed precondition or an observed UART/mailbox mismatch."""
+    """A failed precondition or an observed UART/tohost mismatch."""
 
 
 @dataclass(frozen=True)
@@ -376,17 +376,17 @@ def exchange_errors_and_burst(
     return prefix, ready, burst_and_final
 
 
-def read_result_mailbox(link: JtagLink, cfg: dict[str, Any]) -> int:
-    """Read the project's PASS/FAIL word once after the serial exchange."""
-    return mailbox.read_mailbox(
+def read_result_tohost(link: JtagLink, cfg: dict[str, Any]) -> int:
+    """Read the low word of tohost once after the serial exchange."""
+    return htif.read_tohost(
         link,
         cfg["quartus"]["ram_mem_instance"],
         cfg["memory"]["ram_base"],
-        cfg["memory"]["mailbox_addr"],
+        cfg["memory"]["tohost_addr"],
     )
 
 
-def wait_for_result_mailbox(
+def wait_for_result_tohost(
     link: JtagLink,
     cfg: dict[str, Any],
     timeout_s: float,
@@ -395,23 +395,25 @@ def wait_for_result_mailbox(
     deadline = time.monotonic() + timeout_s
     last_value = 0
     while True:
-        last_value = read_result_mailbox(link, cfg)
-        if last_value in (mailbox.PASS, mailbox.FAIL):
+        last_value = read_result_tohost(link, cfg)
+        if htif.is_done(last_value):
             return last_value
         remaining_time = deadline - time.monotonic()
         if remaining_time <= 0:
             return last_value
-        time.sleep(min(MAILBOX_POLL_SECONDS, remaining_time))
+        time.sleep(min(TOHOST_POLL_SECONDS, remaining_time))
 
 
-def validate_mailbox(value: int) -> None:
-    """Require the firmware's explicit PASS result."""
-    if value == mailbox.PASS:
+def validate_tohost(value: int) -> None:
+    """Require the firmware's explicit PASS in tohost."""
+    if value == htif.PASS:
         return
-    if value == mailbox.FAIL:
-        raise UartHardwareTestError("firmware reported MAILBOX=2 (FAIL)")
+    if htif.is_done(value):
+        raise UartHardwareTestError(
+            f"firmware reported FAIL (code {htif.fail_code(value)})"
+        )
     raise UartHardwareTestError(
-        f"firmware did not finish: MAILBOX={value} (expected {mailbox.PASS})"
+        f"firmware did not finish: TOHOST={value} (expected {htif.PASS})"
     )
 
 
@@ -427,16 +429,16 @@ def load_and_start_firmware(
     # Flush before the restart pulse. A UART firmware may start transmitting
     # while quartus_stp is still returning, so never flush afterward.
     termios.tcflush(fd, termios.TCIFLUSH)
-    mailbox.pulse_go_flag(
+    htif.pulse_fromhost(
         link,
         cfg["quartus"]["ram_mem_instance"],
         cfg["memory"]["ram_base"],
-        cfg["memory"]["go_flag_addr"],
+        cfg["memory"]["fromhost_addr"],
     )
 
 
 def run_hardware_test(args: argparse.Namespace) -> None:
-    """Execute the selected UART programs and verify serial plus mailbox."""
+    """Execute the selected UART programs and verify serial plus tohost."""
     root = args.root.resolve()
     cfg = load_config(args.config.resolve())
     artifacts = validate_artifacts(root, cfg, args.port, args.test)
@@ -485,9 +487,9 @@ def run_hardware_test(args: argparse.Namespace) -> None:
         print(f"RX[{len(received)}]: {format_bytes(received)}")
         print("UART ECHO: PASS")
 
-        echo_mailbox = wait_for_result_mailbox(link, cfg, args.timeout)
-        validate_mailbox(echo_mailbox)
-        print(f"uart-echo MAILBOX={echo_mailbox}: PASS")
+        echo_tohost = wait_for_result_tohost(link, cfg, args.timeout)
+        validate_tohost(echo_tohost)
+        print(f"uart-echo TOHOST={echo_tohost}: PASS")
 
         completed_tests = [UART_ECHO_TEST]
         if args.test in (UART_TX_TEST, ALL_TESTS):
@@ -506,9 +508,9 @@ def run_hardware_test(args: argparse.Namespace) -> None:
             print(f"RX[{len(tx_received)}]: {format_bytes(tx_received)}")
             print("UART TX: PASS")
 
-            tx_mailbox = wait_for_result_mailbox(link, cfg, args.timeout)
-            validate_mailbox(tx_mailbox)
-            print(f"uart-tx MAILBOX={tx_mailbox}: PASS")
+            tx_tohost = wait_for_result_tohost(link, cfg, args.timeout)
+            validate_tohost(tx_tohost)
+            print(f"uart-tx TOHOST={tx_tohost}: PASS")
             completed_tests.append(UART_TX_TEST)
 
         if args.test in (UART_ERRORS_TEST, ALL_TESTS):
@@ -538,9 +540,9 @@ def run_hardware_test(args: argparse.Namespace) -> None:
             )
             print("UART ERRORS, W1C AND BURST: PASS")
 
-            errors_mailbox = wait_for_result_mailbox(link, cfg, args.timeout)
-            validate_mailbox(errors_mailbox)
-            print(f"uart-errors MAILBOX={errors_mailbox}: PASS")
+            errors_tohost = wait_for_result_tohost(link, cfg, args.timeout)
+            validate_tohost(errors_tohost)
+            print(f"uart-errors TOHOST={errors_tohost}: PASS")
             completed_tests.append(UART_ERRORS_TEST)
 
     print(f"INTEGRATED UART HARDWARE TEST: PASS ({', '.join(completed_tests)})")
@@ -551,7 +553,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Validate uart-echo, uart-tx and uart-errors on the physical UART "
-            "plus the RV32 PASS mailbox. Close picocom before running."
+            "plus the RV32 PASS in tohost. Close picocom before running."
         )
     )
     parser.add_argument("--port", type=Path, default=DEFAULT_PORT)

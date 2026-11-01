@@ -20,11 +20,11 @@ static void pause(void) {
 int main(void) {
     for (unsigned int value = 1; value <= 0xF; value++) {
         *DISPLAY = value;
-        if (*DISPLAY != value) RV32_FAIL();
+        if (*DISPLAY != value) RV32_FAIL(1);
         pause();
     }
     *DISPLAY = FINAL_VALUE;
-    if (*DISPLAY != FINAL_VALUE) RV32_FAIL();
+    if (*DISPLAY != FINAL_VALUE) RV32_FAIL(2);
     pause();
     RV32_PASS();
 }

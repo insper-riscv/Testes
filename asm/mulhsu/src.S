@@ -46,10 +46,5 @@ main:
     sw   x12, 0(x5)
     addi x5, x5, 4
 
-    # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x0002FFFC).
-    li  x15, RV32_RAM_END
-    addi x14, x0, 1
-    sw   x14, -4(x15)          // mailbox = 1
-
-    j rv32_wait_restart
+    # End of the test: tohost = 1 (HTIF pass), then wait for the host.
+    RVMODEL_HALT_PASS

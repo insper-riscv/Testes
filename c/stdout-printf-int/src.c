@@ -22,9 +22,9 @@ int main(void) {
 
     printf("%d %d %x", 42, -7, 0xBEEF);
 
-    if (out->length != sizeof(expected) - 1) RV32_FAIL();
+    if (out->length != sizeof(expected) - 1) RV32_FAIL(1);
     for (unsigned int i = 0; i < out->length; i++) {
-        if (out->data[i] != expected[i]) RV32_FAIL();
+        if (out->data[i] != expected[i]) RV32_FAIL(2);
     }
     RV32_PASS();
 }
