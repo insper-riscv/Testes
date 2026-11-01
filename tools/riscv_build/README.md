@@ -288,7 +288,7 @@ project). What's specific to *this* project:
 - `core_fpga_test`'s ROM1PORT/RAM1PORT IPs both have
   `ENABLE_RUNTIME_MOD=YES` (`INSTANCE_NAME=ROM` / `RAM`), so the
   In-System Memory Content Editor can read/write them over JTAG; this
-  is what `riscv-tools`' `mailbox`/`ram_dump`/`rom_writer` modules rely
+  is what `riscv-tools`' `htif`/`ram_dump`/`rom_writer` modules rely
   on (via their own bundled `.tcl` scripts, not anything project-local
   anymore).
 - Memory map: `rv32im_pipeline_core` is Harvard (separate `rom_addr` /
