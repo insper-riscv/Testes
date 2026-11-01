@@ -18,12 +18,12 @@ uv sync
 regression=tools/riscv_build/config.sdram-regression.yaml
 sdram=tools/riscv_build/config.sdram.yaml
 
-uv run riscv-tools --config "$regression" generate-header
+riscv-tools --config "$regression" generate-header
 # compile also generates each C memory test's golden under Spike.
-uv run riscv-tools --config "$regression" compile --emit mif
-uv run riscv-tools --config "$sdram" compile --emit mif
+riscv-tools --config "$regression" compile --emit mif
+riscv-tools --config "$sdram" compile --emit mif
 
 # The first run compiles the Quartus project and programs the board once; the second reuses it.
 mkdir -p build/real build-sdram/real
-uv run riscv-tools --config "$regression" run | tee build/real/latest.log
-uv run riscv-tools --config "$sdram" run --skip-reconfigure | tee build-sdram/real/latest.log
+riscv-tools --config "$regression" run | tee build/real/latest.log
+riscv-tools --config "$sdram" run --skip-reconfigure | tee build-sdram/real/latest.log

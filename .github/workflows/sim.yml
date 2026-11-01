@@ -38,71 +38,71 @@ jobs:
         # main of each, or the branch .github/sibling-branches names (companion pull requests).
         run: .github/scripts/clone-siblings.sh
 
-      - name: Install Python dependencies (riscv-tools, editable from tools/Tools, + its sim extra)
+      - name: Install Python dependencies (cocotb; riscv-tools comes from the image)
         run: uv sync
 
       - name: Run host-side UART harness tests
-        run: uv run python -m unittest discover -s tests/host -v
+        run: /opt/riscv-tools/riscv-tools/bin/python -m unittest discover -s tests/host -v
 
       - name: Generate rv32_test.h
-        run: uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
+        run: riscv-tools --config tools/riscv_build/config.yaml generate-header
 
       - name: Check the memory map against every copy
         # TopLevel's platforms/internal-mem/platform.yaml is the source of truth; the boot ROM,
         # the runtime, the linker flags, config.yaml, the core's VHDL and the
         # Quartus IPs must all agree with it.
-        run: uv run riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-mem/platform.yaml
+        run: riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-mem/platform.yaml
 
       - name: Check the SDRAM platform's memory map against every copy
         # Same check for the platform where the SDRAM is the RAM: its runtime, linker flags,
         # config.yaml and the core's VHDL must agree with platforms/sdram/platform.yaml.
-        run: uv run riscv-tools --root ../TopLevel check-memory-map --platform platforms/sdram/platform.yaml
+        run: riscv-tools --root ../TopLevel check-memory-map --platform platforms/sdram/platform.yaml
 
       - name: Check the memory map of the SDRAM platform with the FLASH behind the caches
-        run: uv run riscv-tools --root ../TopLevel check-memory-map --platform platforms/sdram-flash/platform.yaml
+        run: riscv-tools --root ../TopLevel check-memory-map --platform platforms/sdram-flash/platform.yaml
 
       - name: Build sim test ROM images
         # compile also generates each C memory test's golden under Spike.
-        run: uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex
+        run: riscv-tools --config tools/riscv_build/config.yaml compile --emit hex
 
       - name: Run sim tests
         # The generic top exposes UART_RX/UART_TX. The same invocation runs
         # uart-tx, uart-echo and uart-errors beside every other program.
-        run: uv run riscv-tools --config tools/riscv_build/config.yaml sim
+        run: riscv-tools --config tools/riscv_build/config.yaml sim
 
       - name: Existing programs on the SDRAM platform
         # The SDRAM platform adds the 64 MB SDRAM (bridge, controller and chip model of Memory) to the
         # core; these programs do not use it, so every result must be the one of internal-mem.
         run: |
-          uv run riscv-tools --config tools/riscv_build/config.sdram-regression.yaml generate-header
-          uv run riscv-tools --config tools/riscv_build/config.sdram-regression.yaml compile --emit hex
-          uv run riscv-tools --config tools/riscv_build/config.sdram-regression.yaml sim
+          riscv-tools --config tools/riscv_build/config.sdram-regression.yaml generate-header
+          riscv-tools --config tools/riscv_build/config.sdram-regression.yaml compile --emit hex
+          riscv-tools --config tools/riscv_build/config.sdram-regression.yaml sim
 
       - name: Programs that use the SDRAM
         # c-sdram/: self-checking programs (the data and address bus, byte and halfword accesses,
         # copies, loops, multiply and divide with operands in the SDRAM, refresh).
         run: |
-          uv run riscv-tools --config tools/riscv_build/config.sdram.yaml compile --emit hex
-          uv run riscv-tools --config tools/riscv_build/config.sdram.yaml sim
+          riscv-tools --config tools/riscv_build/config.sdram.yaml compile --emit hex
+          riscv-tools --config tools/riscv_build/config.sdram.yaml sim
 
       - name: Existing programs on the platform with the FLASH behind the caches
         # The FLASH is a chip at 0x20000000 reached through the instruction and data caches; every result
         # must be the one of internal-mem. The UART programs need the physical pins of the board top.
         run: |
-          uv run riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml generate-header
-          uv run riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml compile --emit hex
-          uv run riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml sim \
+          riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml generate-header
+          riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml compile --emit hex
+          riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml sim \
             --exclude uart-echo,uart-tx,uart-errors
 
       - name: Programs that use the SDRAM, with the FLASH behind the caches
         run: |
-          uv run riscv-tools --config tools/riscv_build/config.sdram-flash.yaml compile --emit hex
-          uv run riscv-tools --config tools/riscv_build/config.sdram-flash.yaml sim --exclude cpi-kernels,hex-id
+          riscv-tools --config tools/riscv_build/config.sdram-flash.yaml compile --emit hex
+          riscv-tools --config tools/riscv_build/config.sdram-flash.yaml sim --exclude cpi-kernels,hex-id
 
       - name: The same programs with a slow FLASH chip
         # 120 clocks to the first word and 20 between the others, against 24 and 4: nothing may depend on the latency.
         run: |
-          uv run riscv-tools --config tools/riscv_build/config.sdram-flash-slow.yaml sim \
+          riscv-tools --config tools/riscv_build/config.sdram-flash-slow.yaml sim \
             --only flash-const,cache-sweep,code-sweep,selfmod-repeat,sdram-copy,sdram-loop
 
       - name: Run per-entity VHDL unit tests (tests/python/)
