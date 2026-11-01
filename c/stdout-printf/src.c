@@ -1,13 +1,14 @@
 // RV32_EXT: M
 // RV32_TEST_KIND: unit
 #include "rv32_test.h"
+#include "rv32_platform.h"
 #include <stdio.h>
 
 // printf, puts and putchar write to stdout's buffer in RAM (see
 // platform/stdio.c). The layout below is that file's: a header with the
 // length and a "truncated" flag, then the bytes. Text only: the integer
 // conversions are in stdout-printf-int.
-#define STDOUT_BASE 0x0002FBE0u
+#define STDOUT_BASE RV32_STDOUT_BASE
 
 struct stdout_buffer {
     volatile unsigned int length;
@@ -23,10 +24,10 @@ int main(void) {
     puts("second line");
     putchar('x');
 
-    if (out->length != sizeof(expected) - 1) RV32_FAIL();
+    if (out->length != sizeof(expected) - 1) RV32_FAIL(1);
     for (unsigned int i = 0; i < out->length; i++) {
-        if (out->data[i] != expected[i]) RV32_FAIL();
+        if (out->data[i] != expected[i]) RV32_FAIL(2);
     }
-    if (out->truncated != 0) RV32_FAIL();
+    if (out->truncated != 0) RV32_FAIL(3);
     RV32_PASS();
 }

@@ -35,10 +35,10 @@ int main(void) {
         a.d != -16 ||
         a.e !=   8 ||
         a.f !=  -8
-    ) RV32_FAIL();
+    ) RV32_FAIL(1);
     
     if (sizeof(Test) != 16) 
-        RV32_FAIL();
+        RV32_FAIL(2);
 
     RV32_PASS();    
 }

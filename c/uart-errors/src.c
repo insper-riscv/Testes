@@ -18,7 +18,7 @@
 static void require(int condition)
 {
     if (!condition) {
-        RV32_FAIL();
+        RV32_FAIL(1);
     }
 }
 

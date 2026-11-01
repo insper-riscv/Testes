@@ -47,7 +47,7 @@ actually observe. Two things worth knowing if this ever needs
 revisiting:
 - `sim.test_module` (`sim/test_c_program.py`) watches the RAM *write
   bus* (`ram_addr`/`ram_wren`/`ram_en`/`ram_wdata`, all visible via
-  VPI) for a write to the mailbox word, rather than reading
+  VPI) for a write to the low word of `tohost`, rather than reading
   `RAM_simulation`'s internal `mem` array directly: this GHDL
   install's VPI (mcode backend) doesn't expose array-of-vector
   ("memory") signals as child objects at all, confirmed empirically.
@@ -55,7 +55,7 @@ revisiting:
   directly would also work; watching the bus doesn't depend on that
   either way.
 - `ROM_simulation`/`RAM_simulation` default to a 512-word memory array
-  (`memoryAddrWidth := 9`), too small to hold `memory.mailbox_addr`'s
+  (`memoryAddrWidth := 9`), too small to hold `memory.tohost_addr`'s
   word offset (4095); `rv32i3stage_core_sim_test` exposes
   `rom_addr_width`/`ram_addr_width` generics (defaulting to the same
   9, so RV32IM's own existing instruction-level cocotb tests are
@@ -78,9 +78,9 @@ Two optional header comments configure it:
 ```c
 // RV32_EXT: M          // extensions ADDED to the implicit rv32i base.
 // RV32_EXT: M,A        // order doesn't matter: both this and "A,M" become rv32ima.
-// RV32_TEST_KIND: unit          // default. Checked via the PASS/FAIL mailbox
+// RV32_TEST_KIND: unit          // default. Checked via `tohost` (PASS or FAIL)
                                   // alone. Builds for both real hardware and sim.
-// RV32_TEST_KIND: memory        // Mailbox + a full RAM dump compared against
+// RV32_TEST_KIND: memory        // tohost + a full RAM dump compared against
                                   // c/my-test/golden.json. Verified on both
                                   // real hardware (JTAG dump) and sim (bus-
                                   // snooped writes).
@@ -93,7 +93,7 @@ int main(void) {
 
 `rv32_test.h` is **generated**, not checked in (see `.gitignore`);
 `riscv-tools generate-header` writes it from `config.yaml`'s
-`memory.mailbox_addr` (see "Running locally" below). Regenerate it
+`memory.tohost_addr` (see "Running locally" below). Regenerate it
 after changing that address; don't hand-edit the generated file.
 
 A `memory` test needs a matching `golden.json` next to its
@@ -145,7 +145,7 @@ git submodule update --init --recursive
 uv sync
 
 # real (needs Quartus + a board on JTAG)
-uv run riscv-tools --config tools/riscv_build/config.yaml generate-header  # once, or after changing mailbox_addr
+uv run riscv-tools --config tools/riscv_build/config.yaml generate-header  # once, or after changing tohost_addr
 uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
 uv run riscv-tools --config tools/riscv_build/config.yaml program build/real/uart-echo.mif
 uv run python tools/riscv_build/uart_hardware_test.py --skip-program
@@ -169,9 +169,9 @@ which `run`/`sim` then consume.
 
 ## Integrated UART hardware check
 
-The normal JTAG/mailbox-only `riscv-tools run` flow cannot validate the UART
+The normal JTAG/tohost-only `riscv-tools run` flow cannot validate the UART
 tests by itself: `uart-echo` and `uart-errors` need external serial traffic,
-while `uart-tx` can report mailbox PASS without proving that the expected bytes
+while `uart-tx` can report tohost PASS without proving that the expected bytes
 reached the physical pin. After compiling Quartus with
 `build/real/uart-echo.mif`, close `picocom`, connect the Pico/Debug Probe UART,
 and run:
@@ -185,17 +185,17 @@ checks that `quartus/init.mif` is byte-for-byte identical to the compiled
 `uart-echo.mif` and that the `.sof` is newer. It then:
 
 1. opens the serial port in raw 115200 8N1 and reprograms the existing `.sof`;
-2. sends `RX test\r\n`, requires the exact nine-byte echo and `MAILBOX=1`;
+2. sends `RX test\r\n`, requires the exact nine-byte echo and `TOHOST=1`;
 3. replaces both FLASH copies with `uart-tx.mif` over JTAG, restarts through
    the boot ROM, and requires the exact `Hello, world!\r\n` output plus
-   `MAILBOX=1`;
+   `TOHOST=1`;
 4. loads `uart-errors.mif`, intentionally writes while TX is busy and requires
    the exact `ATR` response, proving that the second byte was dropped and that
    `TX_DROPPED` was set and cleared through W1C;
 5. sends `12 34` without allowing the firmware to consume the first byte, then
    requires `OB`, proving `RX_OVERRUN`, newest-byte retention and W1C clearing;
 6. sends one raw 32-byte burst (`00` through `1f`), requires the exact echo plus
-   the final `P` marker, no new error flags, and `MAILBOX=1`.
+   the final `P` marker, no new error flags, and `TOHOST=1`.
 
 Running the baked-in echo first is intentional: it leaves the CPU parked in
 the boot ROM, where replacing FLASH for the later tests is safe. Reprogramming
@@ -249,7 +249,7 @@ Each suite has its own workflow file:
   only on `main`, or on demand via **Actions → real tests (FPGA) → Run
   workflow**. Needs a self-hosted runner with Quartus and a board
   attached. It compiles one `uart-echo` baseline, runs all three physical UART
-  tests through the dedicated harness, then runs the remaining mailbox-only
+  tests through the dedicated harness, then runs the remaining tohost-only
   suite without another Quartus compile.
 - [`.github/workflows/sim-fpga.yml`](../../.github/workflows/sim-fpga.yml):
   runs the complete manifest, including all three UART programs, against the real
@@ -288,13 +288,13 @@ project). What's specific to *this* project:
 - `core_fpga_test`'s ROM1PORT/RAM1PORT IPs both have
   `ENABLE_RUNTIME_MOD=YES` (`INSTANCE_NAME=ROM` / `RAM`), so the
   In-System Memory Content Editor can read/write them over JTAG; this
-  is what `riscv-tools`' `mailbox`/`ram_dump`/`rom_writer` modules rely
+  is what `riscv-tools`' `htif`/`ram_dump`/`rom_writer` modules rely
   on (via their own bundled `.tcl` scripts, not anything project-local
   anymore).
 - Memory map: `rv32im_pipeline_core` is Harvard (separate `rom_addr` /
   `ram_addr` buses, each its own space starting at `0x0`); ROM is
-  8192 words (32K), RAM is 4096 words (16K), mailbox at the last RAM
-  word (`0x00003FFC`).
+  8192 words (32K), RAM is 4096 words (16K), `tohost` and `fromhost` at the
+  top of RAM.
 - **Runner OS is Ubuntu 22.04** (glibc 2.35, confirmed via
   `lsb_release -a`/`ldd --version`); `real.yml` downloads the
   `riscv32-elf-ubuntu-22.04-gcc.tar.xz` riscv-collab asset specifically
@@ -324,11 +324,11 @@ project). What's specific to *this* project:
   `.mif` and runs a full `quartus_sh --flow compile` once up front,
   then JTAG-reloads each test's ROM content live on that same
   bitstream (falling back to a full recompile+reprogram only if a
-  test's mailbox never responds; see `riscv-tools`'
+  test's `tohost` never responds; see `riscv-tools`'
   [orchestrator](../Tools/docs/modules/orchestrator.md)/[docs/configuration.md](../Tools/docs/configuration.md)). Simpler than recompiling
   per test, and the fallback still exists for when the board itself
   wedges.
-- **JTAG readback**: reading the PASS/FAIL mailbox and dumping RAM
+- **JTAG readback**: reading the PASS/FAIL `tohost` and dumping RAM
   both go through Quartus' In-System Memory Content Editor
   (`quartus_stp` + the `insystem_memory_edit` package): this is the
   only realistic channel for getting data off real silicon without

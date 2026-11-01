@@ -6,12 +6,14 @@
 // other), and so what printf's integer conversion runs. The other
 // div/rem tests run one division at a time, with other instructions after
 // it, and do not reach this case.
+#include "rv32_platform.h"
+
 
     .section .text
     .globl main
 
 main:
-    li   x5, 0x00008000        # x5 = RESULTS_BASE
+    li   x5, RV32_RAM_BASE        # x5 = RESULTS_BASE
     li   x10, 42
     li   x11, 10
 
@@ -33,10 +35,5 @@ main:
     sw   x12, 16(x5)
     sw   x13, 20(x5)
 
-    # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr: 0x0002FFFC).
-    lui  x15, 0x30
-    addi x14, x0, 1
-    sw   x14, -4(x15)          // mailbox = 1
-
-    j rv32_wait_restart
+    # End of the test: tohost = 1 (HTIF pass), then wait for the host.
+    RVMODEL_HALT_PASS

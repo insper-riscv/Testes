@@ -8,13 +8,15 @@
 // reasoning applied to the original full.S sections. Seeds its own
 // halfword at TEST_DATA_BASE (same value full.S itself seeds there)
 // rather than depending on any other test having run first.
+#include "rv32_platform.h"
+
 
     .section .text
     .globl main
 
     # RAM starts at 0x00008000 now (Harvard modificado).
-    .equ RESULTS_BASE,   0x00008000
-    .equ TEST_DATA_BASE, 0x00008200
+    .equ RESULTS_BASE,   RV32_RAM_BASE
+    .equ TEST_DATA_BASE, RV32_RAM_BASE + 0x200
 
 main:
     li   x5, RESULTS_BASE
@@ -30,10 +32,5 @@ main:
     lhu  x12, 4(x8)
     sw   x12, 0(x5)
 
-    # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x0002FFFC).
-    lui  x15, 0x30
-    addi x14, x0, 1
-    sw   x14, -4(x15)          // mailbox = 1
-
-    j rv32_wait_restart
+    # End of the test: tohost = 1 (HTIF pass), then wait for the host.
+    RVMODEL_HALT_PASS

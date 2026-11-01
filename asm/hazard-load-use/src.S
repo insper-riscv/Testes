@@ -11,14 +11,16 @@
 // TEST_DATA_BASE — it writes its own fresh value there rather than
 // reading pre-seeded data, so no data-init preamble is needed, just
 // the base pointer itself.
+#include "rv32_platform.h"
+
 
     .section .text
     .globl main
 
     # RAM starts at 0x00008000 now (Harvard modificado) — both bases
     # shifted up by that same offset, still 0x200 apart.
-    .equ RESULTS_BASE,   0x00008000
-    .equ TEST_DATA_BASE, 0x00008200
+    .equ RESULTS_BASE,   RV32_RAM_BASE
+    .equ TEST_DATA_BASE, RV32_RAM_BASE + 0x200
 
 main:
     li   x5, RESULTS_BASE
@@ -30,10 +32,5 @@ main:
     add  x12, x11, x0           # x12 = x11 (load-use hazard: stall de 1 ciclo)
     sw   x12, 0(x5)             # esperado: 42
 
-    # Signal PASS via the mailbox (see include/rv32_test.h /
-    # config.yaml memory.mailbox_addr — 0x0002FFFC).
-    lui  x15, 0x30
-    addi x14, x0, 1
-    sw   x14, -4(x15)          // mailbox = 1
-
-    j rv32_wait_restart
+    # End of the test: tohost = 1 (HTIF pass), then wait for the host.
+    RVMODEL_HALT_PASS

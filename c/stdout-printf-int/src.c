@@ -1,13 +1,14 @@
 // RV32_EXT: M
 // RV32_TEST_KIND: unit
 #include "rv32_test.h"
+#include "rv32_platform.h"
 #include <stdio.h>
 
 // printf's integer conversions (%d, %x), written to stdout's buffer in RAM
 // (see platform/stdio.c). They divide by the base with a div right before a
 // rem: two multiply/divide instructions in a row, which the core got wrong
 // until insper-riscv/RV32IM#33 (see asm/div-rem-back-to-back).
-#define STDOUT_BASE 0x0002FBE0u
+#define STDOUT_BASE RV32_STDOUT_BASE
 
 struct stdout_buffer {
     volatile unsigned int length;
@@ -21,9 +22,9 @@ int main(void) {
 
     printf("%d %d %x", 42, -7, 0xBEEF);
 
-    if (out->length != sizeof(expected) - 1) RV32_FAIL();
+    if (out->length != sizeof(expected) - 1) RV32_FAIL(1);
     for (unsigned int i = 0; i < out->length; i++) {
-        if (out->data[i] != expected[i]) RV32_FAIL();
+        if (out->data[i] != expected[i]) RV32_FAIL(2);
     }
     RV32_PASS();
 }
