@@ -44,6 +44,8 @@ riscv-tools --config tools/riscv_build/config.yaml sim                  # simula
 riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-mem/platform.yaml   # memory map (in TopLevel)
 ```
 
+The `uart-tx`, `uart-echo` and `uart-errors` programs run in the simulation of the `internal-mem` platform and on the board, because they use the serial pins of the hardware top. In the simulations of the `sdram` and `sdram-flash` platforms, whose tops only have the UART over JTAG, they are left out with `--exclude uart-echo,uart-tx,uart-errors`.
+
 ---
 
 Copyright 2026 Insper. Licensed under the [Apache License, Version 2.0](LICENSE).

@@ -53,6 +53,8 @@ riscv-tools --config tools/riscv_build/config.yaml run \
 riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-mem/platform.yaml   # mapa de memória (no TopLevel)
 ```
 
+Os programas `uart-tx`, `uart-echo` e `uart-errors` rodam na simulação da plataforma `internal-mem` e na placa, porque usam os pinos seriais do topo de hardware. Nas simulações das plataformas `sdram` e `sdram-flash`, cujos topos só têm a UART sobre JTAG, eles ficam de fora com `--exclude uart-echo,uart-tx,uart-errors`.
+
 ---
 
 Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](LICENSE).
