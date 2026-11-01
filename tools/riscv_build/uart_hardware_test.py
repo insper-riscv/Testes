@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from riscv_tools import mailbox, quartus_program, rom_writer
+from riscv_tools import htif, quartus_program, rom_writer
 from riscv_tools.jtag import JtagLink, detect_jtag_hardware
 from riscv_tools.settings import load_config
 
@@ -378,7 +378,7 @@ def exchange_errors_and_burst(
 
 def read_result_tohost(link: JtagLink, cfg: dict[str, Any]) -> int:
     """Read the low word of tohost once after the serial exchange."""
-    return mailbox.read_tohost(
+    return htif.read_tohost(
         link,
         cfg["quartus"]["ram_mem_instance"],
         cfg["memory"]["ram_base"],
@@ -396,7 +396,7 @@ def wait_for_result_tohost(
     last_value = 0
     while True:
         last_value = read_result_tohost(link, cfg)
-        if mailbox.is_done(last_value):
+        if htif.is_done(last_value):
             return last_value
         remaining_time = deadline - time.monotonic()
         if remaining_time <= 0:
@@ -406,14 +406,14 @@ def wait_for_result_tohost(
 
 def validate_tohost(value: int) -> None:
     """Require the firmware's explicit PASS in tohost."""
-    if value == mailbox.PASS:
+    if value == htif.PASS:
         return
-    if mailbox.is_done(value):
+    if htif.is_done(value):
         raise UartHardwareTestError(
-            f"firmware reported FAIL (code {mailbox.fail_code(value)})"
+            f"firmware reported FAIL (code {htif.fail_code(value)})"
         )
     raise UartHardwareTestError(
-        f"firmware did not finish: TOHOST={value} (expected {mailbox.PASS})"
+        f"firmware did not finish: TOHOST={value} (expected {htif.PASS})"
     )
 
 
@@ -429,7 +429,7 @@ def load_and_start_firmware(
     # Flush before the restart pulse. A UART firmware may start transmitting
     # while quartus_stp is still returning, so never flush afterward.
     termios.tcflush(fd, termios.TCIFLUSH)
-    mailbox.pulse_fromhost(
+    htif.pulse_fromhost(
         link,
         cfg["quartus"]["ram_mem_instance"],
         cfg["memory"]["ram_base"],

@@ -2,14 +2,14 @@
 
 🌐 [Português](README.md) · [English](README.en.md)
 
-Suíte de testes de hardware real e de simulação do núcleo RISC-V `RV32IM`, dirigida pelo pacote [`riscv-tools`](tools/Tools/README.md), vendorado como submódulo em `tools/Tools`.
+Suíte de testes de hardware real e de simulação do núcleo RISC-V `RV32IM`, dirigida pelo pacote `riscv-tools`, instalado nas imagens de CI.
 
 ## 1. Documentação
 
 - [AUTHORS.md](AUTHORS.md): autores com commits no repositório, com nome e conta do GitHub.
 - [CONTRIBUTING.md](CONTRIBUTING.md): regras obrigatórias de contribuição, normas C23 e Python, regras de documentação e verificação antes de abrir Pull Request.
 - [CITATION.cff](CITATION.cff): metadados para citação do software.
-- [tools/Tools/README.md](tools/Tools/README.md): referência completa de cada subcomando do `riscv-tools`.
+- riscv-tools: referência completa de cada subcomando do `riscv-tools`.
 - [tools/riscv_build/README.md](tools/riscv_build/README.md): convenções específicas desta suíte (formato dos testes, fatos de hardware e como escrever um teste novo).
 - [docs/HARDWARE_PROGRAMMING.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/HARDWARE_PROGRAMMING.md): regra permanente sobre compilar e programar a placa, e o bug de JTAG já diagnosticado.
 - [docs/MEMORY_ARCHITECTURE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/MEMORY_ARCHITECTURE.md): arquitetura BOOT_ROM, FLASH e RAM.
@@ -31,7 +31,6 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 | `asm/`, `c/` | Os 92 testes da suíte (52 em assembly, 40 em C), um `<name>/src.S` ou `<name>/src.c` por pasta |
 | `c-sdram/` | Programas que usam a SDRAM da plataforma `sdram`, um `<name>/src.c` por pasta; cada um confere a si mesmo e sinaliza PASS ou FAIL |
 | `tools/riscv_build/` | Configuração deste projeto para o `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, e `config.sdram.yaml` e `config.sdram-regression.yaml` para a plataforma com SDRAM): estende a da plataforma, que está no [TopLevel](https://github.com/insper-riscv/TopLevel) (toolchain, mapa de memória, runtime, projeto do Quartus, simulação), e acrescenta só os caminhos dos testes |
-| `tools/Tools/` | Submódulo do pacote [`riscv-tools`](tools/Tools/README.md) |
 | `tests/host/` | Testes unitários do harness de UART física, sem precisar da placa |
 | `tests/python/` | Testes por entidade remanescentes: sequências de instrução cruas, todas com `skip`, no `tests.json` ([documentação](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação) e `sim-fpga.yml` (simulação do topo de hardware) |
@@ -40,18 +39,18 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 ## 4. Uso Rápido
 
 ```bash
-uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
-uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif   # hardware real
-uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex   # simulação
+riscv-tools --config tools/riscv_build/config.yaml generate-header
+riscv-tools --config tools/riscv_build/config.yaml compile --emit mif   # hardware real
+riscv-tools --config tools/riscv_build/config.yaml compile --emit hex   # simulação
 uv run python -m unittest discover -s tests/host -v                            # harness UART, sem placa
-uv run riscv-tools --config tools/riscv_build/config.yaml sim                  # inclui uart-tx, uart-echo e uart-errors
+riscv-tools --config tools/riscv_build/config.yaml sim                  # inclui uart-tx, uart-echo e uart-errors
 
 # hardware real: uma síntese, UART física dedicada, depois tohost/JTAG
-uv run riscv-tools --config tools/riscv_build/config.yaml program build/real/uart-echo.mif
+riscv-tools --config tools/riscv_build/config.yaml program build/real/uart-echo.mif
 uv run python tools/riscv_build/uart_hardware_test.py --skip-program
-uv run riscv-tools --config tools/riscv_build/config.yaml run \
+riscv-tools --config tools/riscv_build/config.yaml run \
   --exclude uart-echo,uart-tx,uart-errors --skip-reconfigure
-uv run riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-mem/platform.yaml   # mapa de memória (no TopLevel)
+riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-mem/platform.yaml   # mapa de memória (no TopLevel)
 ```
 
 ---

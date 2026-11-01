@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from riscv_tools import mailbox
+from riscv_tools import htif
 
 from tools.riscv_build import uart_hardware_test as uart_hw
 
@@ -145,7 +145,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             )
 
     def test_validate_tohost_accepts_only_pass(self) -> None:
-        uart_hw.validate_tohost(mailbox.PASS)
+        uart_hw.validate_tohost(htif.PASS)
         with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "FAIL"):
             uart_hw.validate_tohost((5 << 1) | 1)
         with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "did not finish"):
@@ -158,13 +158,13 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             mock.patch.object(
                 uart_hw,
                 "read_result_tohost",
-                side_effect=[0, mailbox.PASS],
+                side_effect=[0, htif.PASS],
             ) as read_tohost_mock,
             mock.patch.object(uart_hw.time, "sleep") as sleep,
         ):
             value = uart_hw.wait_for_result_tohost(link, cfg, 1.0)
 
-        self.assertEqual(value, mailbox.PASS)
+        self.assertEqual(value, htif.PASS)
         self.assertEqual(read_tohost_mock.call_count, 2)
         sleep.assert_called_once()
 
@@ -194,7 +194,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
                 side_effect=lambda *_: events.append("flush"),
             ),
             mock.patch.object(
-                uart_hw.mailbox,
+                uart_hw.htif,
                 "pulse_fromhost",
                 side_effect=lambda *_: events.append("pulse"),
             ) as pulse,
@@ -226,7 +226,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
                 mock.patch.object(uart_hw.rom_writer, "write_rom"),
                 mock.patch.object(uart_hw.termios, "tcflush"),
                 mock.patch.object(
-                    uart_hw.mailbox,
+                    uart_hw.htif,
                     "pulse_fromhost",
                     side_effect=pulse_while_returning,
                 ),
