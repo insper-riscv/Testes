@@ -72,11 +72,13 @@ jobs:
 
       - name: Existing programs on the SDRAM platform
         # The SDRAM platform adds the 64 MB SDRAM (bridge, controller and chip model of Memory) to the
-        # core; these programs do not use it, so every result must be the one of internal-mem.
+        # core; these programs do not use it, so every result must be the one of internal-mem. The UART
+        # programs need the serial pins of the board top, which this simulation top does not have.
         run: |
           riscv-tools --config tools/riscv_build/config.sdram-regression.yaml generate-header
           riscv-tools --config tools/riscv_build/config.sdram-regression.yaml compile --emit hex
-          riscv-tools --config tools/riscv_build/config.sdram-regression.yaml sim
+          riscv-tools --config tools/riscv_build/config.sdram-regression.yaml sim \
+            --exclude uart-echo,uart-tx,uart-errors
 
       - name: Programs that use the SDRAM
         # c-sdram/: self-checking programs (the data and address bus, byte and halfword accesses,
