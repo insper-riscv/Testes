@@ -75,14 +75,14 @@ jobs:
         run: uv sync
 
       - name: Generate rv32_test.h
-        run: uv run riscv-tools --config tools/riscv_build/config.yaml generate-header
+        run: riscv-tools --config tools/riscv_build/config.yaml generate-header
 
       - name: Build the images the hardware loads
         # compile also generates each C memory test's golden under Spike.
-        run: uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
+        run: riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
 
       - name: Run the suite on the hardware top
-        run: uv run riscv-tools --config tools/riscv_build/config.fpga-sim.yaml sim
+        run: riscv-tools --config tools/riscv_build/config.fpga-sim.yaml sim
 
       - name: Upload waveforms
         if: failure()

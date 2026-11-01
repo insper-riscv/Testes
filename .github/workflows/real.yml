@@ -141,26 +141,26 @@ jobs:
 
       - uses: astral-sh/setup-uv@v10.0.1
 
-      - name: Install Python dependencies for the board run (riscv-tools, editable from tools/Tools)
+      - name: Install Python dependencies for the board run (cocotb; riscv-tools comes from the image)
         # On the runner itself: this step talks to Quartus and the JTAG cable.
         run: uv sync
 
       - name: Generate rv32_test.h
-        run: uv run riscv-tools --config tools/riscv_build/config.sdram-regression.yaml generate-header
+        run: riscv-tools --config tools/riscv_build/config.sdram-regression.yaml generate-header
 
       - name: Build real test ROM images
         # The board runs the SDRAM platform (the SDRAM is the RAM; the host reaches it through the
         # JTAG debug port): the existing programs, then the ones that use the SDRAM.
         run: |
-          uv run riscv-tools --config tools/riscv_build/config.sdram-regression.yaml compile --emit mif
-          uv run riscv-tools --config tools/riscv_build/config.sdram.yaml compile --emit mif
+          riscv-tools --config tools/riscv_build/config.sdram-regression.yaml compile --emit mif
+          riscv-tools --config tools/riscv_build/config.sdram.yaml compile --emit mif
 
       - name: Compile and program the uart-echo baseline
         # One full Quartus compile for the whole job. uart-echo is baked into
         # the SOF so the dedicated harness can always start from a known state;
         # every later program is loaded into FLASH live over JTAG.
         run: |
-          uv run riscv-tools --config tools/riscv_build/config.yaml \
+          riscv-tools --config tools/riscv_build/config.yaml \
             program build/real/uart-echo.mif
 
       - name: Run dedicated physical UART tests
@@ -169,10 +169,10 @@ jobs:
         # uart-echo, replaces FLASH with uart-tx and uart-errors over JTAG,
         # then validates them.
         run: |
-          uv run python tools/riscv_build/uart_hardware_test.py \
+          /opt/riscv-tools/riscv-tools/bin/python tools/riscv_build/uart_hardware_test.py \
             --port "$UART_PORT" --skip-program
 
-      - name: Run mailbox-only tests on the FPGA
+      - name: Run the tohost-only tests on the FPGA
         # PYTHONUNBUFFERED: Python fully-buffers stdout when it isn't a
         # TTY (always true under Actions' log capture), so without this
         # a 40+ minute run can show a blank log the whole time even
@@ -192,6 +192,6 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           set -o pipefail
-          uv run riscv-tools --config tools/riscv_build/config.yaml run \
+          riscv-tools --config tools/riscv_build/config.yaml run \
             --exclude uart-echo,uart-tx,uart-errors \
             --skip-reconfigure | tee build/real/latest.log
