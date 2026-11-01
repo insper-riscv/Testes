@@ -83,9 +83,12 @@ jobs:
       - name: Programs that use the SDRAM
         # c-sdram/: self-checking programs (the data and address bus, byte and halfword accesses,
         # copies, loops, multiply and divide with operands in the SDRAM, refresh).
+        # flash-const needs the FLASH chip of the sdram-flash platform, hex-id waits for a person to read the
+        # display, and cpi-kernels measures with the FLASH behind the caches: the steps below run them.
         run: |
           riscv-tools --config tools/riscv_build/config.sdram.yaml compile --emit hex
-          riscv-tools --config tools/riscv_build/config.sdram.yaml sim
+          riscv-tools --config tools/riscv_build/config.sdram.yaml sim \
+            --exclude flash-const,hex-id,cpi-kernels
 
       - name: Existing programs on the platform with the FLASH behind the caches
         # The FLASH is a chip at 0x20000000 reached through the instruction and data caches; every result
