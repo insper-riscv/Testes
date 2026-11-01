@@ -46,6 +46,8 @@ riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-me
 
 The `uart-tx`, `uart-echo` and `uart-errors` programs run in the simulation of the `internal-mem` platform and on the board, because they use the serial pins of the hardware top. In the simulations of the `sdram` and `sdram-flash` platforms, whose tops only have the UART over JTAG, they are left out with `--exclude uart-echo,uart-tx,uart-errors`.
 
+The `flash-const` and `cpi-kernels` programs of `c-sdram/` need the FLASH behind the caches, and `hex-id` waits for a person at the board. The simulation of the `sdram` platform therefore excludes them, and the `sdram-flash` one runs the first two.
+
 ---
 
 Copyright 2026 Insper. Licensed under the [Apache License, Version 2.0](LICENSE).
