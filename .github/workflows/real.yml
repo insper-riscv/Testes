@@ -90,7 +90,7 @@ jobs:
             echo "::error::$qsf does not set VHDL_INPUT_VERSION VHDL_2008; Quartus would read the core as VHDL-1993 and fail in synthesis"
             exit 1
           fi
-          for f in ../Core/common/*.vhd ../Core/I/*.vhd ../Core/M/m_decode.vhd; do
+          for f in ../Core/src/shared/*.vhd ../Core/src/I/*.vhd ../Core/src/Zicclsm/*.vhd ../Core/src/M/m_decode.vhd; do
             grep -q "Core/${f#../Core/}" "$qsf" || { echo "::error::$f is not in $qsf"; exit 1; }
           done
 
