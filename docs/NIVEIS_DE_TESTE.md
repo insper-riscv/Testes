@@ -32,7 +32,7 @@ O mapa de memória (onde ficam a boot ROM, a FLASH, a RAM e as palavras reservad
 | :--- | :--- |
 | Pega | endereço ou tamanho divergente entre duas cópias, arquivo movido ou renomeado |
 | Não pega | qualquer comportamento do hardware |
-| Comandos | `riscv-tools --root ../TopLevel check-memory-map --platform platforms/<plataforma>/platform.yaml` e `make paths` |
+| Comandos | `riscv-tools --root Insper-RISC-V check-memory-map --platform src/<família>/<plataforma>/platform.yaml` e `make paths` |
 | Custo | segundos, sem simulador |
 
 ## 3. Nível 1: análise e elaboração
@@ -55,7 +55,7 @@ Cada bloco VHDL tem um testbench em Python (cocotb) que dirige as portas diretam
 | Core | banco de registradores, ALU, decodificador de instrução, extensores de imediato e de RAM, gerenciador de store, unidade de controle (com e sem a extensão M), decodificação de M, detecção de hazard, forwarding, bubble mux e o stall do pipeline com memória de latência variável |
 | Memory | RAM e ROM de simulação, o sistema SDRAM (controlador, ponte e modelo do chip), o autoteste (BIST) com e sem registradores nos pinos, a porta de debug JTAG e o barramento externo (interconnect e UART JTAG) |
 | Peripherals | GPIO, TIMER, os decodificadores de operação, MUX4, MUX8 e o buffer tri-state |
-| TopLevel | o gerador de clocks do topo |
+| Insper-RISC-V | o gerador de clocks do topo |
 
 Os testes da SDRAM rodam contra um modelo do chip que **aborta a simulação** em qualquer violação de timing (tRCD, tRP, tRAS, tRC, tRFC, tWR, tMRD), de ordem de comandos, de sequência de power-up, de registrador de modo, de sobreposição de burst ou de intervalo de refresh. Defeitos injetados de propósito no controlador (tRCD curto, sem refresh, ACTIVE cedo demais, captura de leitura cedo demais, contador de preenchimento de 24 bits) precisam fazer algum teste falhar; é assim que se confirma que os testes não passam em vazio.
 
@@ -94,8 +94,8 @@ A plataforma `sdram` usa a SDRAM de 64 MB como única RAM do core, através da p
 
 | Suíte | Configuração | O que roda | Veredito |
 | :--- | :--- | :--- | :--- |
-| Regressão | `config.sdram-regression.yaml` | os mesmos 89 programas do nível 3 | o resultado precisa ser idêntico ao da `internal-mem` |
-| Programas da SDRAM | `config.sdram.yaml` | 6 programas que usam a SDRAM de propósito: acesso a byte, cópia, laço, teste de memória, multiplicação e divisão com operandos na SDRAM, refresh | cada programa confere a si mesmo e sinaliza PASS ou FAIL |
+| Regressão | `config.sdram-flash-regression.yaml` | os mesmos 89 programas do nível 3 | o resultado precisa ser idêntico ao da `internal-mem` |
+| Programas da SDRAM | `config.sdram-flash.yaml` | 6 programas que usam a SDRAM de propósito: acesso a byte, cópia, laço, teste de memória, multiplicação e divisão com operandos na SDRAM, refresh | cada programa confere a si mesmo e sinaliza PASS ou FAIL |
 
 No final de um programa que passa, o testbench compara o golden com o **conteúdo do modelo do chip**, e não com as escritas vistas no barramento. Uma palavra que nunca chegou ao chip, ou chegou ao endereço errado, é pega.
 

@@ -1,0 +1,3 @@
+[submodule "Insper-RISC-V"]
+	path = Insper-RISC-V
+	url = https://github.com/insper-riscv/Insper-RISC-V.git

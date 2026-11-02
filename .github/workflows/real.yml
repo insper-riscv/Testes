@@ -8,14 +8,6 @@ on:
       confirm:
         description: "Repo secret FPGA_RUN_SECRET's value, to confirm you're allowed to run this on the physical FPGA"
         required: true
-      peripherals_ref:
-        description: "Peripherals branch/tag to test (use UART before that branch is merged)"
-        required: true
-        default: main
-      toplevel_ref:
-        description: "TopLevel branch/tag to test (use UART before that branch is merged)"
-        required: true
-        default: main
 
 concurrency:
   # Serialize every ref against the same physical board. Canceling an active
@@ -36,10 +28,6 @@ jobs:
       IMAGE: ghcr.io/insper-riscv/ci-elf:latest
       # Prefer a stable /dev/serial/by-id path here if this runner exposes one.
       UART_PORT: /dev/ttyACM0               # <<< ADJUST for the Pico/Debug Probe
-      # workflow_dispatch can coordinate feature branches across repositories;
-      # pushes to main keep testing the released dependency branches.
-      PERIPHERALS_REF: ${{ inputs.peripherals_ref || 'main' }}
-      TOPLEVEL_REF: ${{ inputs.toplevel_ref || 'main' }}
 
     steps:
       - name: Authorize manual run
@@ -58,24 +46,11 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          submodules: true
-
-      - name: Checkout Core, Memory, Peripherals and TopLevel
-        # config.yaml extends TopLevel's platform config: quartus.project_dir is
-        # "../TopLevel/platforms/internal-mem/quartus", relative to this checkout,
-        # true by accident on a workstation where this repo is nested at
-        # RV32IM/Tests/ (see TopLevel's docs/HARDWARE_PROGRAMMING.md). A bare CI
-        # checkout has no such parent, so clone all four next to it; the
-        # Quartus project names sources under the Core, Memory and Peripherals
-        # siblings of TopLevel. This self-hosted runner's _work is not wiped
-        # between runs, so start clean.
-        run: |
-          rm -rf ../Core ../Common-Components ../Memory ../Peripherals ../TopLevel
-          git clone --depth 1 https://github.com/insper-riscv/Core.git ../Core
-          git clone --depth 1 https://github.com/insper-riscv/Common-Components.git ../Common-Components
-          git clone --depth 1 https://github.com/insper-riscv/Memory.git ../Memory
-          git clone --depth 1 --branch "$PERIPHERALS_REF" https://github.com/insper-riscv/Peripherals.git ../Peripherals
-          git clone --depth 1 --branch "$TOPLEVEL_REF" https://github.com/insper-riscv/TopLevel.git ../TopLevel
+          # Insper-RISC-V and, inside it, Core, Memory, Peripherals and Common-Components, at the
+          # version this repository pins. This self-hosted runner's _work is not wiped between
+          # runs, so the checkout cleans what a previous run left.
+          submodules: recursive
+          clean: true
 
       - name: Check the Quartus project reads VHDL-2008
         # The core uses VHDL-2008 (e.g. `else generate` in the HAS_M selection), and
@@ -85,13 +60,13 @@ jobs:
         # VHDL_1993". Fail in seconds instead, and keep every VHDL file the core
         # instantiates in the project (m_decode.vhd was once missing).
         run: |
-          qsf=../TopLevel/platforms/internal-mem/quartus/core_fpga_test.qsf
+          qsf=Insper-RISC-V/src/simulation/internal-mem/quartus/core_fpga_test.qsf
           if ! grep -Eq '^set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008' "$qsf"; then
             echo "::error::$qsf does not set VHDL_INPUT_VERSION VHDL_2008; Quartus would read the core as VHDL-1993 and fail in synthesis"
             exit 1
           fi
-          for f in ../Core/src/shared/*.vhd ../Core/src/I/*.vhd ../Core/src/Zicclsm/*.vhd ../Core/src/M/m_decode.vhd; do
-            grep -q "Core/${f#../Core/}" "$qsf" || { echo "::error::$f is not in $qsf"; exit 1; }
+          for f in Insper-RISC-V/Core/src/shared/*.vhd Insper-RISC-V/Core/src/I/*.vhd Insper-RISC-V/Core/src/Zicclsm/*.vhd Insper-RISC-V/Core/src/M/m_decode.vhd; do
+            grep -q "Core/${f#Insper-RISC-V/Core/}" "$qsf" || { echo "::error::$f is not in $qsf"; exit 1; }
           done
 
       - name: Add Quartus to PATH
@@ -146,14 +121,14 @@ jobs:
         run: uv sync
 
       - name: Generate rv32_test.h
-        run: riscv-tools --config tools/riscv_build/config.sdram-regression.yaml generate-header
+        run: riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml generate-header
 
       - name: Build real test ROM images
-        # The board runs the SDRAM platform (the SDRAM is the RAM; the host reaches it through the
+        # The board runs the de0-cv platform (the SDRAM is the RAM; the host reaches it through the
         # JTAG debug port): the existing programs, then the ones that use the SDRAM.
         run: |
-          riscv-tools --config tools/riscv_build/config.sdram-regression.yaml compile --emit mif
-          riscv-tools --config tools/riscv_build/config.sdram.yaml compile --emit mif
+          riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml compile --emit mif
+          riscv-tools --config tools/riscv_build/config.sdram-flash.yaml compile --emit mif
 
       - name: Compile and program the uart-echo baseline
         # One full Quartus compile for the whole job. uart-echo is baked into
@@ -186,8 +161,8 @@ jobs:
         # user's (--user) so the files it writes belong to the runner; --userns=host keeps that valid
         # on a Docker daemon that remaps users, and does nothing on one that does not.
         #
-        # The checkout is the working directory; its parent is mounted too because the sibling
-        # repositories (Core, Memory, TopLevel) are cloned next to it.
+        # The checkout is the working directory, and Insper-RISC-V (with Core, Memory and the
+        # platforms) is a submodule inside it.
         env:
           PYTHONUNBUFFERED: "1"
         run: |

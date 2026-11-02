@@ -4,11 +4,12 @@ The per-entity tests of the core itself (ALU, register file, control, hazard and
 forwarding units, extenders, store manager, bubble mux, instruction decoder)
 moved to [Core](https://github.com/insper-riscv/Core), the memory model tests to
 [Memory](https://github.com/insper-riscv/Memory) and the clock generator's to
-[TopLevel](https://github.com/insper-riscv/TopLevel), with their history. What stays
+[Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V), with their history. What stays
 here needs the platform's simulation top: the whole-core instruction tests
 (`unittests/instructions`), all `skip`ped. Paths in
-`tests.json` are relative to this repository's root: `../Core/...` for the core,
-`../Memory/...` for the memories, `../TopLevel/...` for the platform's simulation top.
+`tests.json` are relative to this repository's root: `Insper-RISC-V/Core/...` for the core,
+`Insper-RISC-V/Memory/...` for the memories and `Insper-RISC-V/src/...` for the platform's
+simulation top.
 
 
 Cocotb testbenches that exercise individual VHDL entities (`ALU`,
@@ -51,7 +52,7 @@ Each entry is a test name (used as the CLI argument above) mapping to:
 | Field | Meaning |
 | :--- | :--- |
 | `toplevel` | The VHDL entity to elaborate (lowercase, matching the `.vhd`'s own entity name) |
-| `sources` | Every `.vhd` file the entity needs, as paths relative to this repo's parent (`RV32IM`), e.g. `../Core/src/I/alu.vhd` |
+| `sources` | Every `.vhd` file the entity needs, as paths relative to this repo's root, e.g. `Insper-RISC-V/Core/src/I/alu.vhd` |
 | `test_module` | Dotted Python path to the test file, e.g. `tests.python.unittests.entities.ALU` |
 | `parameters` | Optional: VHDL generics to pass (e.g. `ROM_FILE` for an entity that loads a memory image) |
 | `skip` / `skip_reason` | Optional: excluded from the `all` sweep with the reason printed, but still runs if invoked by name explicitly |

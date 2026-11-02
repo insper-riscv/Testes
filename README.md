@@ -11,12 +11,12 @@ Suíte de testes de hardware real e de simulação do núcleo RISC-V `RV32IM`, d
 - [CITATION.cff](CITATION.cff): metadados para citação do software.
 - riscv-tools: referência completa de cada subcomando do `riscv-tools`.
 - [tools/riscv_build/README.md](tools/riscv_build/README.md): convenções específicas desta suíte (formato dos testes, fatos de hardware e como escrever um teste novo).
-- [docs/HARDWARE_PROGRAMMING.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/HARDWARE_PROGRAMMING.md): regra permanente sobre compilar e programar a placa, e o bug de JTAG já diagnosticado.
-- [docs/MEMORY_ARCHITECTURE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/MEMORY_ARCHITECTURE.md): arquitetura BOOT_ROM, FLASH e RAM.
-- [docs/RUNTIME.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/RUNTIME.md): runtime C (picolibc, `crt0` e linker script da toolchain), arquivo de plataforma, `stdout` e Spike.
-- [docs/CRT0_BOOT_REFERENCE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/CRT0_BOOT_REFERENCE.md): estado de boot, `crt0` da picolibc e `boot_rom.S`.
-- [docs/PROGRAM_UPDATE_HANDOFF.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/PROGRAM_UPDATE_HANDOFF.md): reescrita da FLASH por JTAG e passagem de boot entre testes.
-- [docs/SIMULACAO_TOPO_FPGA.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/SIMULACAO_TOPO_FPGA.md): simulação do topo de hardware com as memórias reais do Quartus.
+- [placa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/placa.md): regra permanente sobre compilar e programar a placa, e o bug de JTAG já diagnosticado.
+- [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): arquitetura BOOT_ROM, FLASH e RAM.
+- [runtime.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/runtime.md): runtime C (picolibc, `crt0` e linker script da toolchain), arquivo de plataforma, `stdout` e Spike.
+- [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): estado de boot, `crt0` da picolibc e `boot_rom.S`.
+- [atualizacao-de-programa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/atualizacao-de-programa.md): reescrita da FLASH por JTAG e passagem de boot entre testes.
+- [simulacao.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/simulacao.md): simulação do topo de hardware com as memórias reais do Quartus.
 - [docs/bugs/PLL_LOCK_LOSS_BUG.md](docs/bugs/PLL_LOCK_LOSS_BUG.md), [docs/bugs/SMALL_DATA_SECTION_BUG.md](docs/bugs/SMALL_DATA_SECTION_BUG.md) e [docs/bugs/DATA_HARVARD_BUG.md](docs/bugs/DATA_HARVARD_BUG.md): bugs de hardware investigados e corrigidos.
 - [docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md](docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md): bugs no CI dos testes por entidade.
 
@@ -30,11 +30,11 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 | :--- | :--- |
 | `asm/`, `c/` | Os 92 testes da suíte (52 em assembly, 40 em C), um `<name>/src.S` ou `<name>/src.c` por pasta |
 | `c-sdram/` | Programas que usam a SDRAM da plataforma `sdram`, um `<name>/src.c` por pasta; cada um confere a si mesmo e sinaliza PASS ou FAIL |
-| `tools/riscv_build/` | Configuração deste projeto para o `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, e `config.sdram.yaml` e `config.sdram-regression.yaml` para a plataforma com SDRAM): estende a da plataforma, que está no [TopLevel](https://github.com/insper-riscv/TopLevel) (toolchain, mapa de memória, runtime, projeto do Quartus, simulação), e acrescenta só os caminhos dos testes |
+| `tools/riscv_build/` | Configuração deste projeto para o `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` e as variantes dela para a DE0-CV): estende o `config.platform-*.yaml` da plataforma, que `riscv-tools platform sync` gera a partir do submódulo [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) (toolchain, mapa de memória, runtime, projeto do Quartus, simulação), e acrescenta só os caminhos dos testes |
 | `tests/host/` | Testes unitários do harness de UART física, sem precisar da placa |
 | `tests/python/` | Testes por entidade remanescentes: sequências de instrução cruas, todas com `skip`, no `tests.json` ([documentação](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação) e `sim-fpga.yml` (simulação do topo de hardware) |
-| `docs/` | Bugs investigados em `docs/bugs/`; a arquitetura de memória, o boot, o runtime e a programação da placa estão em `docs/` do TopLevel |
+| `docs/` | Bugs investigados em `docs/bugs/`; a arquitetura de memória, o boot, o runtime e a programação da placa estão em `docs/` do submódulo `Insper-RISC-V` |
 
 ## 4. Uso Rápido
 
@@ -50,7 +50,7 @@ riscv-tools --config tools/riscv_build/config.yaml program build/real/uart-echo.
 uv run python tools/riscv_build/uart_hardware_test.py --skip-program
 riscv-tools --config tools/riscv_build/config.yaml run \
   --exclude uart-echo,uart-tx,uart-errors --skip-reconfigure
-riscv-tools --root ../TopLevel check-memory-map --platform platforms/internal-mem/platform.yaml   # mapa de memória (no TopLevel)
+riscv-tools --root Insper-RISC-V check-memory-map --platform src/simulation/internal-mem/platform.yaml   # mapa de memória (na plataforma)
 ```
 
 Os programas `uart-tx`, `uart-echo` e `uart-errors` rodam na simulação da plataforma `internal-mem` e na placa, porque usam os pinos seriais do topo de hardware. Nas simulações das plataformas `sdram` e `sdram-flash`, cujos topos só têm a UART sobre JTAG, eles ficam de fora com `--exclude uart-echo,uart-tx,uart-errors`.

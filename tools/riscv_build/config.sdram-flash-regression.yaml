@@ -1,6 +1,6 @@
 # The existing programs (c/ and asm/) on the SDRAM platform with the FLASH behind the caches
 # (0x20000000): every result must be the one of internal-mem.
-extends: ../../../TopLevel/platforms/sdram-flash/config.yaml
+extends: config.platform-de0-cv.yaml
 
 paths:
   include_dir: tools/riscv_build/include-sdram
