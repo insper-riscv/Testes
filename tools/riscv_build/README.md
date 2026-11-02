@@ -23,10 +23,11 @@ instead of drifting between copies.
 
 > **The platform moved.** Everything about the machine (toolchain, memory map, Quartus
 > project, simulation, runtime, the `docs/` that describe them) is in
-> [insper-riscv/TopLevel](https://github.com/insper-riscv/TopLevel); this project's
-> `config.yaml` extends `TopLevel/platforms/internal-mem/config.yaml`. References below to
+> [insper-riscv/Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V), a submodule of
+> this repository; this project's `config.yaml` extends `config.platform-internal-mem.yaml`,
+> which `riscv-tools platform sync` generates from it. References below to
 > `platform/`, `rv32im-fpga.specs`, `tests/FPGA/core/quartus` and `rv32i3stage_core_sim_test`
-> are there now (`platforms/internal-mem/{runtime,quartus,rtl}`).
+> are there now (`Insper-RISC-V/src/simulation/internal-mem/{runtime,quartus,rtl}`).
 
 This repo is itself vendored as [RV32IM](https://github.com/insper-riscv/RV32IM)'s
 own `Tests/` git submodule; RV32IM's root is one level up from this
@@ -255,9 +256,8 @@ Each suite has its own workflow file:
   runs the complete manifest, including all three UART programs, against the real
   hardware top and Quartus memory models on the self-hosted runner.
 
-The manual `real` and `sim-fpga` forms accept independent Peripherals and
-TopLevel branch/tag inputs. Keep both at `main` after the dependency changes
-are merged; while validating this feature beforehand, select `UART` for both.
+The manual `real` and `sim-fpga` forms test the version of Insper-RISC-V (and of the
+repositories inside it) that this repository pins as a submodule.
 
 Both check out submodules recursively (`tools/Tools`) and set up `uv` the same
 way local dev does above. The ACT4 certification lives in
