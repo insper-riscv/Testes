@@ -103,14 +103,14 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_mem.vhd
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
-  - Insper-RISC-V/Memory/sim/ram_simulation.vhd
-  - Insper-RISC-V/Memory/sim/rom_simulation.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/baudGen.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd
-  - Insper-RISC-V/Peripherals/UART/uart.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/ram_simulation.vhd
+  - Insper-RISC-V/Memory/src/rom/soc/rom_simulation.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/baudGen.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartRx.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartTx.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartTop.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/uart.vhd
   - Insper-RISC-V/src/simulation/internal-mem/rtl/clk_gen_3way.vhd
   - Insper-RISC-V/src/simulation/internal-mem/rtl/rv32i3stage_core_sim_test.vhd
   test_module: testbench.test_c_program

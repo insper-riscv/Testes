@@ -104,17 +104,17 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
   - Insper-RISC-V/src/simulation/internal-mem/rtl/Blinky.vhd
-  - Insper-RISC-V/Memory/ips/BOOT_ROM1PORT/boot_rom1port.vhd
-  - Insper-RISC-V/Memory/ips/FLASH1PORT/flash1port.vhd
-  - Insper-RISC-V/Memory/ips/FLASH_MEM1PORT/flash_mem1port.vhd
-  - Insper-RISC-V/Memory/ips/RAM1PORT/ram1port.vhd
+  - Insper-RISC-V/Memory/src/rom/cyclone-v/boot_rom1port.vhd
+  - Insper-RISC-V/Memory/src/rom/cyclone-v/flash1port.vhd
+  - Insper-RISC-V/Memory/src/rom/cyclone-v/flash_mem1port.vhd
+  - Insper-RISC-V/Memory/src/ram/cyclone-v/ram1port.vhd
   - Insper-RISC-V/src/simulation/internal-mem/pll/pll_sim.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/baudGen.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uartRx.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uartTx.vhd
-  - Insper-RISC-V/Peripherals/UART/vendor/opencores_uart2bus/uartTop.vhd
-  - Insper-RISC-V/Peripherals/UART/uart.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/baudGen.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartRx.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartTx.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartTop.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/uart.vhd
   - Insper-RISC-V/src/simulation/internal-mem/quartus/core_fpga_test.vhd
   test_module: testbench.test_c_program
   python_path:

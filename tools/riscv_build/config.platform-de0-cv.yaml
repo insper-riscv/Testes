@@ -12,13 +12,12 @@ isa:
 memory:
   boot_rom_base: 0
   boot_rom_words: 512
-  rom_base: 536870912
-  rom_words: 262144
+  rom_base: 2048
+  rom_words: 65024
   ram_base: 1073741824
   ram_words: 16777216
   tohost_addr: 1140850664
   fromhost_addr: 1140850672
-  rom_origin: 536870912
 paths:
   sources:
   - Insper-RISC-V/src/cyclone-v/de0-cv/runtime/_exit.c
@@ -104,26 +103,26 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_mem.vhd
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
-  - Insper-RISC-V/Memory/sim/ram_simulation.vhd
-  - Insper-RISC-V/Memory/sim/rom_simulation.vhd
-  - Insper-RISC-V/Memory/external/sdram/sdram_pkg.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/ram_simulation.vhd
+  - Insper-RISC-V/Memory/src/rom/soc/rom_simulation.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sdram_pkg.vhd
   - Insper-RISC-V/Common-Components/src/synchronizer.vhd
-  - Insper-RISC-V/Memory/external/sdram/sdram_ctrl.vhd
-  - Insper-RISC-V/Memory/external/sdram/sdram_cpu_bridge.vhd
-  - Insper-RISC-V/Memory/external/sdram/sdram_arbiter.vhd
-  - Insper-RISC-V/Memory/external/cache/icache.vhd
-  - Insper-RISC-V/Memory/external/cache/dcache.vhd
-  - Insper-RISC-V/Memory/external/cache/flash_chip.vhd
-  - Insper-RISC-V/Memory/external/cache/flash_arbiter.vhd
-  - Insper-RISC-V/Memory/external/cache/mem_region_router.vhd
-  - Insper-RISC-V/Memory/external/sdram/sdram_dbg_master.vhd
-  - Insper-RISC-V/Memory/external/sdram/sdram_jtag_core.vhd
-  - Insper-RISC-V/Memory/external/sdram/sim/sdram_model.vhd
-  - Insper-RISC-V/Memory/external/sdram/sim/sdram_system.vhd
-  - Insper-RISC-V/Memory/external/bus/jtag_uart.vhd
-  - Insper-RISC-V/Memory/external/bus/hex_to_seg7.vhd
-  - Insper-RISC-V/Memory/external/bus/seg_display.vhd
-  - Insper-RISC-V/Memory/external/bus/ext_interconnect.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sdram_ctrl.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sdram_cpu_bridge.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sdram_arbiter.vhd
+  - Insper-RISC-V/Memory/src/cache/soc/icache.vhd
+  - Insper-RISC-V/Memory/src/cache/soc/dcache.vhd
+  - Insper-RISC-V/Memory/src/cache/soc/flash_chip.vhd
+  - Insper-RISC-V/Memory/src/cache/soc/flash_arbiter.vhd
+  - Insper-RISC-V/Memory/src/cache/soc/mem_region_router.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sdram_dbg_master.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sdram_jtag_core.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sim/sdram_model.vhd
+  - Insper-RISC-V/Memory/src/ram/soc/sim/sdram_system.vhd
+  - Insper-RISC-V/Peripherals/src/UART/jtag/jtag_uart.vhd
+  - Insper-RISC-V/Peripherals/src/display/soc/hex_to_seg7.vhd
+  - Insper-RISC-V/Peripherals/src/display/soc/seg_display.vhd
+  - Insper-RISC-V/src/interconnect/ext_interconnect.vhd
   - Insper-RISC-V/src/simulation/internal-mem/rtl/clk_gen_3way.vhd
   - Insper-RISC-V/src/cyclone-v/de0-cv/de0-cv_sim_top.vhd
   test_module: testbench.test_c_program
