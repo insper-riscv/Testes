@@ -20,9 +20,11 @@ class UartHardwareTestUnitTests(unittest.TestCase):
         self.assertEqual(uart_hw.DEFAULT_PAYLOAD, b"RX test\r\n")
         self.assertEqual(len(uart_hw.DEFAULT_PAYLOAD), uart_hw.ECHO_BYTE_COUNT)
         self.assertEqual(uart_hw.UART_TX_EXPECTED, b"Hello, world!\r\n")
-        self.assertEqual(uart_hw.UART_ERRORS_PREFIX, b"ATR")
-        self.assertEqual(uart_hw.UART_ERRORS_READY, b"OB")
-        self.assertEqual(uart_hw.UART_ERRORS_RX_INPUT, b"\x12\x34")
+        self.assertEqual(uart_hw.UART_TX_FIFO_PAYLOAD, b"ABCDEFGHIJKLMNOPQ")
+        self.assertEqual(uart_hw.UART_RX_FIFO_PROMPT, b"R")
+        self.assertEqual(uart_hw.UART_ERRORS_PREFIX, b"ABCDEFGHIJKLMNOPQR")
+        self.assertEqual(uart_hw.UART_ERRORS_READY, b"O")
+        self.assertEqual(uart_hw.UART_ERRORS_RX_INPUT, bytes(range(17)))
         self.assertEqual(uart_hw.UART_BURST_PAYLOAD, bytes(range(32)))
         self.assertEqual(uart_hw.UART_ERRORS_FINAL, b"P")
 
@@ -278,12 +280,17 @@ class UartHardwareTestUnitTests(unittest.TestCase):
         self.assertEqual(
             receive.call_args_list,
             [
-                mock.call(fd, uart_hw.UART_ERRORS_PREFIX, timeout, "UART TX_DROPPED"),
+                mock.call(
+                    fd,
+                    uart_hw.UART_ERRORS_PREFIX,
+                    timeout,
+                    "UART TX FIFO overflow/W1C",
+                ),
                 mock.call(
                     fd,
                     uart_hw.UART_ERRORS_READY,
                     timeout,
-                    "UART RX_OVERRUN/W1C",
+                    "UART RX FIFO overflow/W1C",
                 ),
                 mock.call(fd, expected_final, timeout, "UART burst"),
             ],

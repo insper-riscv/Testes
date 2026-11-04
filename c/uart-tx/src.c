@@ -5,6 +5,7 @@
 #define UART_TX_DATA   (*(volatile unsigned int *)(UART_BASE + 0x00u))
 #define UART_STATUS    (*(volatile unsigned int *)(UART_BASE + 0x08u))
 #define UART_TX_READY  (1u << 1)
+#define UART_TX_IDLE   (1u << 6)
 
 static void uart_wait_tx_ready(void)
 {
@@ -18,6 +19,12 @@ static void uart_putc(unsigned char value)
     UART_TX_DATA = value;
 }
 
+static void uart_wait_tx_idle(void)
+{
+    while ((UART_STATUS & UART_TX_IDLE) == 0u) {
+    }
+}
+
 int main(void)
 {
     static const char message[] = "Hello, world!\r\n";
@@ -26,8 +33,8 @@ int main(void)
         uart_putc((unsigned char)message[i]);
     }
 
-    /* Aguarda também a conclusão física do último quadro. */
-    uart_wait_tx_ready();
+    /* TX_READY indica espaço na FIFO; TX_IDLE confirma o último stop bit. */
+    uart_wait_tx_idle();
 
     RV32_PASS();
 }

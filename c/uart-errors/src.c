@@ -10,10 +10,16 @@
 #define UART_TX_READY   (1u << 1)
 #define UART_RX_OVERRUN (1u << 2)
 #define UART_TX_DROPPED (1u << 3)
+#define UART_RX_FULL    (1u << 4)
+#define UART_TX_IDLE    (1u << 6)
+#define UART_RX_LEVEL_SHIFT 8u
+#define UART_TX_LEVEL_SHIFT 16u
+#define UART_LEVEL_MASK 0xFFu
 #define UART_ERROR_MASK (UART_RX_OVERRUN | UART_TX_DROPPED)
 
-#define OVERRUN_LAST_BYTE 0x34u
-#define BURST_BYTE_COUNT  32u
+#define FIFO_DEPTH          16u
+#define TX_ACCEPTED_COUNT   (FIFO_DEPTH + 1u)
+#define BURST_BYTE_COUNT    32u
 
 static void require(int condition)
 {
@@ -22,9 +28,25 @@ static void require(int condition)
     }
 }
 
+static unsigned int uart_rx_level(unsigned int status)
+{
+    return (status >> UART_RX_LEVEL_SHIFT) & UART_LEVEL_MASK;
+}
+
+static unsigned int uart_tx_level(unsigned int status)
+{
+    return (status >> UART_TX_LEVEL_SHIFT) & UART_LEVEL_MASK;
+}
+
 static void uart_wait_tx_ready(void)
 {
     while ((UART_STATUS & UART_TX_READY) == 0u) {
+    }
+}
+
+static void uart_wait_tx_idle(void)
+{
+    while ((UART_STATUS & UART_TX_IDLE) == 0u) {
     }
 }
 
@@ -46,57 +68,70 @@ int main(void)
 {
     unsigned int status;
 
-    /* Start from known sticky-error state. */
+    /* Start from a known sticky-error state and empty queues. */
     UART_STATUS = UART_ERROR_MASK;
-    require((UART_STATUS & UART_ERROR_MASK) == 0u);
-    require((UART_STATUS & UART_TX_READY) != 0u);
+    status = UART_STATUS;
+    require((status & UART_ERROR_MASK) == 0u);
+    require((status & UART_TX_IDLE) != 0u);
+    require(uart_rx_level(status) == 0u);
+    require(uart_tx_level(status) == 0u);
 
     /*
-     * 'A' starts a real frame. The immediately following 'X' is issued while
-     * TX is busy and must be discarded while setting TX_DROPPED. The host
-     * therefore observes "ATR", never "AXTR".
+     * The first byte enters the physical transmitter and the next 16 fill the
+     * TX FIFO. The following 'X' must be rejected without disturbing the 17
+     * accepted bytes ('A' through 'Q').
      */
-    UART_TX_DATA = (unsigned int)'A';
+    for (unsigned int index = 0; index < TX_ACCEPTED_COUNT; ++index) {
+        UART_TX_DATA = (unsigned int)((unsigned char)('A' + index));
+    }
     UART_TX_DATA = (unsigned int)'X';
-    uart_wait_tx_ready();
-    require((UART_STATUS & UART_TX_DROPPED) != 0u);
+
+    status = UART_STATUS;
+    require((status & UART_TX_READY) == 0u);
+    require((status & UART_TX_DROPPED) != 0u);
+    require(uart_tx_level(status) == FIFO_DEPTH);
 
     UART_STATUS = UART_TX_DROPPED;
     require((UART_STATUS & UART_TX_DROPPED) == 0u);
-    uart_putc((unsigned char)'T');
-    uart_putc((unsigned char)'R');
-    uart_wait_tx_ready();
+    uart_wait_tx_idle();
 
-    /*
-     * After the 'R' prompt, the host sends 0x12 and 0x34 back-to-back. Do not
-     * consume RX_DATA until the second byte has raised RX_OVERRUN.
-     */
+    /* Tell the host to send 17 bytes without software consuming RX_DATA. */
+    uart_putc((unsigned char)'R');
+    uart_wait_tx_idle();
+
     while ((UART_STATUS & UART_RX_OVERRUN) == 0u) {
     }
 
     status = UART_STATUS;
     require((status & UART_RX_VALID) != 0u);
+    require((status & UART_RX_FULL) != 0u);
     require((status & UART_RX_OVERRUN) != 0u);
-    require((unsigned int)uart_getc() == OVERRUN_LAST_BYTE);
+    require(uart_rx_level(status) == FIFO_DEPTH);
+
+    /* RX keeps the first 16 queued bytes and drops only the 17th byte. */
+    for (unsigned int index = 0; index < FIFO_DEPTH; ++index) {
+        require((unsigned int)uart_getc() == index);
+    }
 
     status = UART_STATUS;
     require((status & UART_RX_VALID) == 0u);
     require((status & UART_RX_OVERRUN) != 0u);
+    require(uart_rx_level(status) == 0u);
 
     UART_STATUS = UART_RX_OVERRUN;
-    require((UART_STATUS & UART_RX_OVERRUN) == 0u);
-    uart_putc((unsigned char)'O');
-    uart_putc((unsigned char)'B');
-    uart_wait_tx_ready();
+    require((UART_STATUS & UART_ERROR_MASK) == 0u);
 
-    /* Echo one uninterrupted host write and require that it creates no error. */
+    /* Acknowledge recovery; the host then sends the normal wrap-around burst. */
+    uart_putc((unsigned char)'O');
+    uart_wait_tx_idle();
+
     for (unsigned int index = 0; index < BURST_BYTE_COUNT; ++index) {
         uart_putc(uart_getc());
     }
-    uart_wait_tx_ready();
+    uart_wait_tx_idle();
     require((UART_STATUS & UART_ERROR_MASK) == 0u);
 
     uart_putc((unsigned char)'P');
-    uart_wait_tx_ready();
+    uart_wait_tx_idle();
     RV32_PASS();
 }

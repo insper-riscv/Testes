@@ -8,6 +8,7 @@
 
 #define UART_RX_VALID  (1u << 0)
 #define UART_TX_READY  (1u << 1)
+#define UART_TX_IDLE   (1u << 6)
 
 #define ECHO_BYTE_COUNT 9u
 
@@ -33,8 +34,8 @@ int main(void)
         uart_putc(uart_getc());
     }
 
-    /* Aguarda a transmissão física do último byte. */
-    while ((UART_STATUS & UART_TX_READY) == 0u) {
+    /* TX_READY indica espaço na FIFO; TX_IDLE confirma o último stop bit. */
+    while ((UART_STATUS & UART_TX_IDLE) == 0u) {
     }
 
     RV32_PASS();
