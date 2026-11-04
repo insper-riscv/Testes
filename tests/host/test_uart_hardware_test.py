@@ -186,8 +186,8 @@ class UartHardwareTestUnitTests(unittest.TestCase):
         mif = Path("uart-tx.mif")
         cfg = {
             "quartus": {
-                "rom_mem_instances": [1, 3],
-                "ram_mem_instance": 2,
+                "rom_mem_instances": [0, 2],
+                "ram_mem_instance": 1,
             },
             "memory": {
                 "ram_base": 0x8000,
@@ -214,15 +214,15 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             uart_hw.load_and_start_firmware(7, link, cfg, mif)
 
         self.assertEqual(events, ["write", "flush", "pulse"])
-        write_rom.assert_called_once_with(link, [1, 3], mif)
-        pulse.assert_called_once_with(link, 2, 0x8000, 0x2FFF0)
+        write_rom.assert_called_once_with(link, [0, 2], mif)
+        pulse.assert_called_once_with(link, 1, 0x8000, 0x2FFF0)
 
     def test_uart_tx_bytes_emitted_during_restart_are_not_lost(self) -> None:
         read_end, write_end = os.pipe()
         cfg = {
             "quartus": {
-                "rom_mem_instances": [1, 3],
-                "ram_mem_instance": 2,
+                "rom_mem_instances": [0, 2],
+                "ram_mem_instance": 1,
             },
             "memory": {
                 "ram_base": 0x8000,

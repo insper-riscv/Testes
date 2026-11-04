@@ -26,8 +26,8 @@ quartus:
   boot_rom_mif_target: boot_rom_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   rom_mem_instances:
-  - 1
-  ram_mem_instance: 2
+  - 0
+  ram_mem_instance: 1
   program_wait_seconds: 15
   poll_interval_seconds: 2.5
   default_timeout_s: 15
@@ -94,22 +94,22 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_mem.vhd
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/ram_simulation.vhd
-  - Insper-RISC-V/Memory/src/rom/soc/rom_simulation.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sdram_pkg.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/ram_simulation.vhd
+  - Insper-RISC-V/Memory/src/ROM/SoC/rom_simulation.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/sdram/sdram_pkg.vhd
   - Insper-RISC-V/Common-Components/src/synchronizer.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sdram_ctrl.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sdram_cpu_bridge.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sdram_arbiter.vhd
-  - Insper-RISC-V/Memory/src/cache/soc/icache.vhd
-  - Insper-RISC-V/Memory/src/cache/soc/dcache.vhd
-  - Insper-RISC-V/Memory/src/cache/soc/flash_chip.vhd
-  - Insper-RISC-V/Memory/src/cache/soc/flash_arbiter.vhd
-  - Insper-RISC-V/Memory/src/cache/soc/mem_region_router.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sdram_dbg_master.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sdram_jtag_core.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sim/sdram_model.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/sim/sdram_system.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/sdram/sdram_ctrl.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/sdram/sdram_cpu_bridge.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/sdram/sdram_arbiter.vhd
+  - Insper-RISC-V/Memory/src/cache/SoC/icache.vhd
+  - Insper-RISC-V/Memory/src/cache/SoC/dcache.vhd
+  - Insper-RISC-V/Memory/src/cache/SoC/flash_chip.vhd
+  - Insper-RISC-V/Memory/src/cache/SoC/flash_arbiter.vhd
+  - Insper-RISC-V/Memory/src/cache/SoC/mem_region_router.vhd
+  - Insper-RISC-V/Memory/src/RAM/FPGA/debug/sdram/sdram_dbg_master.vhd
+  - Insper-RISC-V/Memory/src/RAM/FPGA/debug/sdram/sdram_jtag_core.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/sim/sdram_model.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/sim/sdram_system.vhd
   - Insper-RISC-V/Peripherals/src/UART/jtag/jtag_uart.vhd
   - Insper-RISC-V/Peripherals/src/display/soc/hex_to_seg7.vhd
   - Insper-RISC-V/Peripherals/src/display/soc/seg_display.vhd

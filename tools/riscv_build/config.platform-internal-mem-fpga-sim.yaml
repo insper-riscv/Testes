@@ -26,9 +26,9 @@ quartus:
   boot_rom_mif_target: boot_rom_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   rom_mem_instances:
-  - 1
-  - 3
-  ram_mem_instance: 2
+  - 0
+  - 2
+  ram_mem_instance: 1
   program_wait_seconds: 15
   poll_interval_seconds: 2.5
   default_timeout_s: 15
@@ -95,10 +95,10 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
   - Insper-RISC-V/src/simulation/internal-mem/rtl/Blinky.vhd
-  - Insper-RISC-V/Memory/src/rom/cyclone-v/boot_rom1port.vhd
-  - Insper-RISC-V/Memory/src/rom/cyclone-v/flash1port.vhd
-  - Insper-RISC-V/Memory/src/rom/cyclone-v/flash_mem1port.vhd
-  - Insper-RISC-V/Memory/src/ram/cyclone-v/ram1port.vhd
+  - Insper-RISC-V/Memory/src/ROM/Cyclone-V/boot_rom.vhd
+  - Insper-RISC-V/Memory/src/ROM/Cyclone-V/flash.vhd
+  - Insper-RISC-V/Memory/src/ROM/Cyclone-V/flash_mem.vhd
+  - Insper-RISC-V/Memory/src/RAM/FPGA/Cyclone-V/ram.vhd
   - Insper-RISC-V/src/simulation/internal-mem/pll/pll_sim.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/baudGen.vhd

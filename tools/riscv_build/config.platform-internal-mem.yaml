@@ -26,9 +26,9 @@ quartus:
   boot_rom_mif_target: boot_rom_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   rom_mem_instances:
-  - 1
-  - 3
-  ram_mem_instance: 2
+  - 0
+  - 2
+  ram_mem_instance: 1
   program_wait_seconds: 15
   poll_interval_seconds: 2.5
   default_timeout_s: 15
@@ -94,8 +94,8 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_mem.vhd
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
-  - Insper-RISC-V/Memory/src/ram/soc/ram_simulation.vhd
-  - Insper-RISC-V/Memory/src/rom/soc/rom_simulation.vhd
+  - Insper-RISC-V/Memory/src/RAM/SoC/ram_simulation.vhd
+  - Insper-RISC-V/Memory/src/ROM/SoC/rom_simulation.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/baudGen.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartRx.vhd
