@@ -112,6 +112,7 @@ sim:
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartRx.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartTx.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uartTop.vhd
+  - Insper-RISC-V/Peripherals/src/UART/serial/uart_fifo.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/uart.vhd
   - Insper-RISC-V/src/simulation/internal-mem/rtl/internal_mem_map_pkg.vhd
   - Insper-RISC-V/src/simulation/internal-mem/quartus/core_fpga_test.vhd
