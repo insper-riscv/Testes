@@ -125,14 +125,16 @@ sim:
     HAS_ZICSR: true
     HAS_ZICNTR: true
     HAS_ZIHPM: true
-    HAS_ZIMOP: true
-    HAS_ZICOND: true
+    HAS_ZIMOP: false
+    HAS_ZICOND: false
     boot_rom_addr_width: '10'
     rom_addr_width: '13'
     ram_addr_width: '16'
     HAS_E: false
     HAS_M: true
     HAS_ZMMUL: false
+    HAS_ZIHINTNTL: false
+    HAS_ZIHINTPAUSE: false
     HAS_ZIFENCEI: false
     HAS_ZICCLSM: true
 emulator:
