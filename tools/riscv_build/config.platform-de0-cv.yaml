@@ -50,21 +50,23 @@ sim:
   - Insper-RISC-V/Core/src/shared/fwd_consts.vhd
   - Insper-RISC-V/Core/src/shared/word_consts.vhd
   - Insper-RISC-V/Core/src/M/muldiv_consts.vhd
+  - Insper-RISC-V/Core/src/Zicond/zicond_consts.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_value_consts.vhd
   - Insper-RISC-V/Core/src/Zicsr/trap_consts.vhd
+  - Insper-RISC-V/Core/src/Zimop/zimop_consts.vhd
   - Insper-RISC-V/Common-Components/src/generic_register.vhd
   - Insper-RISC-V/Common-Components/src/adder.vhd
   - Insper-RISC-V/Common-Components/src/mux_2x1.vhd
   - Insper-RISC-V/Common-Components/src/mux_4x1.vhd
   - Insper-RISC-V/Common-Components/src/flip_flop.vhd
   - Insper-RISC-V/Common-Components/src/utils_pkg.vhd
-  - Insper-RISC-V/Core/src/I/alu.vhd
+  - Insper-RISC-V/Core/src/I-E/alu.vhd
   - Insper-RISC-V/Common-Components/src/onehot_decoder.vhd
   - Insper-RISC-V/Common-Components/src/mux_tree.vhd
   - Insper-RISC-V/Core/src/shared/reg_file.vhd
-  - Insper-RISC-V/Core/src/I/extender_imm.vhd
-  - Insper-RISC-V/Core/src/I/extender_ram.vhd
-  - Insper-RISC-V/Core/src/I/store_manager.vhd
+  - Insper-RISC-V/Core/src/I-E/extender_imm.vhd
+  - Insper-RISC-V/Core/src/I-E/extender_ram.vhd
+  - Insper-RISC-V/Core/src/I-E/store_manager.vhd
   - Insper-RISC-V/Core/src/Zicclsm/misaligned_unit.vhd
   - Insper-RISC-V/Core/src/shared/control_unit.vhd
   - Insper-RISC-V/Core/src/shared/bubble_mux.vhd
@@ -76,11 +78,15 @@ sim:
   - Insper-RISC-V/Core/src/M/non_restoring_divider_rv32.vhd
   - Insper-RISC-V/Core/src/M/muldiv_fusion.vhd
   - Insper-RISC-V/Core/src/M/multdiv.vhd
+  - Insper-RISC-V/Core/src/Zicond/zicond_decode.vhd
+  - Insper-RISC-V/Core/src/Zicond/zicond_unit.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_decode.vhd
+  - Insper-RISC-V/Core/src/Zimop/zimop_decode.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_addr_consts.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_event_consts.vhd
   - Insper-RISC-V/Core/src/Zicntr/counter64.vhd
   - Insper-RISC-V/Core/src/Zicntr/tick_divider.vhd
+  - Insper-RISC-V/Core/src/Zihpm/hpm_counter_bank.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_file.vhd
   - Insper-RISC-V/Core/src/Zicsr/trap_unit.vhd
   - Insper-RISC-V/Core/src/Zifencei/fencei_unit.vhd
@@ -134,6 +140,8 @@ sim:
     HAS_ZICSR: true
     HAS_ZICNTR: true
     HAS_ZIHPM: true
+    HAS_ZIMOP: true
+    HAS_ZICOND: true
     boot_rom_addr_width: '10'
     rom_addr_width: '16'
     ram_addr_width: '16'
