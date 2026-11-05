@@ -16,7 +16,9 @@
 #define HOST_ATTACHED(status) (((status) >> 17) & 1u)
 #define ATTACH_POLLS 40000000u
 #define N 256
-#define DRAIN_SPINS 8000000u
+#define DRAIN_POLLS 8000000u
+#define TX_FREE(status) ((status) & 0xFFu)
+#define TX_DEPTH 64u
 
 struct sample {
     unsigned int cycles;
@@ -46,8 +48,9 @@ static void finish(const char *name, struct sample s) {
     unsigned int cycles = read_cycle() - s.cycles;
     unsigned int instret = read_instret() - s.instret;
     printf("cpi %s %u %u\n", name, cycles, instret);
-    // the UART holds a few bytes: give the host time to drain them before the next line
-    for (volatile unsigned int w = 0; w < DRAIN_SPINS; w++) {
+    // the UART holds a few bytes: wait until the host has drained them before the next line (with a bound,
+    // so a board with nobody attached still finishes)
+    for (unsigned int polls = 0; polls < DRAIN_POLLS && TX_FREE(*UART_STATUS) < TX_DEPTH; polls++) {
     }
     if (instret == 0 || cycles < instret || cycles > 200u * instret) RV32_FAIL(1);
 }

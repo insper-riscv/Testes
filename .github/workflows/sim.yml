@@ -65,7 +65,7 @@ jobs:
         run: riscv-tools --config tools/riscv_build/config.yaml sim
 
       - name: Existing programs on the platform with the FLASH behind the caches
-        # The FLASH is a chip at 0x20000000 reached through the instruction and data caches; every result
+        # The FLASH is a chip right after the BOOT_ROM (0x800) reached through the instruction and data caches; every result
         # must be the one of internal-mem. The UART programs need the physical pins of the board top.
         run: |
           riscv-tools --config tools/riscv_build/config.sdram-flash-regression.yaml generate-header
@@ -76,7 +76,7 @@ jobs:
       - name: Programs that use the SDRAM, with the FLASH behind the caches
         run: |
           riscv-tools --config tools/riscv_build/config.sdram-flash.yaml compile --emit hex
-          riscv-tools --config tools/riscv_build/config.sdram-flash.yaml sim --exclude cpi-kernels,hex-id
+          riscv-tools --config tools/riscv_build/config.sdram-flash.yaml sim --exclude hex-id
 
       - name: The same programs with a slow FLASH chip
         # 120 clocks to the first word and 20 between the others, against 24 and 4: nothing may depend on the latency.

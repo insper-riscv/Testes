@@ -25,9 +25,10 @@ quartus:
   rom_mif_target: flash_init.mif
   boot_rom_mif_target: boot_rom_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
+  ram_mem_instance: 0
+  rom_write_method: jtag_loader
   rom_mem_instances:
   - 0
-  ram_mem_instance: 1
   program_wait_seconds: 15
   poll_interval_seconds: 2.5
   default_timeout_s: 15
@@ -133,11 +134,14 @@ sim:
     HAS_ZICSR: true
     HAS_ZICNTR: true
     HAS_ZIHPM: true
-    boot_rom_addr_width: '9'
+    boot_rom_addr_width: '10'
     rom_addr_width: '16'
     ram_addr_width: '16'
-    NUM_REGS: '32'
+    HAS_E: false
+    HAS_M: true
+    HAS_ZMMUL: false
     HAS_ZIFENCEI: true
+    HAS_ZICCLSM: true
 emulator:
   sources:
   - Insper-RISC-V/src/cyclone-v/de0-cv/runtime/spike_exit.S
@@ -145,9 +149,9 @@ emulator:
   - -DRV32_SPIKE
 memory:
   boot_rom_base: 0
-  boot_rom_words: 512
-  rom_base: 2048
-  rom_words: 65024
+  boot_rom_words: 1024
+  rom_base: 4096
+  rom_words: 64512
   ram_base: 1073741824
   ram_words: 16777216
   tohost_addr: 1140850664

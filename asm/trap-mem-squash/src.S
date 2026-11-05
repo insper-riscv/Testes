@@ -1,7 +1,7 @@
 // RV32_EXT: M,Zicsr,Zicntr
 // RV32_TEST_KIND: memory
 //
-// A load that traps in the MEM stage leaves nothing behind. The load goes to the flash window at an
+// A load that traps in the MEM stage leaves nothing behind. The load goes to the BOOT_ROM, outside the main memory on every platform, at an
 // address that is not word aligned, so the core takes the exception after the load has left EX. The
 // instructions right behind it (a write to mscratch, and a store to the RAM) are already in EX, and
 // none of them may take effect before the handler runs. The handler also sees that the load itself
@@ -19,7 +19,7 @@ main:
     li   x5, RV32_RAM_BASE        # x5 = RESULTS_BASE
     la   x6, handler
     csrw mtvec, x6
-    li   x25, 0x1000              # inside the flash window: the misaligned load traps
+    li   x25, 0x400               # inside the BOOT_ROM: the misaligned load traps
     li   x10, 0x77
     csrw mscratch, x10
     la   x20, site
