@@ -1,5 +1,7 @@
 # Bug: PLL nunca se recupera de perda de lock (só power-cycle resolve)
 
+🌐 [Português](pll-lock-loss.md) · [English](../../en/bugs/pll-lock-loss.md)
+
 ## Sintoma
 
 Mesmo com `jtagconfig` mostrando a placa saudável (`02B050DD 5CE(BA4|FA4)`),
@@ -11,7 +13,7 @@ power-cycle físico da placa resolve; reprogramar (`quartus_pgm`, mesmo
 `.sof`) sozinho, sem power-cycle, não resolve.
 
 Esse é um sintoma **diferente** do bug já documentado em
-[HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md) ("Can't scan JTAG
+[HARDWARE_PROGRAMMING.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/HARDWARE_PROGRAMMING.md) ("Can't scan JTAG
 chain" logo após um `quartus_sh --flow compile` seguido de `quartus_pgm`
 lançados como duas chamadas Python separadas): aqui `jtagconfig` continua
 enxergando o chip normalmente, o problema é mais profundo.
@@ -113,9 +115,9 @@ power-cycle completo: tanto pra confirmar a hipótese quanto porque, se
 certa, é uma recuperação bem mais rápida.
 
 Isso não substitui a regra de `quartus_sh`+`quartus_pgm` em um único
-processo de shell (ver [HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md)):
+processo de shell (ver [HARDWARE_PROGRAMMING.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/HARDWARE_PROGRAMMING.md)):
 são dois bugs de hardware/plataforma distintos, ambos reais.
 
 ---
 
-Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).

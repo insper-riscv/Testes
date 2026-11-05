@@ -1,5 +1,7 @@
 # Bug: pequenos globais `.data` inicializados nunca eram copiados (`.sdata`/`gp`)
 
+🌐 [Português](small-data-section.md) · [English](../../en/bugs/small-data-section.md)
+
 ## Sintoma
 
 `data-init-byte` (`c/data-init-byte/src.c`) travava por completo contra o
@@ -8,7 +10,7 @@ mailbox (`no mailbox result after 15.0s`). Reproduzido **3 de 3 vezes**,
 isolado (`--only data-init-byte --skip-reconfigure`, placa recém-programada,
 nenhum outro teste rodando antes), descartando de vez a hipótese de ser mais
 um caso do bug de JTAG intermitente já documentado em
-[HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md): aquele quebra a
+[HARDWARE_PROGRAMMING.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/HARDWARE_PROGRAMMING.md): aquele quebra a
 *conexão* JTAG (`jtagconfig` para de enxergar a placa); este bug faz o
 *programa RISC-V* travar, com a JTAG continuando saudável o tempo todo.
 
@@ -175,14 +177,14 @@ próprio `ld` do RISC-V (imediatos assinados de 12 bits, `gp` alcança
 
 Junto com essa correção veio a inicialização equivalente de `tp` (x4),
 mesma classe de bug, nada usa hoje, mas fica pronto; ver
-[CRT0_BOOT_REFERENCE.md](../CRT0_BOOT_REFERENCE.md).
+[CRT0_BOOT_REFERENCE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/CRT0_BOOT_REFERENCE.md).
 
 **Importante**: essa correção sozinha NÃO foi suficiente pra fazer
 `data-init-byte` passar: `.sdata` parar de ficar fora do range copiado
 resolve *esse* sintoma, mas expôs um bug bem mais fundamental do core (a
 ROM nunca era alcançável por um `lw`/`sw`, então mesmo copiando do endereço
 certo, o valor lido de lá vinha errado); ver
-[DATA_HARVARD_BUG.md](DATA_HARVARD_BUG.md) pra investigação completa e a
+[DATA_HARVARD_BUG.md](data-harvard.md) pra investigação completa e a
 correção de arquitetura que resolveu isso de vez.
 
 ## Por que só apareceu agora
@@ -207,4 +209,4 @@ rápido de confirmar se é isso de novo.
 
 ---
 
-Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).

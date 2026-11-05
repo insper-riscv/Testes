@@ -101,7 +101,7 @@ delay, which is no longer how the core resets. Fixing this needs a real
 rewrite (a `BOOT_ROM_FILE` generic, `.hex` images re-padded to
 `FLASH_BASE`, and corrected cycle counts), not a parameter tweak, so
 these 10 entries carry `"skip": true` for now; see
-[PER_ENTITY_TESTS_CI_BREAKAGE.md](../../docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md)
+[per-entity-tests-ci-breakage.md](../../docs/en/bugs/per-entity-tests-ci-breakage.md)
 for the full investigation. The 13 `entities` tests are unaffected and
 run normally.
 
