@@ -7,6 +7,8 @@
 
 # Bug: `.data` (globais com valor inicial não-zero) não funciona neste core
 
+🌐 [Português](data-harvard.md) · [English](../../en/bugs/data-harvard.md)
+
 ## Resumo
 
 Este core (`rv32im_pipeline_core`) é uma arquitetura **Harvard de verdade**:
@@ -33,7 +35,7 @@ programa, permitindo `.data` funcionar normalmente. É uma escolha de design
 consistente (a mesma suíte de 42 testes rodada várias vezes sempre parava
 exatamente nesse teste, com todo o resto passando limpo ao redor), o que
 descartou coincidência de instabilidade de JTAG (ver
-[HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md) pro problema,
+[HARDWARE_PROGRAMMING.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/HARDWARE_PROGRAMMING.md) pro problema,
 diferente, de "chain broken" na etapa de programação).
 
 ### 2. `gp`/`.sdata`: correção real, mas não suficiente
@@ -41,8 +43,8 @@ diferente, de "chain broken" na etapa de programação).
 A primeira causa encontrada foi um `gp` (global pointer) nunca inicializado
 em `crt0.S`, fazendo pequenos globais (`.sdata`, endereçamento
 `gp`-relative) ficarem fora do range que o `crt0.S` sabia copiar/zerar: ver
-[SMALL_DATA_SECTION_BUG.md](SMALL_DATA_SECTION_BUG.md) e
-[CRT0_BOOT_REFERENCE.md](../CRT0_BOOT_REFERENCE.md) pra essa correção completa
+[SMALL_DATA_SECTION_BUG.md](small-data-section.md) e
+[CRT0_BOOT_REFERENCE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/CRT0_BOOT_REFERENCE.md) pra essa correção completa
 (que continua válida e necessária; só não era a causa completa deste bug
 específico).
 
@@ -88,7 +90,7 @@ tinha `poll_interval_seconds: 0.5`: com um timeout de 15s, isso permite até
 **~30 chamadas `quartus_stp` separadas**, cada uma abrindo e fechando sua
 própria sessão de JTAG/In-System Memory Editor do zero, em sequência rápida.
 Essa é a mesma classe de fragilidade já documentada pro handoff
-`quartus_sh`→`quartus_pgm` (ver [HARDWARE_PROGRAMMING.md](../HARDWARE_PROGRAMMING.md)), só que multiplicada
+`quartus_sh`→`quartus_pgm` (ver [HARDWARE_PROGRAMMING.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/HARDWARE_PROGRAMMING.md)), só que multiplicada
 por ~30 tentativas numa janela de 15s em vez de duas tentativas isoladas.
 
 A leitura manual (uma chamada, com folga real de tempo) funcionou de
@@ -122,7 +124,7 @@ cópia de `.data` no boot. `.data` com valor inicial não-zero funciona
 normalmente agora; a checagem em tempo de compilação e a restrição "só
 `.bss`" descritas acima não se aplicam mais.
 
-Ver [MEMORY_ARCHITECTURE.md](../MEMORY_ARCHITECTURE.md) para a arquitetura
+Ver [MEMORY_ARCHITECTURE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/MEMORY_ARCHITECTURE.md) para a arquitetura
 completa (mapa de memória, o limite do Quartus Lite que exigiu uma segunda
 cópia física de FLASH, índices JTAG, LEDs).
 
@@ -183,4 +185,4 @@ memória unificado no futuro.
 
 ---
 
-Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).

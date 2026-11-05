@@ -1,5 +1,7 @@
 # Dois bugs no step "Run per-entity VHDL unit tests" (`tests/python/`)
 
+🌐 [Português](per-entity-tests-ci-breakage.md) · [English](../../en/bugs/per-entity-tests-ci-breakage.md)
+
 ## Contexto
 
 Esse step (`uv run python tests/python/runner.py`) é uma suíte de testes
@@ -11,7 +13,7 @@ compilador/linker/`config.yaml` do `riscv-tools`.
 
 Achados investigando por que o `sim.yml` do CI passou a falhar nesse step
 (depois de mexer no cache do Spike, ver
-[MEMORY_ARCHITECTURE.md](../MEMORY_ARCHITECTURE.md)): os dois problemas
+[MEMORY_ARCHITECTURE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/MEMORY_ARCHITECTURE.md)): os dois problemas
 abaixo já existiam antes, só nunca tinham sido notados por alguém rodando
 esse step até o fim.
 
@@ -42,7 +44,7 @@ in process ...boot_rom@rom_simulation(rtl).init
 ### Causa raiz
 
 Desde o redesign de memória (BOOT_ROM fixo + FLASH + RAM; ver
-[MEMORY_ARCHITECTURE.md](../MEMORY_ARCHITECTURE.md)),
+[MEMORY_ARCHITECTURE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/MEMORY_ARCHITECTURE.md)),
 `rv32i3stage_core_sim_test.vhd` instancia
 **duas** cópias de `ROM_simulation`: uma para BOOT_ROM (generic
 `ROM_FILE => BOOT_ROM_FILE`) e uma para FLASH (generic `ROM_FILE =>
@@ -92,7 +94,7 @@ feito aqui.
 
 As 10 entradas em `tests/python/tests.json` ganharam `"skip": true` +
 `"skip_reason"` (mesmo espírito dos arquivos `.off` já usados na suíte
-`asm`/`c`, ver [DATA_HARVARD_BUG.md](DATA_HARVARD_BUG.md); só que adaptado
+`asm`/`c`, ver [DATA_HARVARD_BUG.md](data-harvard.md); só que adaptado
 ao formato de config único deste suite). `tests/python/runner.py` agora
 pula qualquer entrada com `"skip": true` quando roda `all` (imprimindo o
 motivo), mas ainda tenta rodar normalmente se chamada explicitamente por
@@ -106,4 +108,4 @@ que o `sim.yml` do CI roda.
 
 ---
 
-Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../LICENSE).
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).

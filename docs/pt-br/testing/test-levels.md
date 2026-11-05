@@ -1,5 +1,7 @@
 # Níveis de teste do VHDL
 
+🌐 [Português](test-levels.md) · [English](../../en/testing/test-levels.md)
+
 O VHDL do RV32IM passa por nove níveis de verificação, do mais barato e rápido ao mais caro e mais próximo do hardware real. Cada nível pega uma classe de erro que os anteriores não pegam, e nenhum substitui o seguinte. Este documento descreve o que cada um verifica, o que deixa passar, como rodar e onde ele roda hoje.
 
 ## 1. Visão geral
