@@ -153,6 +153,12 @@ main:
     and  x25, x25, x10            # high half 1 and a low half below 16
     csrw 0x323, x0
 5:
+    # leaves the counters as the reset does: the next program starts from zero (the CSRs are not
+    # cleared when the core restarts)
+    csrw 0x320, x0
+    csrw 0x323, x0
+    csrw 0xB03, x0
+    csrw 0xB83, x0
     and  x28, x28, x26
     sw   x28, 0(x5)
     sw   x20, 4(x5)

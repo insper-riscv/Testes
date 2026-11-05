@@ -148,6 +148,12 @@ main:
     COUNT 0, 1
     mv   x24, x25                 # carry into the high half
     COUNT HIGH_KEEP, 0
+    # leaves the counters as the reset does: the next program starts from zero (the CSRs are not
+    # cleared when the core restarts)
+    csrw 0x320, x0
+    csrw 0x323, x0
+    csrw 0xB03, x0
+    csrw 0xB83, x0
     sw   x28, 0(x5)
     sw   x20, 4(x5)
     sw   x26, 8(x5)
