@@ -27,7 +27,7 @@ Real-hardware tests require a workstation with Quartus, a self-hosted GitHub Act
 
 | Path | Contents |
 | :--- | :--- |
-| `asm/`, `c/` | The 128 tests of the suite (88 in assembly and 40 in C), one `<name>/src.S` or `<name>/src.c` per folder |
+| `asm/`, `c/` | The 130 tests of the suite (90 in assembly and 40 in C), one `<name>/src.S` or `<name>/src.c` per folder |
 | `asm-hpm-reduced/` | The `hpm-reduced` program, which expects the core with 4 event counters of 40 bits and so lives apart from `asm/` (which runs on the full profile); it runs with `config.hpm-reduced.yaml` |
 | `tools/riscv_build/` | This project's configuration for `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` and its variants for the DE0-CV, `config.hpm-reduced.yaml` and `config.hpm-reduced-asm.yaml` for the core of 4 counters of 40 bits): it extends the `config.platform-*.yaml` that `riscv-tools platform sync` generates from the [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) submodule (toolchain, memory map, runtime, Quartus project, and simulation), and adds only the test paths |
 | `tests/python/` | Remaining per-entity tests: raw instruction sequences, all marked `skip`, in `tests.json` ([documentation](tests/python/README.md)) |

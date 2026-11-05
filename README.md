@@ -28,7 +28,7 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 
 | Caminho | Conteúdo |
 | :--- | :--- |
-| `asm/`, `c/` | Os 128 testes da suíte (88 em assembly, 40 em C), um `<name>/src.S` ou `<name>/src.c` por pasta |
+| `asm/`, `c/` | Os 130 testes da suíte (90 em assembly, 40 em C), um `<name>/src.S` ou `<name>/src.c` por pasta |
 | `asm-hpm-reduced/` | O programa `hpm-reduced`, que espera o núcleo com 4 contadores de eventos de 40 bits e por isso fica fora do `asm/` (que roda no perfil completo); roda com `config.hpm-reduced.yaml` |
 | `c-sdram/` | Programas que usam a SDRAM da plataforma `sdram`, um `<name>/src.c` por pasta; cada um confere a si mesmo e sinaliza PASS ou FAIL |
 | `tools/riscv_build/` | Configuração deste projeto para o `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` e as variantes dela para a DE0-CV, `config.hpm-reduced.yaml` e `config.hpm-reduced-asm.yaml` para o núcleo de 4 contadores de 40 bits): estende o `config.platform-*.yaml` da plataforma, que `riscv-tools platform sync` gera a partir do submódulo [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) (toolchain, mapa de memória, runtime, projeto do Quartus, simulação), e acrescenta só os caminhos dos testes |
