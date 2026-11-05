@@ -1,7 +1,7 @@
 {
     "one": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -81,7 +81,7 @@
     },
     "two": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -161,7 +161,7 @@
     },
     "three": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -241,7 +241,7 @@
     },
     "four": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -321,7 +321,7 @@
     },
     "five": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -401,7 +401,7 @@
     },
     "six": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -481,7 +481,7 @@
     },
     "MUL": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -561,7 +561,7 @@
     },
     "FWD": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -641,7 +641,7 @@
     },
     "LOAD_USE": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
@@ -721,7 +721,7 @@
     },
     "MEXT": {
         "skip": true,
-        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/bugs/PER_ENTITY_TESTS_CI_BREAKAGE.md.",
+        "skip_reason": "Raw hand-assembled instruction sequences written for the OLD architecture (reset ran directly from address 0). Since the BOOT_ROM+FLASH split (see Tests/docs/MEMORY_ARCHITECTURE.md), rv32i3stage_core_sim_test always boots through BOOT_ROM first (this test module needs its own BOOT_ROM_FILE generic, which it never supplied) before reaching FLASH at FLASH_BASE, not address 0 -- so even fixing that alone is not enough: this test module's own hardcoded PC values / cycle counts (e.g. pcs = [i*4 ...] assuming code starts executing at PC=0 with no boot delay) would still be wrong. Needs a real rewrite (new PC/cycle assumptions + re-padding the .hex to FLASH_BASE), not a quick parameter fix -- see docs/pt-br/bugs/per-entity-tests-ci-breakage.md.",
         "toplevel": "rv32i3stage_core_sim_test",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
