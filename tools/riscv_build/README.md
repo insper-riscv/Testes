@@ -151,7 +151,7 @@ uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit mif
 uv run riscv-tools --config tools/riscv_build/config.yaml program build/real/uart-echo.mif
 uv run python tools/riscv_build/uart_hardware_test.py --skip-program
 uv run riscv-tools --config tools/riscv_build/config.yaml run \
-  --exclude uart-echo,uart-tx,uart-errors --skip-reconfigure
+  --exclude uart-echo,uart-tx,uart-errors,uart-stdio --skip-reconfigure
 
 # sim (needs GHDL; cocotb/cocotb-tools already come from riscv-tools[sim])
 uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex
@@ -171,9 +171,9 @@ which `run`/`sim` then consume.
 ## Integrated UART hardware check
 
 The normal JTAG/tohost-only `riscv-tools run` flow cannot validate the UART
-tests by itself: `uart-echo` and `uart-errors` need external serial traffic,
-while `uart-tx` can report tohost PASS without proving that the expected bytes
-reached the physical pin. After compiling Quartus with
+tests by itself: `uart-echo`, `uart-errors` and `uart-stdio` need external
+serial traffic, while `uart-tx` can report tohost PASS without proving that
+the expected bytes reached the physical pin. After compiling Quartus with
 `build/real/uart-echo.mif`, close `picocom`, connect the Pico/Debug Probe UART,
 and run:
 
@@ -181,7 +181,7 @@ and run:
 uv run python tools/riscv_build/uart_hardware_test.py --port /dev/ttyACM0
 ```
 
-By default the harness validates all three programs. As a consistency guard, it
+By default the harness validates all four programs. As a consistency guard, it
 checks that `quartus/init.mif` is byte-for-byte identical to the compiled
 `uart-echo.mif` and that the `.sof` is newer. It then:
 
@@ -200,6 +200,9 @@ checks that `quartus/init.mif` is byte-for-byte identical to the compiled
    cleared it through W1C;
 6. sends one raw 32-byte burst (`00` through `1f`), requires the exact echo plus
    the final `P` marker, no new error flags, and `TOHOST=1`.
+7. loads `uart-stdio.mif` and requires `READY\n`, sends `UART 42\n`, then
+   requires `Hello, UART! value=42\n` and `TOHOST=1`; the firmware produces
+   both messages with picolibc `printf` and parses the input with `scanf`.
 
 Running the baked-in echo first is intentional: it leaves the CPU parked in
 the boot ROM, where replacing FLASH for the later tests is safe. Reprogramming
@@ -210,10 +213,11 @@ selection is available for diagnostics:
 uv run python tools/riscv_build/uart_hardware_test.py --test uart-echo
 uv run python tools/riscv_build/uart_hardware_test.py --test uart-tx
 uv run python tools/riscv_build/uart_hardware_test.py --test uart-errors
+uv run python tools/riscv_build/uart_hardware_test.py --test uart-stdio
 ```
 
 Every selection still performs the echo bootstrap before replacing FLASH;
-`all` is the default and reports all three checks explicitly.
+`all` is the default and reports all four checks explicitly.
 
 To exercise arbitrary echo data while keeping the firmware's fixed length:
 
@@ -243,20 +247,22 @@ Each suite has its own workflow file:
   runs on any push/PR/branch, on a standard GitHub-hosted runner
   (`ghdl/ghdl:6.0.0-mcode-ubuntu-24.04`, no license needed). Also
   triggerable manually via **Actions → sim tests → Run workflow**. Its generic
-  top instantiates the UART, so `uart-tx`, `uart-echo` and `uart-errors` run in
-  the normal suite beside the other programs. Cocotb decodes the serial 8N1 output,
+  top instantiates the UART, so `uart-tx`, `uart-echo`, `uart-errors` and
+  `uart-stdio` run in the normal suite beside the other programs. Cocotb decodes the serial 8N1 output,
   requires exactly `Hello, world!\r\n` from `uart-tx`, injects `RX test\r\n`
   into `uart-echo` and requires the same bytes back, then validates the error
-  flags, W1C behavior and 32-byte burst protocol with `uart-errors`. The
+  flags, W1C behavior and 32-byte burst protocol with `uart-errors`, then
+  exchanges formatted text and an integer with picolibc `printf`/`scanf` in
+  `uart-stdio`. The
   workflow also runs the host-side unit tests for the physical UART harness.
 - [`.github/workflows/real.yml`](../../.github/workflows/real.yml):
   only on `main`, or on demand via **Actions → real tests (FPGA) → Run
   workflow**. Needs a self-hosted runner with Quartus and a board
-  attached. It compiles one `uart-echo` baseline, runs all three physical UART
+  attached. It compiles one `uart-echo` baseline, runs all four physical UART
   tests through the dedicated harness, then runs the remaining tohost-only
   suite without another Quartus compile.
 - [`.github/workflows/sim-fpga.yml`](../../.github/workflows/sim-fpga.yml):
-  runs the complete manifest, including all three UART programs, against the real
+  runs the complete manifest, including all four UART programs, against the real
   hardware top and Quartus memory models on the self-hosted runner.
 
 The manual `real` and `sim-fpga` forms test the version of Insper-RISC-V (and of the
