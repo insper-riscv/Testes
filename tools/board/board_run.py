@@ -47,6 +47,8 @@ STAGES: dict[str, dict[str, object]] = {
     "sdram": {
         "config": "config.sdram-flash.yaml",
         "exclude": {},
+        # hex-id pausa para uma pessoa ler o display e passa de 15 s
+        "timeouts": {"hex-id": 90},
     },
     "irq": {
         "config": "config.sdram-flash-irq.yaml",
@@ -232,6 +234,7 @@ def run_stage(stage: str, board: str, part: str, out: Path) -> dict[str, str]:
     wanted = partition(names, part)
     if not wanted:
         return {}
+    set_timeouts(stage, wanted)
     command = tools_command() + [
         "--config",
         f"{BUILD}/{config}",
@@ -252,6 +255,28 @@ def run_stage(stage: str, board: str, part: str, out: Path) -> dict[str, str]:
         )
     verdicts = parse_verdicts(log.read_text())
     return {name: verdicts.get(name, "TIMEOUT") for name in wanted}
+
+
+def set_timeouts(stage: str, wanted: list[str]) -> None:
+    """Aumenta no manifesto o timeout dos programas lentos da etapa.
+
+    Parameters
+    ----------
+    stage : str
+        Nome da etapa.
+    wanted : list of str
+        Os programas que a placa vai rodar.
+    """
+    timeouts: dict[str, int] = STAGES[stage].get("timeouts", {})  # type: ignore[assignment]
+    mine = {n: t for n, t in timeouts.items() if n in wanted}
+    if not mine:
+        return
+    config = yaml_build_dir(str(STAGES[stage]["config"]))
+    path = TESTS_ROOT / config / "real" / "manifest.json"
+    entries = json.loads(path.read_text())
+    for entry in entries:
+        entry["timeout_s"] = max(entry["timeout_s"], mine.get(entry["name"], 0))
+    path.write_text(json.dumps(entries, indent=1))
 
 
 def parse_verdicts(text: str) -> dict[str, str]:
