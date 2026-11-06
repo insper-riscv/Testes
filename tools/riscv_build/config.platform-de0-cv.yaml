@@ -173,6 +173,7 @@ sim:
     HAS_ZICCLSM: true
     HAS_INTERRUPTS: true
     HAS_SSCOFPMF: true
+    HAS_ACCESS_FAULTS: true
     ROM_EXTERNAL: true
     RAM_EXTERNAL: true
     HAS_ICACHE: true
