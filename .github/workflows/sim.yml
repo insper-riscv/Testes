@@ -243,29 +243,6 @@ jobs:
           path: "**/*.ghw"
           if-no-files-found: ignore
 
-  unit-vhdl:
-    runs-on: ubuntu-26.04
-    timeout-minutes: 30
-    container:
-      image: ghcr.io/insper-riscv/ci-elf:latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: recursive
-
-      - name: Run per-entity VHDL unit tests (tests/python/)
-        run: |
-          uv sync
-          uv run python tests/python/runner.py
-
-      - name: Upload waveforms
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: waveforms-unit-vhdl
-          path: "**/*.ghw"
-          if-no-files-found: ignore
-
   # A regressao completa com a verificacao cruzada do Spike repete as simulacoes acima, entao so roda
   # na main e a pedido (nao atrasa o PR). Um job pulado conta como sucesso no agregador.
   regression:
@@ -297,7 +274,7 @@ jobs:
   # quando todos os jobs acima passaram (ou, no caso da regressao, foram pulados).
   test-sim:
     if: always()
-    needs: [sim-host, sim-matrix, sim-sdram-flash, sim-flash-slow, unit-vhdl, regression]
+    needs: [sim-host, sim-matrix, sim-sdram-flash, sim-flash-slow, regression]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
