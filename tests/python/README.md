@@ -96,10 +96,10 @@ and uses that to name the test's `sim_build/` subfolder.
 ## Known issue: the 10 `instructions` tests are all skipped
 
 The `instructions` group (`one`, `two`, `three`, `four`, `five`, `six`,
-`MUL`, `FWD`, `LOAD_USE`, `MEXT`) predates the BOOT_ROM+FLASH memory
+`MUL`, `FWD`, `LOAD_USE`, `MEXT`) predates the BOOT_MEMORY+FLASH memory
 redesign and assumes code starts executing at address `0` with no boot
 delay, which is no longer how the core resets. Fixing this needs a real
-rewrite (a `BOOT_ROM_FILE` generic, `.hex` images re-padded to
+rewrite (a `BOOT_MEMORY_FILE` generic, `.hex` images re-padded to
 `FLASH_BASE`, and corrected cycle counts), not a parameter tweak, so
 these 10 entries carry `"skip": true` for now; see
 [per-entity-tests-ci-breakage.md](../../docs/en/bugs/per-entity-tests-ci-breakage.md)

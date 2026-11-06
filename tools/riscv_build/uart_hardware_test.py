@@ -5,7 +5,7 @@ side.  It verifies that the existing Quartus bitstream was built from the
 ``uart-echo`` image, opens the Pico/Debug Probe UART in raw 115200 8N1 mode,
 reprograms that bitstream to start from a clean state, and checks the exact
 echo plus the JTAG tohost. It can then replace FLASH over JTAG with
-``uart-tx`` and ``uart-errors``, restart through the boot ROM, and validate
+``uart-tx`` and ``uart-errors``, restart through the boot memory, and validate
 TX/RX FIFOs, sticky error flags, W1C clearing and a raw byte burst without
 another Quartus compile.
 """
@@ -425,7 +425,7 @@ def load_and_start_firmware(
     cfg: dict[str, Any],
     mif_path: Path,
 ) -> None:
-    """Replace both FLASH copies and restart a core parked in boot ROM."""
+    """Replace both FLASH copies and restart a core parked in boot memory."""
     rom_writer.write_rom(link, cfg["quartus"]["rom_mem_instances"], mif_path)
 
     # Flush before the restart pulse. A UART firmware may start transmitting
