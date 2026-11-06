@@ -49,6 +49,7 @@ sim:
   - Insper-RISC-V/Core/src/shared/word_consts.vhd
   - Insper-RISC-V/Core/src/M/muldiv_consts.vhd
   - Insper-RISC-V/Core/src/Zicond/zicond_consts.vhd
+  - Insper-RISC-V/Core/src/Zicsr/irq_consts.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_value_consts.vhd
   - Insper-RISC-V/Core/src/Zicsr/trap_consts.vhd
   - Insper-RISC-V/Core/src/Zimop/zimop_consts.vhd
@@ -79,6 +80,10 @@ sim:
   - Insper-RISC-V/Core/src/Zicond/zicond_decode.vhd
   - Insper-RISC-V/Core/src/Zicond/zicond_unit.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_decode.vhd
+  - Insper-RISC-V/Core/src/Zihintntl/zihintntl_consts.vhd
+  - Insper-RISC-V/Core/src/Zihintpause/zihintpause_consts.vhd
+  - Insper-RISC-V/Core/src/Zihintntl/zihintntl_decode.vhd
+  - Insper-RISC-V/Core/src/Zihintpause/zihintpause_decode.vhd
   - Insper-RISC-V/Core/src/Zimop/zimop_decode.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_addr_consts.vhd
   - Insper-RISC-V/Core/src/Zicsr/csr_event_consts.vhd
@@ -120,12 +125,12 @@ sim:
   python_path:
   - Insper-RISC-V/src/simulation/internal-mem
   env:
-    SIM_TIMEOUT_CYCLES: '250000'
+    SIM_TIMEOUT_CYCLES: '500000'
     TOHOST_ADDR: '0x0002FFE8'
     STDOUT_ADDR: '0x0002FBE0'
-    SIM_CLOCK: CLOCK_50
+    SIM_CLOCK: i_clock_50
     SIM_CLOCK_PERIOD_NS: '20'
-    SIM_RESET: FPGA_RESET_N
+    SIM_RESET: i_fpga_reset_n
     SIM_RESET_ACTIVE: '0'
     SIM_SAMPLE_CLOCK: pll_clk_idexmem
   ghdl_std: 08
