@@ -19,18 +19,18 @@ Os programas `uart-echo`, `uart-tx` e `uart-errors` usam os pinos da UART, que a
 | Subcomando | Onde roda | O que faz |
 | :--- | :--- | :--- |
 | `prepare` | imagem `ci-elf`, sem placa | `generate-header` e `compile --emit mif` de cada etapa |
-| `run` | máquina com Quartus e cabo | toma o lock da placa, programa o `.sof`, roda as etapas e escreve `results-<placa>.json` |
-| `act` | máquina com Quartus e cabo | toma o lock da placa, programa o `.sof` e roda `certify-board --skip-build` sobre os ELFs já construídos |
+| `run` | máquina com Quartus e cabo | escolhe a placa pelo JTAG e toma a trava dela, programa o `.sof`, roda as etapas e escreve `results-<host>.json` |
+| `act` | máquina com Quartus e cabo | escolhe e trava a placa, programa o `.sof` e roda `certify-board --skip-build` sobre os ELFs já construídos |
 
-A variável `RISCV_TOOLS` dá o comando do `riscv-tools`, por exemplo `uv run --project <clone-do-Tools> riscv-tools`. O programador acha o cabo pelo IDCODE `02B050DD`, nunca pelo nome do cabo.
+A variável `RISCV_TOOLS` dá o comando do `riscv-tools`, por exemplo `uv run --project <clone-do-Tools> riscv-tools`. O runner não guarda IDCODE nem nome de trava. Quem acha a placa é o `riscv-tools board lock`, pelo IDCODE da cadeia e pela porta USB do cabo (pacote `Insper-RISC-V/boards/de0-cv`), nunca pelo nome do cabo; o cabo escolhido segue para o `quartus_pgm` e, por `--cable`, para os `riscv-tools` filhos. Ver o módulo `board` do Tools.
 
 ## 3. Duas placas em paralelo
 
-A opção `--part I/N` reparte a lista ordenada: a placa `I` roda os itens de índice `I` módulo `N`. O notebook toma `/tmp/de0cv-laptop.lock` e a PC1 toma `/tmp/de0cv-ws.lock`, cada uma com `--board laptop` e `--board ws`.
+A opção `--part I/N` reparte a lista ordenada: a placa `I` roda os itens de índice `I` módulo `N`. O rótulo do host (`--host laptop` ou `--host ws`, também aceito como `--board`) entra no nome da trava, `de0cv-laptop.lock` e `de0cv-ws.lock`, o mesmo arquivo que os demais usuários da placa tomam. Com `--part auto` o runner toma uma placa livre do host e reparte a lista entre todas as placas da plataforma que o host tem, na ordem do identificador delas.
 
 ```bash
 RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
-  python3 tools/board/board_run.py run --board laptop --part 0/2 --sof de0-cv.sof
+  python3 tools/board/board_run.py run --host laptop --part 0/2 --sof de0-cv.sof
 ```
 
 ## 4. ELFs do ACT4
@@ -38,7 +38,7 @@ RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
 O Certification gera o alvo da placa com `gen_profiles.py --profile rv32im_full_zifencei --board --out build/target` e constrói os ELFs com `riscv-tools --config build/target/config.yaml certify-board --build-only`, na imagem `ci-act4`. O runner roda então:
 
 ```bash
-python3 tools/board/board_run.py act --board ws --part 1/2 --sof de0-cv.sof \
+python3 tools/board/board_run.py act --host ws --part 1/2 --sof de0-cv.sof \
   --config <Certification>/build/target/config.yaml --root <Certification> \
   --target rv32im_full_zifencei__board
 ```

@@ -6,20 +6,22 @@ O runner tem três subcomandos.
     Compila cada etapa para a placa (``compile --emit mif``). Roda onde está o GCC
     RISC-V, isto é, dentro da imagem ``ci-elf``, e não precisa de placa.
 ``run``
-    Pega o lock da placa, programa o bitstream com o ``quartus_pgm`` (a menos que
-    ``--skip-program``), roda as etapas pedidas com ``riscv-tools run`` e escreve
-    ``results-<placa>.json`` com PASS, FAIL ou TIMEOUT por programa. Roda onde estão o
-    Quartus e o cabo.
+    Escolhe a placa pelo JTAG e toma a trava dela (``riscv-tools board lock``), programa o
+    bitstream com o ``quartus_pgm`` (a menos que ``--skip-program``), roda as etapas pedidas
+    com ``riscv-tools run`` e escreve ``results-<host>.json`` com PASS, FAIL ou TIMEOUT por
+    programa. Roda onde estão o Quartus e o cabo.
 ``act``
-    Pega o lock da placa e roda os ELFs do ACT4 de um config gerado por
+    Escolhe e trava a placa e roda os ELFs do ACT4 de um config gerado por
     ``gen_profiles.py --board`` (``riscv-tools certify-board --skip-build``).
 
-Duas placas rodam em paralelo repartindo a lista com ``--part I/N``: a placa ``I`` (de 0
-a N-1) roda os itens de índice ``I`` módulo ``N`` da lista ordenada.
+A placa é achada pelo IDCODE da cadeia e pela porta USB do cabo, nunca pelo nome do cabo,
+que muda, e a trava tem o nome ``de0cv-<host>.lock``. Duas placas rodam em paralelo
+repartindo a lista com ``--part I/N``: a placa ``I`` (de 0 a N-1) roda os itens de índice
+``I`` módulo ``N`` da lista ordenada. Com ``--part auto`` o runner toma uma placa livre e
+reparte a lista entre todas as placas presentes do host, na ordem do identificador delas.
 """
 
 import argparse
-import fcntl
 import json
 import os
 import re
@@ -56,9 +58,9 @@ STAGES: dict[str, dict[str, object]] = {
     },
 }
 
-LOCKS = {"laptop": "/tmp/de0cv-laptop.lock", "ws": "/tmp/de0cv-ws.lock"}
+PLATFORM_BOARD = "de0-cv"
 _VERDICT = re.compile(r"^\s*(PASS|FAIL|TIMEOUT)\s+(\S+)")
-_IDCODE = "02B050DD"
+LOCK_WAIT_S = 14400
 
 
 def tools_command() -> list[str]:
@@ -72,78 +74,165 @@ def tools_command() -> list[str]:
     return shlex.split(os.environ.get("RISCV_TOOLS", "riscv-tools"))
 
 
-@contextmanager
-def board_lock(board: str, wait_s: int = 14400) -> Iterator[None]:
-    """Segura o lock da placa durante toda a sessão.
+def board_args() -> list[str]:
+    """Diz ao ``riscv-tools board`` qual placa procurar.
 
-    Parameters
-    ----------
-    board : str
-        ``laptop`` ou ``ws``.
-    wait_s : int
-        Quanto esperar pelo lock antes de desistir.
-
-    Yields
-    ------
-    None
-        Com o lock tomado.
-
-    Raises
-    ------
-    TimeoutError
-        Se o lock não ficou livre a tempo.
-    """
-    with open(LOCKS[board], "a", encoding="utf-8") as handle:
-        deadline = time.monotonic() + wait_s
-        while True:
-            try:
-                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() > deadline:
-                    raise TimeoutError(f"lock {LOCKS[board]} ocupado") from None
-                time.sleep(5)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle, fcntl.LOCK_UN)
-
-
-def de0cv_cable() -> str:
-    """Acha o cabo da DE0-CV pelo IDCODE, nunca pelo nome do cabo (que muda).
+    A placa é a do pacote ``Insper-RISC-V/boards/de0-cv``, lido pelo catálogo do Tools.
 
     Returns
     -------
-    str
-        O nome ``USB-Blaster [bus-porta]`` cuja cadeia lista o IDCODE da DE0-CV.
+    list of str
+        A opção ``--board``.
 
     Raises
     ------
     RuntimeError
-        Se nenhum cabo lista o IDCODE.
+        Se o ponteiro do submódulo Insper-RISC-V ainda não traz o pacote da placa.
+    """
+    package = TESTS_ROOT / "Insper-RISC-V" / "boards" / PLATFORM_BOARD / "board.yaml"
+    if not package.is_file():
+        raise RuntimeError(
+            f"{package} não existe: atualize o submódulo Insper-RISC-V para um commit com os "
+            "pacotes de placa"
+        )
+    return ["--board", PLATFORM_BOARD]
+
+
+def board_command(host: str, sub: str, *extra: str) -> list[str]:
+    """Monta o comando ``riscv-tools board <sub>`` da placa do Tests.
+
+    Parameters
+    ----------
+    host : str
+        O rótulo do host (``laptop`` ou ``ws``), que entra no nome da trava.
+    sub : str
+        ``select`` ou ``lock``.
+    *extra : str
+        Opções a mais do subcomando.
+
+    Returns
+    -------
+    list of str
+        O comando.
+    """
+    return [
+        *tools_command(),
+        "--root",
+        str(TESTS_ROOT),
+        "board",
+        sub,
+        "--host",
+        host,
+        *board_args(),
+        *extra,
+    ]
+
+
+def present_boards(host: str) -> list[dict[str, str]]:
+    """Lista as placas da plataforma presentes no host.
+
+    Parameters
+    ----------
+    host : str
+        O rótulo do host.
+
+    Returns
+    -------
+    list of dict
+        Uma seleção (``id``, ``cable``, ``lock_file``...) por placa, na ordem das portas.
     """
     out = subprocess.run(
-        ["jtagconfig"], check=True, capture_output=True, text=True
+        board_command(host, "select", "--all"),
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=TESTS_ROOT,
     ).stdout
-    cable = None
-    for line in out.splitlines():
-        found = re.match(r"^\s*\d+\)\s+(USB-Blaster.*)$", line)
-        if found:
-            cable = found.group(1).strip()
-        elif cable and _IDCODE in line.upper():
-            return cable
-    raise RuntimeError(f"nenhum cabo lista o IDCODE {_IDCODE}:\n{out}")
+    return json.loads(out)
 
 
-def program(sof: Path) -> None:
-    """Programa o bitstream na DE0-CV.
+@contextmanager
+def board_session(
+    host: str, wait_s: int = LOCK_WAIT_S, free: bool = False
+) -> Iterator[dict[str, str]]:
+    """Escolhe a placa e segura a trava dela durante toda a sessão.
+
+    A trava é do ``riscv-tools board lock --hold``, que a segura enquanto a entrada padrão
+    dele estiver aberta, e por isso ela se solta se o runner morrer.
+
+    Parameters
+    ----------
+    host : str
+        O rótulo do host, ``laptop`` ou ``ws``.
+    wait_s : int
+        Quanto esperar pela trava antes de desistir.
+    free : bool
+        Toma a primeira placa livre entre as iguais, em vez de falhar por ambiguidade.
+
+    Yields
+    ------
+    dict
+        A seleção: ``id``, ``cable``, ``device``, ``lock_file``.
+
+    Raises
+    ------
+    RuntimeError
+        Se a placa não foi achada ou a trava não ficou livre a tempo.
+    """
+    extra = ["--wait", str(wait_s), "--hold"] + (["--free"] if free else [])
+    with subprocess.Popen(
+        board_command(host, "lock", *extra),
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+        cwd=TESTS_ROOT,
+    ) as lock:
+        line = lock.stdout.readline() if lock.stdout else ""
+        if not line:
+            lock.wait()
+            raise RuntimeError(f"riscv-tools board lock falhou (status {lock.returncode})")
+        try:
+            yield json.loads(line)
+        finally:
+            if lock.stdin:
+                lock.stdin.close()
+            lock.wait(timeout=60)
+
+
+def part_of(part: str, host: str, selection: dict[str, str]) -> str:
+    """Resolve ``auto`` na fatia ``I/N`` da placa travada.
+
+    Parameters
+    ----------
+    part : str
+        ``I/N`` ou ``auto``.
+    host : str
+        O rótulo do host.
+    selection : dict
+        A placa travada.
+
+    Returns
+    -------
+    str
+        A fatia ``I/N``; com ``auto``, ``N`` é o número de placas presentes do host e ``I``
+        a posição do identificador da placa travada entre elas.
+    """
+    if part != "auto":
+        return part
+    ids = sorted(b["id"] for b in present_boards(host))
+    return f"{ids.index(selection['id'])}/{len(ids)}"
+
+
+def program(sof: Path, cable: str) -> None:
+    """Programa o bitstream na placa.
 
     Parameters
     ----------
     sof : Path
         O arquivo ``.sof``.
+    cable : str
+        O nome do cabo que o ``riscv-tools board`` escolheu para esta sessão.
     """
-    cable = de0cv_cable()
     print(f"programando {sof} pelo cabo {cable}", flush=True)
     subprocess.run(
         ["quartus_pgm", "-c", cable, "-m", "jtag", "-o", f"p;{sof}"],
@@ -209,19 +298,23 @@ def partition(names: list[str], part: str) -> list[str]:
     return names[index::count]
 
 
-def run_stage(stage: str, board: str, part: str, out: Path) -> dict[str, str]:
+def run_stage(
+    stage: str, host: str, part: str, out: Path, cable: str
+) -> dict[str, str]:
     """Roda uma etapa na placa e devolve o veredito de cada programa.
 
     Parameters
     ----------
     stage : str
         Nome da etapa.
-    board : str
+    host : str
         ``laptop`` ou ``ws``, só para o nome do log.
     part : str
         Fatia ``I/N`` da lista.
     out : Path
         Onde o log da etapa é escrito.
+    cable : str
+        O cabo da placa travada, que o ``riscv-tools`` filho usa em vez de escolher outro.
 
     Returns
     -------
@@ -236,6 +329,8 @@ def run_stage(stage: str, board: str, part: str, out: Path) -> dict[str, str]:
         return {}
     set_timeouts(stage, wanted)
     command = tools_command() + [
+        "--cable",
+        cable,
         "--config",
         f"{BUILD}/{config}",
         "run",
@@ -244,7 +339,7 @@ def run_stage(stage: str, board: str, part: str, out: Path) -> dict[str, str]:
         "--only",
         ",".join(wanted),
     ]
-    log = out / f"{stage}-{board}.log"
+    log = out / f"{stage}-{host}.log"
     with open(log, "w", encoding="utf-8") as handle:
         subprocess.run(
             command,
@@ -313,16 +408,17 @@ def cmd_prepare(args: argparse.Namespace) -> None:
 
 
 def cmd_run(args: argparse.Namespace) -> None:
-    """Programa a placa e roda as etapas sob o lock."""
+    """Escolhe e trava a placa, programa e roda as etapas sob a trava."""
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict[str, str]] = {}
-    with board_lock(args.board):
+    with board_session(args.host, free=args.part == "auto") as board:
+        part = part_of(args.part, args.host, board)
         if not args.skip_program:
-            program(Path(args.sof))
+            program(Path(args.sof), board["cable"])
         for stage in args.stages:
-            results[stage] = run_stage(stage, args.board, args.part, out)
-    (out / f"results-{args.board}.json").write_text(
+            results[stage] = run_stage(stage, args.host, part, out, board["cable"])
+    (out / f"results-{args.host}.json").write_text(
         json.dumps(results, indent=1, sort_keys=True)
     )
     failed = [
@@ -333,21 +429,23 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 
 def cmd_act(args: argparse.Namespace) -> None:
-    """Roda os ELFs do ACT4 de um config gerado, sob o lock da placa."""
+    """Roda os ELFs do ACT4 de um config gerado, sob a trava da placa."""
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     root = Path(args.root)
     work = root / "vendor/riscv-arch-test/work"
     elfs = sorted({p.stem for p in work.glob(f"{args.target}*/elfs/**/*.elf")})
-    wanted = partition(elfs, args.part)
-    log = out / f"act-{args.board}.log"
-    with board_lock(args.board):
+    log = out / f"act-{args.host}.log"
+    with board_session(args.host, free=args.part == "auto") as board:
+        wanted = partition(elfs, part_of(args.part, args.host, board))
         if not args.skip_program:
-            program(Path(args.sof))
+            program(Path(args.sof), board["cable"])
         with open(log, "w", encoding="utf-8") as handle:
             subprocess.run(
                 tools_command()
                 + [
+                    "--cable",
+                    board["cable"],
                     "--config",
                     args.config,
                     "--root",
@@ -363,7 +461,7 @@ def cmd_act(args: argparse.Namespace) -> None:
             )
     verdicts = parse_verdicts(log.read_text())
     results = {n: verdicts.get(n, "TIMEOUT") for n in wanted}
-    (out / f"act-{args.board}.json").write_text(
+    (out / f"act-{args.host}.json").write_text(
         json.dumps(results, indent=1, sort_keys=True)
     )
     failed = sorted(n for n, v in results.items() if v != "PASS")
@@ -380,8 +478,14 @@ def main() -> None:
     prep.set_defaults(func=cmd_prepare)
     for name, func in (("run", cmd_run), ("act", cmd_act)):
         p = sub.add_parser(name)
-        p.add_argument("--board", choices=sorted(LOCKS), required=True)
-        p.add_argument("--part", default="0/1", help="fatia I/N da lista")
+        p.add_argument(
+            "--host",
+            "--board",
+            dest="host",
+            required=True,
+            help="rótulo do host da placa (laptop ou ws), no nome da trava e dos arquivos",
+        )
+        p.add_argument("--part", default="0/1", help="fatia I/N da lista, ou auto")
         p.add_argument("--sof", help="bitstream a programar")
         p.add_argument("--skip-program", action="store_true")
         p.add_argument("--out", default="build/board")
