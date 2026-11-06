@@ -879,6 +879,8 @@
         "parameters": {
             "has_m": true,
             "has_zicsr": true,
+            "has_zihpm": true,
+            "has_sscofpmf": true,
             "has_interrupts": true
         },
         "build_args": [

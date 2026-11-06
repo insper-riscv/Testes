@@ -249,3 +249,15 @@ async def test_irq_wfi(dut):
 async def test_irq_ecall(dut):
     """A interrupção vence o ecall, que trapa depois do retorno."""
     await check(dut, "irq-ecall")
+
+
+@cocotb.test()
+async def test_irq_lcofi(dut):
+    """A interrupção de estouro de contador (Sscofpmf), com OF e MINH."""
+    await check(dut, "irq-lcofi")
+
+
+@cocotb.test()
+async def test_irq_lcofi_priority(dut):
+    """O estouro tem a menor prioridade e vai a BASE + 52 no modo vetorado."""
+    await check(dut, "irq-lcofi-priority")

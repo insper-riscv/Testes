@@ -15,6 +15,10 @@ The programs in `asm-irq/` verify the interrupt entry of the `Core` with real ex
 | `irq-priority` | Software and timer pending together: the software one enters first and the timer one right after, both over the same instruction |
 | `irq-wfi` | `wfi` executes as a `nop`, with and without a pending interrupt, and an interrupt taken on it gives control back to the `wfi` itself |
 | `irq-ecall` | With an interrupt pending when the `ecall` arrives, the interrupt enters first and the `ecall` traps after the return, with the same `mepc` |
+| `irq-lcofi` | Sscofpmf: the taken-branch event on `mhpmcounter3`, armed 40 counts below the 64-bit wrap, sets `OF` in `mhpmevent3h` and `LCOFIP` in `mip`, and the interrupt enters once with `mcause = 0x8000000D`. With `OF` at 1 another overflow asks for nothing, clearing `OF` re-arms, with `LCOFIE` at 0 the request stays in `mip` and is taken when the mask is set, and `MINH` stops the counting |
+| `irq-lcofi-priority` | Sscofpmf: with the timer and the overflow pending together and `mtvec` vectored, the timer enters at `BASE + 28` and the overflow at `BASE + 52` right after, over the same instruction |
+
+The `irq-lcofi` and `irq-lcofi-priority` programs need the `core` with `has_zihpm` and `has_sscofpmf`, and `tests/python` runs them that way.
 
 ## 2. CLINT model
 
