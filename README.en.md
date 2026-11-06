@@ -9,6 +9,7 @@ Real-hardware and simulation test suite of the `RV32IM` RISC-V core, driven by t
 - [AUTHORS.en.md](AUTHORS.en.md): authors with commits in the repository, with name and GitHub account.
 - [CONTRIBUTING.en.md](CONTRIBUTING.en.md): mandatory contribution rules, C23 and Python standards, documentation rules, and verification before opening a Pull Request.
 - [CITATION.cff](CITATION.cff): software citation metadata.
+- [riscv-tools](https://github.com/insper-riscv/Tools/blob/main/README.en.md): complete reference of each `riscv-tools` subcommand.
 - [tools/riscv_build/README.md](tools/riscv_build/README.md): conventions specific to this suite (test format, hardware facts, and how to write a new test).
 - [placa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/placa.md): permanent rule on compiling and programming the board, and the JTAG bug already diagnosed.
 - [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): BOOT_ROM, FLASH, and RAM architecture.
