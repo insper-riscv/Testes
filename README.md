@@ -67,7 +67,7 @@ riscv-tools --config tools/riscv_build/config.hpm-reduced-asm.yaml sim --only hp
 
 A simulação da `de0-cv` (`config.sdram-flash.yaml`) roda todos os programas de `c-sdram/` e `asm-sdram/`, inclusive `flash-const` e `cpi-kernels`, que precisam da FLASH atrás das caches. Só o `hex-id` fica de fora, porque as pausas dele são feitas para uma pessoa olhar o display na placa; o programa `display` cobre a escrita e a leitura do registrador na simulação.
 
-A plataforma `modular` do submódulo roda os programas de `c/` e `asm/` em qualquer combinação de ROM e RAM internas ou externas com e sem cache de instruções e de dados, escolhida na linha de comando, sem alterar arquivo versionado. O `include-modular/` guarda o cabeçalho com o mapa dela. O exemplo roda a arquitetura C (ROM externa atrás da cache de instruções, RAM interna).
+A plataforma `modular` do submódulo roda os programas de `c/` e `asm/` em qualquer combinação de ROM e RAM internas ou externas com e sem cache de instruções e de dados, escolhida na linha de comando, sem alterar arquivo versionado. O `include-modular/` guarda o cabeçalho com o mapa dela. O exemplo roda a arquitetura C (ROM externa atrás da cache de instruções, RAM interna). As plataformas `fpga-*` das dez plataformas do submódulo usam o cabeçalho de `include-fpga-integrated/`, `include-fpga-external-instruction/` ou `include-fpga-sdram/`, conforme o mapa da RAM, e as `test-*` usam o de `include-modular/`.
 
 ```bash
 ulimit -s unlimited

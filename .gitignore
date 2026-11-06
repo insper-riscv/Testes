@@ -16,6 +16,9 @@ logs/
 tools/riscv_build/include/rv32_test.h
 tools/riscv_build/include-sdram/rv32_test.h
 tools/riscv_build/include-modular/rv32_test.h
+tools/riscv_build/include-fpga-integrated/rv32_test.h
+tools/riscv_build/include-fpga-external-instruction/rv32_test.h
+tools/riscv_build/include-fpga-sdram/rv32_test.h
 # Configs of a run of the modular platform (riscv-tools platform sync), written per combination of memories.
 tools/riscv_build/config.generated.yaml
 tools/riscv_build/config.variation.yaml
