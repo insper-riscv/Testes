@@ -13,8 +13,8 @@ paths:
   sources:
   - Insper-RISC-V/src/cyclone-v/de0-cv/runtime/_exit.c
   - Insper-RISC-V/src/cyclone-v/de0-cv/runtime/stdio.c
-  boot_rom: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_rom.S
-  boot_rom_linker_script: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_rom.ld
+  boot_memory: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_memory.S
+  boot_memory_linker_script: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_memory.ld
 freq_sweep:
   pll_file: Insper-RISC-V/src/simulation/internal-mem/pll/pll_0002.v
   phase_count: 3
@@ -23,7 +23,7 @@ quartus:
   project_name: de0-cv
   sof_file: output_files/de0-cv.sof
   rom_mif_target: flash_init.mif
-  boot_rom_mif_target: boot_rom_init.mif
+  boot_memory_mif_target: boot_memory_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   ram_mem_instance: 0
   rom_write_method: mem_edit
@@ -152,9 +152,9 @@ sim:
     UART_SLOT: '4'
   ghdl_std: 08
   parameters:
-    BOOT_ROM_FILE: '{boot_rom_hex_path}'
+    BOOT_MEMORY_FILE: '{boot_memory_hex_path}'
     ROM_FILE: '{hex_path}'
-    boot_rom_addr_width: '10'
+    boot_memory_addr_width: '10'
     rom_addr_width: '16'
     ram_addr_width: '16'
     HAS_E: false
@@ -165,8 +165,8 @@ sim:
     HAS_ZIHPM: true
     HAS_ZIMOP: true
     HAS_ZICOND: true
-    HAS_ZIHINTNTL: false
-    HAS_ZIHINTPAUSE: false
+    HAS_ZIHINTNTL: true
+    HAS_ZIHINTPAUSE: true
     HAS_ZIFENCEI: true
     HAS_ZICCLSM: true
     HAS_INTERRUPTS: true
@@ -182,8 +182,8 @@ emulator:
   gcc_flags:
   - -DRV32_SPIKE
 memory:
-  boot_rom_base: 0
-  boot_rom_words: 1024
+  boot_memory_base: 0
+  boot_memory_words: 1024
   rom_base: 4096
   rom_words: 64512
   ram_base: 1073741824
