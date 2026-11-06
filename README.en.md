@@ -30,6 +30,9 @@ Real-hardware tests require a workstation with Quartus, a self-hosted GitHub Act
 | :--- | :--- |
 | `asm/`, `c/` | The 130 tests of the suite (90 in assembly and 40 in C), one `<name>/src.S` or `<name>/src.c` per folder |
 | `asm-hpm-reduced/` | The `hpm-reduced` program, which expects the core with 4 event counters of 40 bits and so lives apart from `asm/` (which runs on the full profile); it runs with `config.hpm-reduced.yaml` |
+| `c-sdram-update/` | The FLASH program update programs, `flash-update` (complete update of bank B) and `flash-update-interrupted` (the header of bank B is not written, the system returns to bank A); each receives the image of `uart_input.txt` over the UART and runs with `config.sdram-flash-update.yaml` (fast chip) and `config.sdram-flash-update-slow.yaml` (slow chip) |
+| `c-sdram-bank-b/` | The bank B program that the update tests send (`update-new`), linked from bank B and packed as version 2; `make flash-update-images` rebuilds it and writes the `uart_input.txt` of the tests |
+| `tools/flash_update/` | `make_images.sh`, which builds the image of bank B and checks it against the `uart_input.txt` with `--check` |
 | `tools/riscv_build/` | This project's configuration for `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` and its variants for the DE0-CV, `config.hpm-reduced.yaml` and `config.hpm-reduced-asm.yaml` for the core of 4 counters of 40 bits): it extends the `config.platform-*.yaml` that `riscv-tools platform sync` generates from the [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) submodule (toolchain, memory map, runtime, Quartus project, and simulation), and adds only the test paths |
 | `tests/python/` | Remaining per-entity tests: raw instruction sequences, all marked `skip`, in `tests.json` ([documentation](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (real hardware), `sim.yml` (simulation), and `sim-fpga.yml` (hardware-top simulation) |
