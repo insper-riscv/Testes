@@ -28,7 +28,7 @@ Três termos aparecem ao longo do texto:
 
 ## 2. Nível 0: consistência estática
 
-O mapa de memória (onde ficam a boot ROM, a FLASH, a RAM e as palavras reservadas) está copiado à mão em muitos lugares: configuração dos testes, flags do linker, boot ROM, runtime, constantes do VHDL do core, IPs de memória e testbench. O `platform.yaml` de cada plataforma é a fonte de verdade, e `check-memory-map` confere cada cópia contra ele, para a plataforma `internal-mem` e para a `sdram`. `check-paths` confere que todo caminho listado no manifesto existe.
+O mapa de memória (onde ficam a memória de boot, a FLASH, a RAM e as palavras reservadas) está copiado à mão em muitos lugares: configuração dos testes, flags do linker, memória de boot, runtime, constantes do VHDL do core, IPs de memória e testbench. O `platform.yaml` de cada plataforma é a fonte de verdade, e `check-memory-map` confere cada cópia contra ele, para a plataforma `internal-mem` e para a `sdram`. `check-paths` confere que todo caminho listado no manifesto existe.
 
 | | |
 | :--- | :--- |
@@ -70,7 +70,7 @@ Os testes da SDRAM rodam contra um modelo do chip que **aborta a simulação** e
 
 ## 5. Nível 3: programa no core completo
 
-O topo de simulação reúne o core, a boot ROM e a FLASH, e roda os 89 programas da suíte (52 em assembly e 37 em C). O fluxo de cada programa é:
+O topo de simulação reúne o core, a memória de boot e a FLASH, e roda os 89 programas da suíte (52 em assembly e 37 em C). O fluxo de cada programa é:
 
 1. `riscv-tools compile --emit hex` compila o programa com o GCC RISC-V (picolibc) e gera as imagens de memória.
 2. `riscv-tools sim` carrega a imagem, roda o core até o programa escrever o veredito no `tohost` e compara o resultado com o golden.

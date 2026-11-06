@@ -117,7 +117,7 @@ compilação) eram uma **mitigação**: elas impediam `.data` não-vazio de
 corromper silenciosamente um teste, mas não faziam `.data` funcionar: o
 core continuava sem nenhum caminho do estágio MEM até a ROM.
 
-Isso mudou com o redesign de memória em 3 partes (BOOT_ROM, bootloader
+Isso mudou com o redesign de memória em 3 partes (BOOT_MEMORY, bootloader
 fixo; FLASH, firmware de cada teste; RAM, dado), que deu ao estágio
 MEM uma segunda porta de leitura até FLASH especificamente para o loop de
 cópia de `.data` no boot. `.data` com valor inicial não-zero funciona

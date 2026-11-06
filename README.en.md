@@ -12,9 +12,9 @@ Real-hardware and simulation test suite of the `RV32IM` RISC-V core, driven by t
 - [riscv-tools](https://github.com/insper-riscv/Tools/blob/main/README.en.md): complete reference of each `riscv-tools` subcommand.
 - [tools/riscv_build/README.md](tools/riscv_build/README.md): conventions specific to this suite (test format, hardware facts, and how to write a new test).
 - [placa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/placa.md): permanent rule on compiling and programming the board, and the JTAG bug already diagnosed.
-- [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): BOOT_ROM, FLASH, and RAM architecture.
+- [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): BOOT_MEMORY, FLASH, and RAM architecture.
 - [runtime.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/runtime.md): C runtime (picolibc, `crt0`, and toolchain linker script), platform file, `stdout`, and Spike.
-- [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): boot state, picolibc `crt0`, and `boot_rom.S`.
+- [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): boot state, picolibc `crt0`, and `boot_memory.S`.
 - [atualizacao-de-programa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/atualizacao-de-programa.md): FLASH rewrite over JTAG and boot handoff between tests.
 - [simulacao.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/simulacao.md): hardware-top simulation with the real Quartus memories.
 - [docs/en/bugs/pll-lock-loss.md](docs/en/bugs/pll-lock-loss.md), [docs/en/bugs/small-data-section.md](docs/en/bugs/small-data-section.md), and [docs/en/bugs/data-harvard.md](docs/en/bugs/data-harvard.md): hardware bugs investigated and fixed.
