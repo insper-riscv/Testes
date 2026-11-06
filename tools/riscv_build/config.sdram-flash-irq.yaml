@@ -1,0 +1,10 @@
+# The interrupt programs (asm-irq/) on the DE0-CV platform: the same programs the simulation of tests/python runs against
+# a model of the CLINT, built for the real CLINT of the platform (slot 6, 0xE0000000) and the SDRAM as RAM. Each program
+# checks itself and ends in tohost, so the board runs them with `riscv-tools run`.
+extends: config.platform-de0-cv.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-irq-board
+  build_dir: build-sdram-flash-irq
+  c_dir: asm-irq
+  asm_dir: asm-irq
