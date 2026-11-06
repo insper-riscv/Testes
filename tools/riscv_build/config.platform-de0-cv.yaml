@@ -172,6 +172,7 @@ sim:
     HAS_ZIFENCEI: true
     HAS_ZICCLSM: true
     HAS_INTERRUPTS: true
+    HAS_SSCOFPMF: true
     ROM_EXTERNAL: true
     RAM_EXTERNAL: true
     HAS_ICACHE: true
