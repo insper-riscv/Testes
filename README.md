@@ -85,6 +85,22 @@ riscv-tools --config tools/riscv_build/config.variation.yaml sim --exclude uart-
 ```
 
 
+Os programas de `asm-plic/` provam as interrupções externas de ponta a ponta na plataforma `modular`, que tem o temporizador, as duas GPIO, as duas UART e o PLIC. Para cada fonte, o programa habilita a causa no periférico e no PLIC, provoca o evento, entra no handler, faz claim, trata, completa e confere o identificador e o status registrados: `plic-timer` (estouro), `plic-switches` e `plic-keys` (borda de subida, de descida, nível alto e nível baixo, e um pino fora da máscara), `plic-uart` (transmissor vazio, byte recebido com o TX ligado ao RX pelo testbench, erro) e `plic-uart-jtag` (os mesmos três, com o hospedeiro JTAG simulado pelo testbench e comandado pelo programa por `fromhost`). `plic-priority` confere com duas fontes a prioridade, o desempate pelo menor identificador, o limiar e a prioridade zero. A plataforma `de0-cv` simulada tem o chip de FLASH, e `asm-plic-de0-cv/plic-flash` confere a conclusão e a recusa de um comando e a causa de transmissor vazio da UART sobre JTAG.
+
+```bash
+ulimit -s unlimited
+riscv-tools --profile rv32im_zicclsm_zicsr --memory rom=ext,ram=int,icache=on,dcache=off \
+  platform sync --prefix Insper-RISC-V --source Insper-RISC-V/src/simulation/modular/config.yaml \
+  --output tools/riscv_build/config.generated-plic.yaml
+riscv-tools --config tools/riscv_build/config.plic.yaml generate-header
+riscv-tools --config tools/riscv_build/config.plic.yaml compile --emit hex
+riscv-tools --config tools/riscv_build/config.plic.yaml sim
+riscv-tools --config tools/riscv_build/config.plic-de0-cv.yaml compile --emit hex
+riscv-tools --config tools/riscv_build/config.plic-de0-cv.yaml sim
+```
+
+O mapa dos programas está em `include-plic/` (modular) e `include-plic-de0-cv/`, e as macros comuns em `include-plic/rv32_plic_macros.h`. Com `SIM_TRACE_IRQ=1` na frente do comando de simulação, o testbench registra cada mudança das linhas do PLIC e do `MEIP`. Os mesmos programas rodam na placa com o `fpga-*` que tiver as fontes, depois de `generate-header` e `compile`.
+
 ---
 
 Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](LICENSE).

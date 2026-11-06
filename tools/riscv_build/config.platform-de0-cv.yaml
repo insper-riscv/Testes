@@ -135,8 +135,10 @@ sim:
   - Insper-RISC-V/Peripherals/src/CLINT/soc/clint_consts.vhd
   - Insper-RISC-V/Peripherals/src/CLINT/soc/clint_mtime.vhd
   - Insper-RISC-V/Peripherals/src/CLINT/soc/clint.vhd
-  - Insper-RISC-V/Peripherals/src/intc/soc/ext_irq_consts.vhd
-  - Insper-RISC-V/Peripherals/src/intc/soc/ext_irq_controller.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic_consts.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic_gateway.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic_arbiter.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic.vhd
   - Insper-RISC-V/Peripherals/src/flash-controller/soc/flash_controller.vhd
   - Insper-RISC-V/src/cyclone-v/de0-cv/de0-cv_sim_top.vhd
   test_module: testbench.test_c_program

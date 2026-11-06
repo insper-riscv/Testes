@@ -77,6 +77,10 @@ riscv-tools --config tools/riscv_build/config.variation.yaml sim --exclude uart-
 ```
 
 
+The programs in `asm-plic/` prove the external interrupts end to end on the `modular` platform, which has the timer, the two GPIOs, the two UARTs and the PLIC. For each source the program enables the cause in the peripheral and in the PLIC, raises the event, enters the handler, claims, services, completes and checks the logged id and status: `plic-timer` (overflow), `plic-switches` and `plic-keys` (rising edge, falling edge, high level and low level, and a pin outside the mask), `plic-uart` (transmitter empty, a received byte with TX wired to RX by the testbench, error) and `plic-uart-jtag` (the same three, with the JTAG host simulated by the testbench and commanded by the program through `fromhost`). `plic-priority` checks priority, the lower-id tie-break, the threshold and priority zero with two sources. The simulated `de0-cv` platform has the FLASH chip, and `asm-plic-de0-cv/plic-flash` checks the completion and the refusal of a command and the transmitter-empty cause of the JTAG UART.
+
+The commands are the ones in the Portuguese README. The map of the programs is in `include-plic/` (modular) and `include-plic-de0-cv/`, and the shared macros in `include-plic/rv32_plic_macros.h`. With `SIM_TRACE_IRQ=1` before the simulation command the testbench logs every change of the PLIC lines and of `MEIP`.
+
 ---
 
 Copyright 2026 Insper. Licensed under the [Apache License, Version 2.0](LICENSE).

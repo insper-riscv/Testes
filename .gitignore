@@ -6,6 +6,8 @@ build-flash/
 build-sdram-flash/
 cache/
 sim_build/
+build-plic/
+build-plic-de0-cv/
 .venv/
 # Per-kind run history (real/sim/certification) — see
 # riscv_tools.run_log. Local-only, kept around across `compile`
@@ -19,9 +21,12 @@ tools/riscv_build/include-modular/rv32_test.h
 tools/riscv_build/include-fpga-integrated/rv32_test.h
 tools/riscv_build/include-fpga-external-instruction/rv32_test.h
 tools/riscv_build/include-fpga-sdram/rv32_test.h
+tools/riscv_build/include-plic/rv32_test.h
+tools/riscv_build/include-plic-de0-cv/rv32_test.h
 # Configs of a run of the modular platform (riscv-tools platform sync), written per combination of memories.
 tools/riscv_build/config.generated.yaml
 tools/riscv_build/config.variation.yaml
+tools/riscv_build/config.generated-plic.yaml
 # Checked-in .hex fixtures for the instruction-level cocotb tests
 # (see tests/python/unittests/instructions/) — the bare `build/` rule
 # above would otherwise swallow this one, ported from RV32IM's own
