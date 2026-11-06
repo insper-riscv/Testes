@@ -34,33 +34,33 @@ AssertionError(...)`: em cocotb 2.0 qualquer exceção levantada dentro do
 teste já marca ele como FAIL, não precisa de uma classe especial. Verificado
 rodando `python3 tests/python/runner.py ROM` isoladamente: `TESTS=1 PASS=1`.
 
-## Bug 2 (não corrigido de verdade; testes marcados como `skip`): regressão real do redesign BOOT_ROM+FLASH
+## Bug 2 (não corrigido de verdade; testes marcados como `skip`): regressão real do redesign BOOT_MEMORY+FLASH
 
 ```
 /.../Memory/sim/rom_simulation.vhd:79:12:error: cannot open file: default.hex
-in process ...boot_rom@rom_simulation(rtl).init
+in process ...boot_memory@rom_simulation(rtl).init
 ```
 
 ### Causa raiz
 
-Desde o redesign de memória (BOOT_ROM fixo + FLASH + RAM; ver
+Desde o redesign de memória (BOOT_MEMORY fixo + FLASH + RAM; ver
 [MEMORY_ARCHITECTURE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/MEMORY_ARCHITECTURE.md)),
 `rv32i3stage_core_sim_test.vhd` instancia
-**duas** cópias de `ROM_simulation`: uma para BOOT_ROM (generic
-`ROM_FILE => BOOT_ROM_FILE`) e uma para FLASH (generic `ROM_FILE =>
+**duas** cópias de `ROM_simulation`: uma para BOOT_MEMORY (generic
+`ROM_FILE => BOOT_MEMORY_FILE`) e uma para FLASH (generic `ROM_FILE =>
 ROM_FILE`). As 10 configs do grupo `instructions` em `tests/python/tests.json`
 (`one`, `two`, `three`, `four`, `five`, `six`, `MUL`, `FWD`, `LOAD_USE`,
 `MEXT`) só passavam `ROM_FILE`: nunca foram atualizadas depois do redesign
-para também passar `BOOT_ROM_FILE`. Sem esse generic, BOOT_ROM cai no valor
+para também passar `BOOT_MEMORY_FILE`. Sem esse generic, BOOT_MEMORY cai no valor
 padrão hardcoded na própria entidade (`"default.hex"`), que não existe, e a
 elaboração falha antes de qualquer teste rodar.
 
 ### Por que isso NÃO é um fix de uma linha
 
-Só adicionar `BOOT_ROM_FILE` faria a elaboração passar, mas os testes
+Só adicionar `BOOT_MEMORY_FILE` faria a elaboração passar, mas os testes
 continuariam **logicamente errados**, porque cada um desses 10 módulos
 assume a arquitetura antiga (reset saindo direto pro conteúdo de
-`ROM_FILE`, endereço 0), não a atual (reset sempre entra por BOOT_ROM
+`ROM_FILE`, endereço 0), não a atual (reset sempre entra por BOOT_MEMORY
 primeiro, código de usuário só começa em `FLASH_BASE = 0x800` depois do
 boot). Exemplo concreto (`tests/python/unittests/instructions/one.py`):
 
@@ -69,9 +69,9 @@ boot). Exemplo concreto (`tests/python/unittests/instructions/one.py`):
 pcs = [i * 4 for i in range(len(auipc_immediates))]
 ```
 
-Esse `pcs` assume PC = 0, 4, 8, ... desde o primeiro ciclo: com um BOOT_ROM
+Esse `pcs` assume PC = 0, 4, 8, ... desde o primeiro ciclo: com um BOOT_MEMORY
 de verdade na frente, a execução do código do teste só começaria em
-`0x800`, e ainda levaria ciclos extras (o próprio salto do BOOT_ROM causa
+`0x800`, e ainda levaria ciclos extras (o próprio salto do BOOT_MEMORY causa
 bolhas no pipeline). Os `.hex` desses testes (`tests/python/unittests/
 instructions/codes/**/*.hex`) também foram gerados assumindo que o próprio
 conteúdo começa no endereço 0 do array, sem o padding que o `riscv-tools`
@@ -80,7 +80,7 @@ real usa (`bin_to_image.read_words`'s `pad_words`, ver
 conteúdo a partir de `FLASH_BASE`.
 
 Um fix de verdade precisa, para cada um dos 10 testes:
-1. Um `BOOT_ROM_FILE` real (ex: `boot_rom.hex`, ou um stub mínimo que só dá
+1. Um `BOOT_MEMORY_FILE` real (ex: `boot_memory.hex`, ou um stub mínimo que só dá
    `j 0x800`);
 2. Os `.hex` de cada teste re-gerados/re-alinhados com o padding de
    `FLASH_BASE`;

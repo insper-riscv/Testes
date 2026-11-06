@@ -18,7 +18,7 @@
     {
       "name": "de0-cv-update",
       "config": "tools/riscv_build/config.sdram-flash-update.yaml",
-      "description": "A atualização de programa da FLASH (c-sdram-update/) com o chip de FLASH rápido: o programa da banca A atualiza a banca B e a boot ROM escolhe a imagem"
+      "description": "A atualização de programa da FLASH (c-sdram-update/) com o chip de FLASH rápido: o programa da banca A atualiza a banca B e a memória de boot escolhe a imagem"
     },
     {
       "name": "de0-cv-update-slow",

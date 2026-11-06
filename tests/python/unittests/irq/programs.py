@@ -181,7 +181,7 @@ async def run(dut, image):
     """Roda a imagem até o programa gravar tohost; devolve seu valor."""
     bus = Bus()
     dut.i_rst.value = 1
-    for port in ("i_boot_rom_data", "i_flash_data", "i_ram_rdata"):
+    for port in ("i_boot_memory_data", "i_flash_data", "i_ram_rdata"):
         getattr(dut, port).value = 0
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     for _ in range(3):
@@ -192,7 +192,7 @@ async def run(dut, image):
         await Timer(1, unit="ns")
         bus.present(dut)
         word = image.get(int(dut.o_if_addr.value) & ~3, 0)
-        dut.i_boot_rom_data.value = word
+        dut.i_boot_memory_data.value = word
         dut.i_flash_data.value = word
         bus.capture(dut)
         bus.clint.tick()
