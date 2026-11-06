@@ -22,17 +22,17 @@ quartus:
   project_dir: Insper-RISC-V/src/cyclone-v/de0-cv
   project_name: de0-cv
   sof_file: output_files/de0-cv.sof
-  rom_mif_target: flash_init.mif
+  rom_mif_target: init.mif
   boot_memory_mif_target: boot_memory_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   ram_mem_instance: 0
-  rom_write_method: mem_edit
-  rom_mem_instances:
-  - 0
+  rom_write_method: jtag_loader
+  rom_mem_instances: []
   program_wait_seconds: 15
   poll_interval_seconds: 2.5
   default_timeout_s: 15
   ram_backend: sdram_debug
+  sdram_debug_instance: 3
 sim:
   toplevel: rv32im_sdram_flash_sim_test
   vhdl_sources:
@@ -148,7 +148,7 @@ sim:
     SIM_TIMEOUT_CYCLES: '12000000'
     TOHOST_ADDR: '0x43FFFFE8'
     STDOUT_ADDR: '0x43FFFBE0'
-    SIM_EXTRA_CLOCKS: CLK_MEM:7
+    SIM_EXTRA_CLOCKS: CLK_MEM:10
     SIM_SAMPLE_CLOCK: pll_clk_idexmem
     UART_START_ON_ACCESS: '1'
     UART_SLOT: '4'
