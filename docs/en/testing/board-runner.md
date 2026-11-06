@@ -9,10 +9,10 @@
 | Stage | Config | Programs |
 | :--- | :--- | :--- |
 | `regression` | `config.sdram-flash-regression.yaml` | `asm/` and `c/`, minus the three physical UART ones |
-| `sdram` | `config.sdram-flash.yaml` | `asm-sdram/` and `c-sdram/`, minus `monitor` and `hex-id`, which need a person |
+| `sdram` | `config.sdram-flash.yaml` | `asm-sdram/` and `c-sdram/` |
 | `irq` | `config.sdram-flash-irq.yaml` | `asm-irq/`, wired to the real CLINT of the platform at `0xE0000000` |
 
-`uart-echo`, `uart-tx` and `uart-errors` use the UART pins, which the boards do not have wired. `monitor` waits for someone to type on the JTAG UART, and `hex-id` shows the value of the switches on the display.
+`uart-echo`, `uart-tx` and `uart-errors` use the UART pins, which the boards do not have wired. `hex-id` pauses for a person to read the display, so the runner gives it a 90 s timeout.
 
 ## 2. Subcommands
 

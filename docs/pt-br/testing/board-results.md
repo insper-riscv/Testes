@@ -1,0 +1,194 @@
+# Resultados dos programas na placa DE0-CV
+
+🌐 [Português](board-results.md) · [English](../../en/testing/board-results.md)
+
+## 1. Condições
+
+| Item | Valor |
+| :--- | :--- |
+| Bitstream | `de0-cv.sof` do Insper-RISC-V `d68c950` (perfil `rv32im_zicclsm_zicntr_zihpm_zifencei` com Zimop, Zicond, Zihintntl, Zihintpause e interrupções), semente 1 |
+| Clock do núcleo | 50 MHz (pior folga de setup do Quartus: -0,745 ns) |
+| Placas | notebook (`/tmp/de0cv-laptop.lock`) e PC1 (`/tmp/de0cv-ws.lock`), em paralelo, lista repartida por `--part 0/2` e `1/2` |
+| Runner | [board-runner.md](board-runner.md) |
+
+## 2. Resumo
+
+154 de 154 programas passaram: 127 de `asm/` e `c/` (etapa `regression`), 20 de `asm-sdram/` e `c-sdram/` (etapa `sdram`) e 7 de `asm-irq/` (etapa `irq`).
+
+## 3. Programas fora da lista
+
+| Programa | Motivo |
+| :--- | :--- |
+| `uart-echo`, `uart-tx`, `uart-errors` | Usam os pinos físicos da UART, que as placas não têm ligados; é o único teste que pode falhar na placa |
+| `asm-hpm-reduced/hpm-reduced` | Exige um núcleo com 4 contadores de 40 bits; o bitstream do perfil mais completo tem 29 de 64 bits |
+| `c-sdram-update/flash-update`, `flash-update-interrupted`, `c-sdram-bank-b/update-new` | O controlador da FLASH ainda não está no topo da placa (`platform.yaml`, `FLASH_CTRL`); rodam só na simulação |
+
+## 4. Falhas e causas encontradas no caminho
+
+| Programa | Sintoma | Causa | Correção |
+| :--- | :--- | :--- | :--- |
+| `hex-id` | TIMEOUT com o timeout de 15 s | As pausas para uma pessoa ler o display somam mais de 15 s | O runner dá 90 s ao programa |
+| `irq-masked`, `irq-wfi`, `irq-mepc-precise` | TIMEOUT ou FAIL ao rodar em sequência | A placa reinicia o programa sem resetar o núcleo nem o CLINT, e o programa seguinte herdava `mie`, `mstatus.MIE` e `mtimecmp`; além disso o `mtime` conta a 1 MHz, e não a cada ciclo como o modelo | `RVIRQ_INIT` no início de cada programa e `RV32_PRECISE_ADDS` e laço de espera em `irq-wfi`; a simulação continua com 7 de 7 |
+
+## 5. Veredito por programa
+
+| Programa | Etapa | Placa | Veredito |
+| :--- | :--- | :--- | :--- |
+| `add` | regression | notebook | PASS |
+| `add-upper-immediate-to-pc` | regression | PC1 | PASS |
+| `and` | regression | notebook | PASS |
+| `arithmetic-add` | regression | PC1 | PASS |
+| `arithmetic-addi-negative` | regression | notebook | PASS |
+| `arithmetic-sub` | regression | PC1 | PASS |
+| `branch-beq` | regression | notebook | PASS |
+| `branch-bge` | regression | PC1 | PASS |
+| `branch-bgeu` | regression | notebook | PASS |
+| `branch-blt` | regression | PC1 | PASS |
+| `branch-bltu` | regression | notebook | PASS |
+| `branch-bne` | regression | PC1 | PASS |
+| `branch-equal` | regression | notebook | PASS |
+| `branch-not-equal` | regression | PC1 | PASS |
+| `bss-zero` | regression | notebook | PASS |
+| `cache-sweep` | sdram | notebook | PASS |
+| `clint-mtip` | sdram | PC1 | PASS |
+| `cntr-cycle-monotonic` | regression | PC1 | PASS |
+| `cntr-forwarding` | regression | notebook | PASS |
+| `cntr-instret-exact` | regression | PC1 | PASS |
+| `cntr-muldiv-cost` | regression | notebook | PASS |
+| `cntr-readonly-illegal` | regression | PC1 | PASS |
+| `cntr-rollover` | regression | notebook | PASS |
+| `cntr-time-rate` | regression | PC1 | PASS |
+| `cntr-trap-no-retire` | regression | notebook | PASS |
+| `cntr-write` | regression | PC1 | PASS |
+| `code-sweep` | sdram | notebook | PASS |
+| `compare-signed` | regression | notebook | PASS |
+| `compare-slt` | regression | PC1 | PASS |
+| `compare-slti` | regression | notebook | PASS |
+| `compare-sltiu` | regression | PC1 | PASS |
+| `compare-sltu` | regression | notebook | PASS |
+| `compare-unsigned` | regression | PC1 | PASS |
+| `conformance-decode` | regression | notebook | PASS |
+| `conformance-fencei` | sdram | PC1 | PASS |
+| `cpi-kernels` | sdram | notebook | PASS |
+| `csr-back-to-back` | regression | PC1 | PASS |
+| `csr-forwarding` | regression | notebook | PASS |
+| `csr-rw-basic` | regression | PC1 | PASS |
+| `csr-x0-no-effect` | regression | notebook | PASS |
+| `data-init-byte` | regression | PC1 | PASS |
+| `data-init-halfword` | regression | notebook | PASS |
+| `data-init-word` | regression | PC1 | PASS |
+| `data-init-word-array` | regression | notebook | PASS |
+| `data-initialization` | regression | PC1 | PASS |
+| `display` | sdram | PC1 | PASS |
+| `div` | regression | notebook | PASS |
+| `div-rem-back-to-back` | regression | PC1 | PASS |
+| `divide-signed` | regression | notebook | PASS |
+| `divide-unsigned` | regression | PC1 | PASS |
+| `divu` | regression | notebook | PASS |
+| `example-add` | regression | PC1 | PASS |
+| `example-integration-mem` | regression | notebook | PASS |
+| `fence-tso` | regression | PC1 | PASS |
+| `flash-const` | sdram | notebook | PASS |
+| `hazard-forwarding-chain` | regression | notebook | PASS |
+| `hazard-forwarding-mul` | regression | PC1 | PASS |
+| `hazard-forwarding-raw` | regression | notebook | PASS |
+| `hazard-load-use` | regression | PC1 | PASS |
+| `hello` | sdram | PC1 | PASS |
+| `hex-id` | sdram | notebook | PASS |
+| `hpm-branch-count` | regression | notebook | PASS |
+| `hpm-cpi` | regression | PC1 | PASS |
+| `hpm-full` | regression | notebook | PASS |
+| `hpm-fused-high` | regression | PC1 | PASS |
+| `hpm-inhibit-select` | regression | notebook | PASS |
+| `hpm-load-use` | regression | PC1 | PASS |
+| `hpm-muldiv-stall` | regression | notebook | PASS |
+| `hpm-sweep` | regression | PC1 | PASS |
+| `irq-ecall` | irq | PC1 | PASS |
+| `irq-masked` | irq | PC1 | PASS |
+| `irq-mepc-precise` | irq | PC1 | PASS |
+| `irq-priority` | irq | PC1 | PASS |
+| `irq-timer-basic` | irq | PC1 | PASS |
+| `irq-vectored` | irq | PC1 | PASS |
+| `irq-wfi` | irq | PC1 | PASS |
+| `jump-jal` | regression | notebook | PASS |
+| `jump-jalr` | regression | PC1 | PASS |
+| `load-byte-signed` | regression | notebook | PASS |
+| `load-byte-unsigned` | regression | PC1 | PASS |
+| `load-halfword-signed` | regression | notebook | PASS |
+| `load-halfword-unsigned` | regression | PC1 | PASS |
+| `load-store-byte` | regression | notebook | PASS |
+| `load-store-halfword` | regression | PC1 | PASS |
+| `load-store-word` | regression | notebook | PASS |
+| `load-upper-immediate` | regression | PC1 | PASS |
+| `load-word` | regression | notebook | PASS |
+| `logical-and` | regression | PC1 | PASS |
+| `logical-andi` | regression | notebook | PASS |
+| `logical-or` | regression | PC1 | PASS |
+| `logical-ori` | regression | notebook | PASS |
+| `logical-xor` | regression | PC1 | PASS |
+| `logical-xori` | regression | notebook | PASS |
+| `loop` | regression | PC1 | PASS |
+| `misaligned-cache-lines` | sdram | PC1 | PASS |
+| `misaligned-crossing` | regression | notebook | PASS |
+| `misaligned-crossing` | sdram | notebook | PASS |
+| `monitor` | sdram | PC1 | PASS |
+| `mul` | regression | PC1 | PASS |
+| `muldiv-fusion` | regression | notebook | PASS |
+| `mulh` | regression | PC1 | PASS |
+| `mulhsu` | regression | notebook | PASS |
+| `mulhu` | regression | PC1 | PASS |
+| `multiply` | regression | notebook | PASS |
+| `not` | regression | PC1 | PASS |
+| `or` | regression | notebook | PASS |
+| `rem` | regression | PC1 | PASS |
+| `remainder-signed` | regression | notebook | PASS |
+| `remainder-unsigned` | regression | PC1 | PASS |
+| `remu` | regression | notebook | PASS |
+| `rodata-lookup-table` | regression | PC1 | PASS |
+| `sdram-bytes` | sdram | notebook | PASS |
+| `sdram-copy` | sdram | PC1 | PASS |
+| `sdram-exec-copy` | sdram | notebook | PASS |
+| `sdram-loop` | sdram | PC1 | PASS |
+| `sdram-memtest` | sdram | notebook | PASS |
+| `sdram-muldiv` | sdram | PC1 | PASS |
+| `sdram-refresh` | sdram | notebook | PASS |
+| `section6-loadstore` | regression | notebook | PASS |
+| `selfmod-repeat` | sdram | PC1 | PASS |
+| `shift-left` | regression | PC1 | PASS |
+| `shift-left-logical` | regression | notebook | PASS |
+| `shift-left-logical-imm` | regression | PC1 | PASS |
+| `shift-right-arithmetic` | regression | notebook | PASS |
+| `shift-right-arithmetic-imm` | regression | PC1 | PASS |
+| `shift-right-arithmetic-reg` | regression | notebook | PASS |
+| `shift-right-logical` | regression | PC1 | PASS |
+| `shift-right-logical-imm` | regression | notebook | PASS |
+| `shift-right-logical-reg` | regression | PC1 | PASS |
+| `stdout-printf` | regression | notebook | PASS |
+| `stdout-printf-int` | regression | PC1 | PASS |
+| `stdout-truncate` | regression | notebook | PASS |
+| `store-byte-roundtrip` | regression | PC1 | PASS |
+| `store-halfword-roundtrip` | regression | notebook | PASS |
+| `store-word-roundtrip` | regression | PC1 | PASS |
+| `struct-alignment` | regression | notebook | PASS |
+| `struct-init-heap` | regression | PC1 | PASS |
+| `struct-init-stack` | regression | notebook | PASS |
+| `sub` | regression | PC1 | PASS |
+| `trap-ecall-ebreak` | regression | notebook | PASS |
+| `trap-illegal` | regression | PC1 | PASS |
+| `trap-mem-squash` | regression | notebook | PASS |
+| `trap-misaligned-jump` | regression | PC1 | PASS |
+| `trap-misaligned-ldst` | regression | notebook | PASS |
+| `trap-muldiv-load-use` | regression | PC1 | PASS |
+| `wb-hold-crossing` | regression | notebook | PASS |
+| `x0-readonly` | regression | PC1 | PASS |
+| `xor` | regression | notebook | PASS |
+| `zicond-bits` | regression | PC1 | PASS |
+| `zicond-edge` | regression | notebook | PASS |
+| `zihintntl-hints` | regression | PC1 | PASS |
+| `zihintpause-loop` | regression | notebook | PASS |
+| `zimop-mop-r` | regression | PC1 | PASS |
+| `zimop-mop-rr` | regression | notebook | PASS |
+
+---
+
+Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).

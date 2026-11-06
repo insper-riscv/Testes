@@ -9,10 +9,10 @@ O `tools/board/board_run.py` roda na placa DE0-CV os programas do Tests e, com o
 | Etapa | Config | Programas |
 | :--- | :--- | :--- |
 | `regression` | `config.sdram-flash-regression.yaml` | `asm/` e `c/`, menos os três da UART física |
-| `sdram` | `config.sdram-flash.yaml` | `asm-sdram/` e `c-sdram/`, menos `monitor` e `hex-id`, que exigem uma pessoa |
+| `sdram` | `config.sdram-flash.yaml` | `asm-sdram/` e `c-sdram/` |
 | `irq` | `config.sdram-flash-irq.yaml` | `asm-irq/`, ligados ao CLINT real da plataforma em `0xE0000000` |
 
-Os programas `uart-echo`, `uart-tx` e `uart-errors` usam os pinos da UART, que as placas não têm ligados. O `monitor` espera alguém digitar na UART JTAG, e o `hex-id` mostra no display o valor das chaves.
+Os programas `uart-echo`, `uart-tx` e `uart-errors` usam os pinos da UART, que as placas não têm ligados. O `hex-id` pausa para uma pessoa ler o display, e por isso o runner dá a ele um timeout de 90 s.
 
 ## 2. Subcomandos
 
