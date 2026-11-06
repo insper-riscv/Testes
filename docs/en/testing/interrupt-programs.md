@@ -17,6 +17,10 @@ The programs in `asm-irq/` verify the interrupt entry of the `Core` with real ex
 | `irq-ecall` | With an interrupt pending when the `ecall` arrives, the interrupt enters first and the `ecall` traps after the return, with the same `mepc` |
 | `irq-lcofi` | Sscofpmf: the taken-branch event on `mhpmcounter3`, armed 40 counts below the 64-bit wrap, sets `OF` in `mhpmevent3h` and `LCOFIP` in `mip`, and the interrupt enters once with `mcause = 0x8000000D`. With `OF` at 1 another overflow asks for nothing, clearing `OF` re-arms, with `LCOFIE` at 0 the request stays in `mip` and is taken when the mask is set, and `MINH` stops the counting |
 | `irq-lcofi-priority` | Sscofpmf: with the timer and the overflow pending together and `mtvec` vectored, the timer enters at `BASE + 28` and the overflow at `BASE + 52` right after, over the same instruction |
+| `access-store-fault` | Store access fault (cause 7): a store to the ROM, to a region without memory and to an empty window of the peripheral bus traps with `mepc` at the store and `mtval` at the address, without writing; a store to valid RAM keeps working |
+| `access-load-fault` | Load access fault (cause 5): a load to a region without memory, to an empty window and a misaligned one outside the map traps with `mtval` at the address and without writing the destination; reading the ROM and the RAM is legal |
+| `access-fetch-fault` | Instruction access fault (cause 1): a fetch from an empty window and from a region without memory traps with `mepc` and `mtval` at the fetch address, before decoding |
+| `time-follows-mtime` | The `time` CSR is the shadow of the CLINT `mtime`: a write to `mtime` changes `time` and `timeh`, and a write to `time` itself is illegal |
 
 The `irq-lcofi` and `irq-lcofi-priority` programs need the `core` with `has_zihpm` and `has_sscofpmf`, and `tests/python` runs them that way.
 
