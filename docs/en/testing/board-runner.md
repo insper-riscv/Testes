@@ -45,18 +45,18 @@ python3 tools/board/board_run.py act --host ws --part 1/2 --sof de0-cv.sof \
 
 ## 5. Other boards
 
-The `--platform` option (`de0-cv`, the default, `de0-nano` or `de10-lite`) switches the board to look for and the stages. On the platforms that turn on only part of the extensions, `prepare` compiles only the programs whose `RV32_EXT` header names extensions that the platform has, and the runner never sees the others.
+The `de0-nano-*` and `de10-lite-*` stages (`--stages`) carry their board. On the platforms that turn on only part of the extensions, `prepare` compiles only the programs whose `RV32_EXT` header names extensions that the platform has, and the runner never sees the others.
 
 | Platform | Board | Extensions of the programs | Stages |
 | :--- | :--- | :--- | :--- |
-| `de0-nano` | `de0-nano` | Zicsr only (RV32I) | `regression`, `sdram` |
-| `de10-lite` | `de10-lite` | Those of the full profile | `regression`, `sdram`, `irq` |
+| `de0-nano` | `de0-nano` | Zicsr only (RV32I) | `de0-nano-regression`, `de0-nano-sdram` |
+| `de10-lite` | `de10-lite` | Those of the full profile | `de10-lite-regression`, `de10-lite-sdram`, `de10-lite-irq` |
 
 ```bash
 RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
-  python3 tools/board/board_run.py prepare --platform de0-nano
+  python3 tools/board/board_run.py prepare --stages de0-nano-regression de0-nano-sdram
 RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
-  python3 tools/board/board_run.py run --platform de0-nano --host ws --sof de0-nano.sof
+  python3 tools/board/board_run.py run --stages de0-nano-regression de0-nano-sdram --host ws --sof de0-nano.sof
 ```
 
 The file `include-<platform>/rv32_platform.h` of each platform repeats the map of its `platform.yaml`, and `config.platform-<platform>.yaml` comes from `platform sync`.
