@@ -47,8 +47,12 @@ enum {
 #define RV32_UPDATE_RESTART 2u /* on success, restart through the boot memory instead of returning */
 
 #define RV32_HEADER_SIZE 256u
-#define RV32_SECTOR_SIZE 65536u /* the NOR sector of the chip (chip catalog, S29GL064N) */
+/* The NOR sectors of the chip (chip catalog, S29GL064N): eight of 8 KiB at the bottom of the chip (the first 64 KiB, from
+ * RV32_BOOT_SECTORS_END) and then 64 KiB sectors. The erase of the update steps by the size of the sector it is on. */
+#define RV32_SECTOR_SIZE 65536u
+#define RV32_BOOT_SECTOR_SIZE_ASM "8192"
 #define RV32_SECTOR_SIZE_ASM "65536"
+#define RV32_BOOT_SECTORS_END_ASM "0x11000"
 #define RV32_PAGE_SIZE 256u
 #define RV32_FLASH_ERASED_WORD 0xFFFFFFFFu
 
@@ -181,8 +185,11 @@ __asm__(
     "    li   a2, 2\n"
     "    jal  t6, 8f\n"
     "    bnez a3, 7f\n"
+    "    li   t0, " RV32_BOOT_SECTOR_SIZE_ASM "\n"
+    "    li   t1, " RV32_BOOT_SECTORS_END_ASM "\n"
+    "    bltu a1, t1, 11f\n"
     "    li   t0, " RV32_SECTOR_SIZE_ASM "\n"
-    "    add  s5, s5, t0\n"
+    "11: add  s5, s5, t0\n"
     "    j    1b\n"
     /* program the payload pages, from the second page on */
     "2:  li   s5, 256\n"
