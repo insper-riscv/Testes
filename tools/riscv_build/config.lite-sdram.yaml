@@ -1,0 +1,8 @@
+# The programs that use the SDRAM (c-sdram/) on the DE10-Lite.
+extends: config.platform-de10-lite.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-de10-lite
+  build_dir: build-lite-sdram
+  c_dir: c-sdram
+  asm_dir: asm-sdram

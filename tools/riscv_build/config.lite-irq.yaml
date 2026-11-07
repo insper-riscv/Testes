@@ -1,0 +1,8 @@
+# The interrupt programs (asm-irq/) on the DE10-Lite, built for the CLINT of the platform (slot 6).
+extends: config.platform-de10-lite.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-irq-board
+  build_dir: build-lite-irq
+  c_dir: asm-irq
+  asm_dir: asm-irq

@@ -15,9 +15,7 @@ paths:
   - Insper-RISC-V/src/cyclone-iv-e/de2-115/runtime/stdio.c
   boot_memory: Insper-RISC-V/src/cyclone-iv-e/de2-115/runtime/boot_memory.S
   boot_memory_linker_script: Insper-RISC-V/src/cyclone-iv-e/de2-115/runtime/boot_memory.ld
-freq_sweep:
-  pll_file: Insper-RISC-V/src/simulation/internal-mem/pll/pll_0002.v
-  phase_count: 3
+  nor_programmer: Insper-RISC-V/src/cyclone-iv-e/de2-115/runtime/nor_programmer.c
 quartus:
   project_dir: Insper-RISC-V/build/de2-115-de2-115
   project_name: de2_115_de2_115
@@ -26,7 +24,7 @@ quartus:
   boot_memory_mif_target: boot_memory_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   ram_mem_instance: 0
-  rom_write_method: jtag_loader
+  rom_write_method: nor_program
   rom_mem_instances: []
   program_wait_seconds: 15
   poll_interval_seconds: 2.5
@@ -38,6 +36,7 @@ quartus:
     chips_dir: Insper-RISC-V/Memory/chips
   ram_backend: sdram_debug
   sdram_debug_instance: 3
+  display_digits: 8
 sim:
   toplevel: rv32i3stage_core_sim_test
   vhdl_sources:
