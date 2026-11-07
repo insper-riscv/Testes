@@ -15,6 +15,14 @@ Os programas de `asm-irq/` verificam a tomada de interrupção do `Core` com có
 | `irq-priority` | Software e timer pendentes juntos: a de software entra primeiro e a de timer logo depois, ambas sobre a mesma instrução |
 | `irq-wfi` | A `wfi` executa como `nop`, com e sem interrupção pendente, e a interrupção tomada sobre ela devolve o controle à própria `wfi` |
 | `irq-ecall` | Com uma interrupção pendente no momento do `ecall`, a interrupção entra primeiro e o `ecall` trapa depois do retorno, com o mesmo `mepc` |
+| `irq-lcofi` | Sscofpmf: o evento de desvio tomado em `mhpmcounter3`, armado 40 contagens antes do estouro de 64 bits, põe `OF` em `mhpmevent3h` e `LCOFIP` em `mip`, e a interrupção entra uma vez com `mcause = 0x8000000D`. Com `OF` em 1 um novo estouro não pede nada, limpar `OF` rearma, com `LCOFIE` em 0 o pedido fica em `mip` e é tomado quando a máscara liga, e `MINH` para a contagem |
+| `irq-lcofi-priority` | Sscofpmf: com o timer e o estouro pendentes juntos e `mtvec` vetorado, o timer entra em `BASE + 28` e o estouro em `BASE + 52` logo depois, sobre a mesma instrução |
+| `access-store-fault` | Falha de acesso de store (causa 7): store na ROM, numa região sem memória e numa janela vazia do barramento de periféricos trapa com `mepc` no store e `mtval` no endereço, sem escrever; o store em RAM válida segue funcionando |
+| `access-load-fault` | Falha de acesso de load (causa 5): load numa região sem memória, numa janela vazia e desalinhado fora do mapa trapa com `mtval` no endereço e sem escrever o destino; a leitura da ROM e da RAM é legal |
+| `access-fetch-fault` | Falha de acesso de instrução (causa 1): a busca numa janela vazia e numa região sem memória trapa com `mepc` e `mtval` no endereço da busca, antes da decodificação |
+| `time-follows-mtime` | O CSR `time` é o sombreamento do `mtime` do CLINT: uma escrita no `mtime` muda `time` e `timeh`, e a escrita no próprio `time` é ilegal |
+
+O programa `irq-lcofi` e o `irq-lcofi-priority` exigem o `core` com `has_zihpm` e `has_sscofpmf`, e o `tests/python` os roda assim.
 
 ## 2. Modelo do CLINT
 

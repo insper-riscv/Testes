@@ -879,7 +879,14 @@
         "parameters": {
             "has_m": true,
             "has_zicsr": true,
-            "has_interrupts": true
+            "has_zihpm": true,
+            "has_sscofpmf": true,
+            "has_interrupts": true,
+            "has_zicntr": true,
+            "time_external": true,
+            "has_access_faults": true,
+            "ram_end_kib": 2048,
+            "periph_slots": "00000001"
         },
         "build_args": [
             "--std=08"
