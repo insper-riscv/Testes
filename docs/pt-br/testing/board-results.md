@@ -197,6 +197,19 @@
 | `zimop-mop-r` | regression | PC1 | PASS |
 | `zimop-mop-rr` | regression | notebook | PASS |
 
+## 6. Núcleo a 76,923 MHz
+
+O bitstream da frente de frequência (Insper-RISC-V `a612e9c`, núcleo e busca a 76,923077 MHz com a fase do núcleo em 7500 ps, semente 5, pior folga de setup do núcleo +0,707 ns) rodou na placa da PC1 (`/tmp/de0cv-ws.lock`, `board_run.py run --board ws --stages sdram irq regression`, Tests `c990ab0`).
+
+| Etapa | Programas | PASS | FAIL | TIMEOUT |
+| :--- | ---: | ---: | ---: | ---: |
+| `regression` | 128 | 128 | 0 | 0 |
+| `sdram` | 20 | 20 | 0 | 0 |
+| `irq` | 13 | 13 | 0 | 0 |
+| Total | 161 | 161 | 0 | 0 |
+
+Uma rodada anterior, com o RTL que ainda trazia o atributo `maxfan` e os testes antigos, deu 159 de 161: `clint-mtip` (código 2) esperava o `mip` logo depois da escrita no `msip`, e as linhas de interrupção agora entram no núcleo por um registrador; `flash-const` esperava que o store na FLASH fosse ignorado, e o núcleo com falhas de acesso o recusa com `mcause` 7. Os dois programas foram ajustados (`c990ab0`) e passam na simulação e na placa. Os ELFs do ACT4 não foram rodados nesta sessão.
+
 ---
 
 Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).

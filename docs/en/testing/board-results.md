@@ -197,6 +197,19 @@
 | `zimop-mop-r` | regression | PC1 | PASS |
 | `zimop-mop-rr` | regression | notebook | PASS |
 
+## 6. Core at 76.923 MHz
+
+The bitstream of the frequency front (Insper-RISC-V `a612e9c`, core and fetch at 76.923077 MHz with the core phase at 7500 ps, seed 5, worst core setup slack +0.707 ns) ran on the PC1 board (`/tmp/de0cv-ws.lock`, `board_run.py run --board ws --stages sdram irq regression`, Tests `c990ab0`).
+
+| Stage | Programs | PASS | FAIL | TIMEOUT |
+| :--- | ---: | ---: | ---: | ---: |
+| `regression` | 128 | 128 | 0 | 0 |
+| `sdram` | 20 | 20 | 0 | 0 |
+| `irq` | 13 | 13 | 0 | 0 |
+| Total | 161 | 161 | 0 | 0 |
+
+An earlier run, with the RTL that still had the `maxfan` attribute and the old tests, gave 159 of 161: `clint-mtip` (code 2) expected `mip` right after the write to `msip`, and the interrupt lines now enter the core through a register; `flash-const` expected the store to the FLASH to be ignored, and the core with access faults refuses it with `mcause` 7. Both programs were adjusted (`c990ab0`) and pass in simulation and on the board. The ACT4 ELFs were not run in this session.
+
 ---
 
 Copyright 2026 Insper. Licensed under the [Apache License, Version 2.0](../../../LICENSE).
