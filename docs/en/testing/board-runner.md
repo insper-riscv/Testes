@@ -43,6 +43,24 @@ python3 tools/board/board_run.py act --board ws --part 1/2 --sof de0-cv.sof \
   --target rv32im_full_zifencei__board
 ```
 
+## 5. Update programs, reduced Zihpm and PLIC
+
+`tools/board/board_update.py` drives the programs that `riscv-tools run` alone does not, with the board lock and `--board laptop` or `--board ws`.
+
+| Stage | Programs | Driving |
+| :--- | :--- | :--- |
+| `update` | `flash-update`, `flash-update-interrupted` and `update-new` | Clears the survivor word of the SDRAM and `tohost`, writes the whole FLASH through the JTAG loader, sends the image of bank B over the UART (`flash-image send`) and checks `stdout` against `uart_expected.txt`. `update-new` runs alone, written to bank B |
+| `plic` | `plic-flash` | Runs with the UART console attached, which drains the transmit queue |
+
+```bash
+RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
+  uv run --project ../Tools python tools/board/board_update.py --board laptop
+```
+
+`hpm-reduced` (`config.sdram-flash-hpm-reduced.yaml`) needs the reduced bitstream, with 4 counters of 40 bits, and fails on the full one. It is compiled with `quartus_sh -t de0-cv_synth.tcl 1 HPM_COUNTERS=4 HPM_WIDTH=40` and run with `riscv-tools --config tools/riscv_build/config.sdram-flash-hpm-reduced.yaml run --skip-reconfigure --skip-recompile`, after programming the reduced `.sof`.
+
+The FLASH of the board is rewritten through the JTAG loader (`quartus.rom_write_method: jtag_loader`), which restarts the core for every program; the SDRAM debug port is Virtual JTAG instance 3 (`quartus.sdram_debug_instance`).
+
 ---
 
 Copyright 2026 Insper. Licensed under the [Apache License, Version 2.0](../../../LICENSE).

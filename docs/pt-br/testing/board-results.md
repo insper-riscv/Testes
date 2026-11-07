@@ -6,29 +6,31 @@
 
 | Item | Valor |
 | :--- | :--- |
-| Bitstream | `de0-cv.sof` do Insper-RISC-V `d68c950` (perfil `rv32im_zicclsm_zicntr_zihpm_zifencei` com Zimop, Zicond, Zihintntl, Zihintpause e interrupções), semente 1 |
+| Bitstream completo | `de0-cv.sof` do Insper-RISC-V `ceea999` (perfil `rv32im_zicclsm_zicntr_zihpm_zifencei` com Zimop, Zicond, Zihintntl, Zihintpause, interrupções com PLIC e o controlador de FLASH), semente 1, 29 contadores de 64 bits |
+| Bitstream reduzido | O mesmo código com `HPM_COUNTERS=4 HPM_WIDTH=40` (`de0-cv_synth.tcl 1 HPM_COUNTERS=4 HPM_WIDTH=40`), 4 contadores de 40 bits |
 | Clock do núcleo | 50 MHz (pior folga de setup do Quartus: -0,745 ns) |
 | Placas | notebook (`/tmp/de0cv-laptop.lock`) e PC1 (`/tmp/de0cv-ws.lock`), em paralelo, lista repartida por `--part 0/2` e `1/2` |
 | Runner | [board-runner.md](board-runner.md) |
 
 ## 2. Resumo
 
-154 de 154 programas passaram: 127 de `asm/` e `c/` (etapa `regression`), 20 de `asm-sdram/` e `c-sdram/` (etapa `sdram`) e 7 de `asm-irq/` (etapa `irq`).
+154 de 154 programas passaram com o bitstream completo: 127 de `asm/` e `c/` (etapa `regression`), 20 de `asm-sdram/` e `c-sdram/` (etapa `sdram`) e 7 de `asm-irq/` (etapa `irq`). Os cinco programas abaixo, que o runner `board_run.py` não cobre, também passaram nas duas placas: `flash-update`, `flash-update-interrupted` e `update-new` (etapa `update`), `hpm-reduced` com o bitstream reduzido e `plic-flash` (etapa `plic`), conduzidos pelo `board_update.py` ([board-runner.md](board-runner.md)).
 
 ## 3. Programas fora da lista
 
 | Programa | Motivo |
 | :--- | :--- |
 | `uart-echo`, `uart-tx`, `uart-errors` | Usam os pinos físicos da UART, que as placas não têm ligados; é o único teste que pode falhar na placa |
-| `asm-hpm-reduced/hpm-reduced` | Exige um núcleo com 4 contadores de 40 bits; o bitstream do perfil mais completo tem 29 de 64 bits |
-| `c-sdram-update/flash-update`, `flash-update-interrupted`, `c-sdram-bank-b/update-new` | O controlador da FLASH ainda não está no topo da placa (`platform.yaml`, `FLASH_CTRL`); rodam só na simulação |
+| `asm-plic/` (`plic-timer`, `plic-switches`, `plic-keys`, `plic-uart`, `plic-uart-jtag`, `plic-priority`) | Usam o temporizador, as GPIO e a UART de pinos da plataforma `modular`, que o topo da placa não tem; a placa só tem as fontes `UART_JTAG` e `FLASH`, e o `plic-uart-jtag` e o `plic-priority` dependem de um hospedeiro de latência de ciclos (`fromhost`), que o JTAG da placa não oferece |
 
 ## 4. Falhas e causas encontradas no caminho
 
 | Programa | Sintoma | Causa | Correção |
 | :--- | :--- | :--- | :--- |
 | `hex-id` | TIMEOUT com o timeout de 15 s | As pausas para uma pessoa ler o display somam mais de 15 s | O runner dá 90 s ao programa |
-| `irq-masked`, `irq-wfi`, `irq-mepc-precise` | TIMEOUT ou FAIL ao rodar em sequência | A placa reinicia o programa sem resetar o núcleo nem o CLINT, e o programa seguinte herdava `mie`, `mstatus.MIE` e `mtimecmp`; além disso o `mtime` conta a 1 MHz, e não a cada ciclo como o modelo | `RVIRQ_INIT` no início de cada programa e `RV32_PRECISE_ADDS` e laço de espera em `irq-wfi`; a simulação continua com 7 de 7 |
+| `irq-masked`, `irq-wfi`, `irq-mepc-precise` | TIMEOUT ou FAIL ao rodar em sequência | Com a regravação da FLASH pelo editor de memória, a placa reiniciava o programa sem resetar o núcleo nem o CLINT, e o programa seguinte herdava `mie`, `mstatus.MIE` e `mtimecmp`; além disso o `mtime` conta a 1 MHz, e não a cada ciclo como o modelo | `RVIRQ_INIT` no início de cada programa e `RV32_PRECISE_ADDS` e laço de espera em `irq-wfi`; a simulação continua com 7 de 7. Com o carregador JTAG da FLASH, cada troca de programa reinicia o núcleo, o CLINT e o PLIC |
+| `flash-update`, `flash-update-interrupted` | O `riscv-tools run` não envia a imagem da banca B pela UART, e a placa não zera a SDRAM entre programas (a palavra de sobrevivência ficava em `UPDATING`) | Nenhuma falha no hardware; falta de condução | O `board_update.py` zera a palavra, grava a FLASH inteira (banca B zerada, inválida), envia a imagem e confere o `stdout` |
+| `plic-flash` | FAIL(9) na parte C | O console que esvazia a UART sobre JTAG liga segundos depois do programa, e o `WAIT_COUNT` desistia em cerca de 60 ms | `RVPLIC_WAIT_POLLS` no cabeçalho de `include-plic-de0-cv`, com cerca de 16 s |
 
 ## 5. Veredito por programa
 
@@ -89,6 +91,8 @@
 | `example-integration-mem` | regression | notebook | PASS |
 | `fence-tso` | regression | PC1 | PASS |
 | `flash-const` | sdram | notebook | PASS |
+| `flash-update` | update | notebook e PC1 | PASS |
+| `flash-update-interrupted` | update | notebook e PC1 | PASS |
 | `hazard-forwarding-chain` | regression | notebook | PASS |
 | `hazard-forwarding-mul` | regression | PC1 | PASS |
 | `hazard-forwarding-raw` | regression | notebook | PASS |
@@ -102,6 +106,7 @@
 | `hpm-inhibit-select` | regression | notebook | PASS |
 | `hpm-load-use` | regression | PC1 | PASS |
 | `hpm-muldiv-stall` | regression | notebook | PASS |
+| `hpm-reduced` | hpm-reduced | notebook e PC1 | PASS |
 | `hpm-sweep` | regression | PC1 | PASS |
 | `irq-ecall` | irq | PC1 | PASS |
 | `irq-masked` | irq | PC1 | PASS |
@@ -140,6 +145,7 @@
 | `multiply` | regression | notebook | PASS |
 | `not` | regression | PC1 | PASS |
 | `or` | regression | notebook | PASS |
+| `plic-flash` | plic | notebook e PC1 | PASS |
 | `rem` | regression | PC1 | PASS |
 | `remainder-signed` | regression | notebook | PASS |
 | `remainder-unsigned` | regression | PC1 | PASS |
@@ -179,6 +185,7 @@
 | `trap-misaligned-jump` | regression | PC1 | PASS |
 | `trap-misaligned-ldst` | regression | notebook | PASS |
 | `trap-muldiv-load-use` | regression | PC1 | PASS |
+| `update-new` | update | notebook e PC1 | PASS |
 | `wb-hold-crossing` | regression | notebook | PASS |
 | `x0-readonly` | regression | PC1 | PASS |
 | `xor` | regression | notebook | PASS |
