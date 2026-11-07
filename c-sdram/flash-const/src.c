@@ -1,10 +1,12 @@
+// RV32_EXT: Zicsr
 // RV32_TEST_KIND: unit
 #include "rv32_test.h"
 #include "rv32_platform.h"
 
 // Constants read from the FLASH, which is a chip behind the caches: aligned and misaligned reads of
 // a table in the FLASH, a second pass after the SDRAM traffic evicted the lines, and a store to the
-// FLASH that the chip ignores (the table must keep its value, whether or not its line is cached).
+// FLASH, which the core refuses with a store access fault (mcause 7) and the chip never sees (the table must keep its
+// value, whether or not its line is cached).
 
 static const unsigned int table[64] = {
     0x00000000u, 0x11111111u, 0x22222222u, 0x33333333u, 0x44444444u, 0x55555555u, 0x66666666u, 0x77777777u,
@@ -16,6 +18,19 @@ static const unsigned int table[64] = {
     0x11223344u, 0x55667788u, 0x99AABBCCu, 0xDDEEFF00u, 0x00000001u, 0x00000002u, 0x00000004u, 0x00000008u,
     0x00000010u, 0x00000020u, 0x00000040u, 0x00000080u, 0x00000100u, 0x00000200u, 0x00000400u, 0x00000800u,
 };
+
+// Faults taken and the cause of the last one. The handler skips the store that faulted.
+static volatile unsigned int faults;
+static volatile unsigned int last_cause;
+
+static void __attribute__((interrupt("machine"), aligned(4))) store_fault_handler(void) {
+    unsigned int cause, epc;
+    __asm__ volatile("csrr %0, mcause" : "=r"(cause));
+    __asm__ volatile("csrr %0, mepc" : "=r"(epc));
+    last_cause = cause;
+    faults++;
+    __asm__ volatile("csrw mepc, %0" : : "r"(epc + 4u));
+}
 
 static unsigned int checksum(void) {
     unsigned int x = 0;
@@ -54,14 +69,17 @@ int main(void) {
     if (sum != 4096u * 4095u / 2u) RV32_FAIL(4);
     if (checksum() != first) RV32_FAIL(5);
 
-    // a store to the FLASH is ignored, on a line that is cached and on one that is not
+    // a store to the FLASH is refused with a store access fault and changes nothing, on a line that is cached and on one that is not
+    __asm__ volatile("csrw mtvec, %0" : : "r"((unsigned int)&store_fault_handler));
     volatile unsigned int *flash = (volatile unsigned int *)&table[3];
     unsigned int before = *flash;                 // brings the line in
     *flash = 0xFFFFFFFFu;
+    if (faults != 1u || last_cause != 7u) RV32_FAIL(10);
     if (*flash != before) RV32_FAIL(6);
     volatile unsigned int *far = (volatile unsigned int *)&table[60];
     unsigned int before_far = *far;
     *far = 0u;
+    if (faults != 2u || last_cause != 7u) RV32_FAIL(11);
     if (*far != before_far) RV32_FAIL(7);
     for (unsigned int i = 0; i < 4096; i++) sweep[i] = ~i;   // evict
     if (table[3] != before || table[60] != before_far) RV32_FAIL(8);
