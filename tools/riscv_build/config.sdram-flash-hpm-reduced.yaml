@@ -1,0 +1,9 @@
+# O programa hpm-reduced (asm-hpm-reduced/) na DE0-CV: exige o bitstream do Zihpm reduzido, com 4 contadores de 40 bits
+# (`quartus_sh -t de0-cv_synth.tcl 1 HPM_COUNTERS=4 HPM_WIDTH=40`), e falha no bitstream completo (29 contadores de 64 bits).
+extends: config.platform-de0-cv.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-sdram
+  build_dir: build-sdram-flash-hpm-reduced
+  c_dir: asm-hpm-reduced
+  asm_dir: asm-hpm-reduced

@@ -46,6 +46,10 @@
 #define UJ_STATUS        0x08   /* a read clears the dropped bit (16) */
 #define UJ_CONTROL       0x0C   /* bit 0 RX, bit 1 TX empty, bit 2 error */
 
+/* On the board the console that drains the JTAG UART attaches seconds after the program starts (about 16 s of polling
+ * here); the simulation host answers at once, so the bound only matters for a program that fails. */
+#define RVPLIC_WAIT_POLLS 100000000
+
 #include "../include-plic/rv32_plic_macros.h"
 
 #endif
