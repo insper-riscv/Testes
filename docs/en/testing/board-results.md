@@ -8,6 +8,7 @@
 | :--- | :--- |
 | Full bitstream | `de0-cv.sof` of Insper-RISC-V `ceea999` (profile `rv32im_zicclsm_zicntr_zihpm_zifencei` with Zimop, Zicond, Zihintntl, Zihintpause, interrupts with the PLIC and the FLASH controller), seed 1, 29 counters of 64 bits |
 | Reduced bitstream | The same code with `HPM_COUNTERS=4 HPM_WIDTH=40` (`de0-cv_synth.tcl 1 HPM_COUNTERS=4 HPM_WIDTH=40`), 4 counters of 40 bits |
+| The five programs of `board_update.py` | Repeated with the full and reduced bitstreams of Insper-RISC-V `1c2137d` (SDRAM at 100 MHz and core phase at 8250 ps), with the same result on both boards |
 | Core clock | 50 MHz (worst Quartus setup slack: -0.745 ns) |
 | Boards | laptop (`/tmp/de0cv-laptop.lock`) and PC1 (`/tmp/de0cv-ws.lock`), in parallel, list split by `--part 0/2` and `1/2` |
 | Runner | [board-runner.md](board-runner.md) |

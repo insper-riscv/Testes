@@ -8,6 +8,7 @@
 | :--- | :--- |
 | Bitstream completo | `de0-cv.sof` do Insper-RISC-V `ceea999` (perfil `rv32im_zicclsm_zicntr_zihpm_zifencei` com Zimop, Zicond, Zihintntl, Zihintpause, interrupções com PLIC e o controlador de FLASH), semente 1, 29 contadores de 64 bits |
 | Bitstream reduzido | O mesmo código com `HPM_COUNTERS=4 HPM_WIDTH=40` (`de0-cv_synth.tcl 1 HPM_COUNTERS=4 HPM_WIDTH=40`), 4 contadores de 40 bits |
+| Os cinco programas do `board_update.py` | Repetidos com os bitstreams completo e reduzido do Insper-RISC-V `1c2137d` (SDRAM a 100 MHz e fase do núcleo em 8250 ps), com o mesmo resultado nas duas placas |
 | Clock do núcleo | 50 MHz (pior folga de setup do Quartus: -0,745 ns) |
 | Placas | notebook (`/tmp/de0cv-laptop.lock`) e PC1 (`/tmp/de0cv-ws.lock`), em paralelo, lista repartida por `--part 0/2` e `1/2` |
 | Runner | [board-runner.md](board-runner.md) |
