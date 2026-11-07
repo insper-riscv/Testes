@@ -65,7 +65,21 @@ STAGES: dict[str, dict[str, object]] = {
     },
     "de2-115-n2": {
         "config": "config.de2-115-n2.yaml",
-        "exclude": {},
+        # a RAM emulada tem 128 KiB e estes programas testam a janela de 16 MB da SDRAM
+        "exclude": {
+            name: "usa a janela da SDRAM, que o nível N2 não tem"
+            for name in (
+                "cache-sweep",
+                "cpi-kernels",
+                "flash-const",
+                "sdram-bytes",
+                "sdram-copy",
+                "sdram-loop",
+                "sdram-memtest",
+                "sdram-muldiv",
+                "sdram-refresh",
+            )
+        },
         "board": "de2-115",
         "timeouts": {"hex-id": 90},
     },
