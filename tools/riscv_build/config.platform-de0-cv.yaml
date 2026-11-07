@@ -125,6 +125,7 @@ sim:
   - Insper-RISC-V/Memory/src/RAM/SoC/sim/sdram_system.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/dcache.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/icache.vhd
+  - Insper-RISC-V/Memory/src/latency/SoC/latency_counter.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/flash_chip.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/flash_arbiter.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/mem_region_router.vhd
