@@ -31,4 +31,5 @@ tools/riscv_build/config.generated-plic.yaml
 # (see tests/python/unittests/instructions/) — the bare `build/` rule
 # above would otherwise swallow this one, ported from RV32IM's own
 # .gitignore which carries the same exception.
-!tests/python/unittests/instructions/codes/build/
+!tests/python/unittests/instructions/codes/build/build-de2-115/
+build-de2-115-n2/

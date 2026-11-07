@@ -1,0 +1,13 @@
+# The programs of c-sdram/ and asm-sdram/ that fit the emulated RAM (128 KiB), on the DE2-115 at level N2. They are
+# self-checking: each one signals RV32_FAIL() when a read does not return what was written.
+extends: config.platform-de2-115-n2.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-de2-115-n2
+  build_dir: build-de2-115-n2
+  c_dir: c-sdram
+  asm_dir: asm-sdram
+
+orchestrator:
+  interactive: [monitor, hex-id]
+  board_display: true

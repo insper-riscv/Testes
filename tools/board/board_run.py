@@ -1,4 +1,4 @@
-"""Roda na placa DE0-CV os programas do Tests e os ELFs do ACT4, com um veredito por item.
+"""Roda numa placa (DE0-CV ou DE2-115) os programas do Tests e os ELFs do ACT4, com um veredito por item.
 
 O runner tem três subcomandos.
 
@@ -56,8 +56,22 @@ STAGES: dict[str, dict[str, object]] = {
         "config": "config.sdram-flash-irq.yaml",
         "exclude": {},
     },
+    # A DE2-115: a FLASH NOR e a SDRAM de 32 bits (N4) e a versão com as memórias emuladas (N2).
+    "de2-115": {
+        "config": "config.de2-115.yaml",
+        "exclude": {},
+        "board": "de2-115",
+        "timeouts": {"hex-id": 90},
+    },
+    "de2-115-n2": {
+        "config": "config.de2-115-n2.yaml",
+        "exclude": {},
+        "board": "de2-115",
+        "timeouts": {"hex-id": 90},
+    },
 }
 
+# A placa da plataforma das etapas; `main` troca pela do pacote da etapa pedida (`board` da etapa).
 PLATFORM_BOARD = "de0-cv"
 _VERDICT = re.compile(r"^\s*(PASS|FAIL|TIMEOUT)\s+(\S+)")
 LOCK_WAIT_S = 14400
@@ -77,7 +91,8 @@ def tools_command() -> list[str]:
 def board_args() -> list[str]:
     """Diz ao ``riscv-tools board`` qual placa procurar.
 
-    A placa é a do pacote ``Insper-RISC-V/boards/de0-cv``, lido pelo catálogo do Tools.
+    A placa é a de ``PLATFORM_BOARD``, do pacote ``Insper-RISC-V/boards/<placa>``, lido pelo
+    catálogo do Tools.
 
     Returns
     -------
@@ -488,6 +503,10 @@ def main() -> None:
         p.add_argument("--part", default="0/1", help="fatia I/N da lista, ou auto")
         p.add_argument("--sof", help="bitstream a programar")
         p.add_argument("--skip-program", action="store_true")
+        p.add_argument(
+            "--platform-board",
+            help="pacote de placa (boards/<placa>); o padrão é o da etapa, ou de0-cv",
+        )
         p.add_argument("--out", default="build/board")
         p.set_defaults(func=func)
         if name == "run":
@@ -497,6 +516,13 @@ def main() -> None:
             p.add_argument("--root", required=True)
             p.add_argument("--target", required=True, help="pasta de work do ACT4")
     args = parser.parse_args()
+    boards = {str(STAGES[s].get("board", PLATFORM_BOARD)) for s in getattr(args, "stages", [])}
+    if len(boards) > 1:
+        parser.error(f"as etapas pedidas são de placas diferentes: {sorted(boards)}")
+    if getattr(args, "platform_board", None):
+        globals()["PLATFORM_BOARD"] = args.platform_board
+    elif boards:
+        globals()["PLATFORM_BOARD"] = boards.pop()
     if args.cmd != "prepare" and not args.skip_program and not args.sof:
         parser.error("--sof é obrigatório sem --skip-program")
     args.func(args)

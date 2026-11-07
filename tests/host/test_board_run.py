@@ -49,6 +49,19 @@ class BoardRunUnitTests(unittest.TestCase):
             with mock.patch.object(board_run, "TESTS_ROOT", Path(root)):
                 self.assertEqual(board_run.board_args(), ["--board", "de0-cv"])
 
+    def test_the_stages_of_the_de2_115_choose_its_package(self) -> None:
+        self.assertEqual(board_run.STAGES["de2-115"]["board"], "de2-115")
+        self.assertEqual(board_run.STAGES["de2-115-n2"]["board"], "de2-115")
+        with tempfile.TemporaryDirectory() as root:
+            package = Path(root) / "Insper-RISC-V/boards/de2-115"
+            package.mkdir(parents=True)
+            (package / "board.yaml").write_text("board: de2-115\n")
+            with (
+                mock.patch.object(board_run, "TESTS_ROOT", Path(root)),
+                mock.patch.object(board_run, "PLATFORM_BOARD", "de2-115"),
+            ):
+                self.assertEqual(board_run.board_args(), ["--board", "de2-115"])
+
     def test_without_the_package_the_runner_says_what_to_update(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             with mock.patch.object(board_run, "TESTS_ROOT", Path(root)):
