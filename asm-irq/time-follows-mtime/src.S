@@ -28,9 +28,9 @@ main:
     bltu t1, t2, fail2
     li   t2, 0x1200
     bgeu t1, t2, fail3            # e time também, com pouco atraso
-    li   t0, 0xFFFFFFF0           # a volta da metade baixa: o time acompanha
+    li   t0, 0xFFFFFFFE           # a volta da metade baixa: o time acompanha
     sw   t0, 0(s1)
-    li   s3, 40
+    li   s3, 400
 wait_wrap:
     addi s3, s3, -1
     bnez s3, wait_wrap
