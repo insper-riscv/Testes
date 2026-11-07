@@ -30,7 +30,8 @@ from pathlib import Path
 from typing import Any
 
 from riscv_tools import htif, quartus_program, rom_writer
-from riscv_tools.jtag import JtagLink, detect_jtag_hardware
+from riscv_tools.cli.common import jtag_link
+from riscv_tools.jtag import JtagLink
 from riscv_tools.settings import load_config
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -464,11 +465,8 @@ def run_hardware_test(args: argparse.Namespace) -> None:
 
     with serial_session(args.port) as fd:
         print(f"UART: {args.port}, {BAUD_RATE} 8N1 raw")
-        hardware_name = detect_jtag_hardware()
-        link = JtagLink(
-            hardware_name=hardware_name,
-            device_name=cfg["quartus"]["jtag_device"],
-        )
+        link = jtag_link(cfg)
+        hardware_name = link.hardware_name
 
         if args.skip_program:
             print("FPGA programming: SKIPPED (firmware must be freshly waiting for RX)")

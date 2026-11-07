@@ -384,7 +384,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
         cfg = {"paths": {"build_dir": "build"}, "quartus": {}}
         with (
             mock.patch.object(uart_hw, "load_config", return_value=cfg),
-            mock.patch.object(uart_hw, "detect_jtag_hardware") as detect,
+            mock.patch.object(uart_hw, "jtag_link") as detect,
             self.assertRaisesRegex(uart_hw.UartHardwareTestError, "serial port"),
         ):
             uart_hw.run_hardware_test(args)

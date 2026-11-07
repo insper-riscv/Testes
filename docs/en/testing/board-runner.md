@@ -19,18 +19,18 @@
 | Subcommand | Where it runs | What it does |
 | :--- | :--- | :--- |
 | `prepare` | `ci-elf` image, no board | `generate-header` and `compile --emit mif` of each stage |
-| `run` | machine with Quartus and the cable | takes the board lock, programs the `.sof`, runs the stages and writes `results-<board>.json` |
-| `act` | machine with Quartus and the cable | takes the board lock, programs the `.sof` and runs `certify-board --skip-build` on the ELFs already built |
+| `run` | machine with Quartus and the cable | selects the board through JTAG and takes its lock, programs the `.sof`, runs the stages and writes `results-<host>.json` |
+| `act` | machine with Quartus and the cable | selects and locks the board, programs the `.sof` and runs `certify-board --skip-build` on the ELFs already built |
 
-The `RISCV_TOOLS` variable gives the `riscv-tools` command, for example `uv run --project <Tools-clone> riscv-tools`. The programmer finds the cable by the IDCODE `02B050DD`, never by the cable name.
+The `RISCV_TOOLS` variable gives the `riscv-tools` command, for example `uv run --project <Tools-clone> riscv-tools`. The runner keeps no IDCODE or lock name. `riscv-tools board lock` finds the board by the IDCODE of the chain and the USB port of the cable (package `Insper-RISC-V/boards/de0-cv`), never by the cable name; the chosen cable goes to `quartus_pgm` and, through `--cable`, to the child `riscv-tools`. See the `board` module of Tools.
 
 ## 3. Two boards in parallel
 
-The `--part I/N` option splits the sorted list: board `I` runs the items of index `I` modulo `N`. The laptop takes `/tmp/de0cv-laptop.lock` and PC1 takes `/tmp/de0cv-ws.lock`, each with `--board laptop` and `--board ws`.
+The `--part I/N` option splits the sorted list: board `I` runs the items of index `I` modulo `N`. The host label (`--host laptop` or `--host ws`, also accepted as `--board`) goes into the lock name, `de0cv-laptop.lock` and `de0cv-ws.lock`, the same file the other users of the board take. With `--part auto` the runner takes a free board of the host and splits the list among all the boards of the platform that the host has, in the order of their identifiers.
 
 ```bash
 RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
-  python3 tools/board/board_run.py run --board laptop --part 0/2 --sof de0-cv.sof
+  python3 tools/board/board_run.py run --host laptop --part 0/2 --sof de0-cv.sof
 ```
 
 ## 4. ACT4 ELFs
@@ -38,7 +38,7 @@ RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
 Certification generates the board target with `gen_profiles.py --profile rv32im_full_zifencei --board --out build/target` and builds the ELFs with `riscv-tools --config build/target/config.yaml certify-board --build-only`, in the `ci-act4` image. The runner then runs:
 
 ```bash
-python3 tools/board/board_run.py act --board ws --part 1/2 --sof de0-cv.sof \
+python3 tools/board/board_run.py act --host ws --part 1/2 --sof de0-cv.sof \
   --config <Certification>/build/target/config.yaml --root <Certification> \
   --target rv32im_full_zifencei__board
 ```
