@@ -59,8 +59,111 @@ STAGES: dict[str, dict[str, object]] = {
 }
 
 PLATFORM_BOARD = "de0-cv"
+
+# Extensões que a plataforma reduzida liga. Um programa do Tests só vale numa plataforma se o cabeçalho
+# `RV32_EXT` dele cita só extensões desta lista (a letra de uma extensão de uma letra, como ``m``, inclusive).
+FULL_EXTENSIONS = frozenset(
+    {
+        "m",
+        "zicsr",
+        "zicntr",
+        "zihpm",
+        "zifencei",
+        "zicclsm",
+        "zimop",
+        "zicond",
+        "zihintntl",
+        "zihintpause",
+    }
+)
+SDRAM_EXCLUDES = {
+    "monitor": "espera alguém digitar",
+    "hex-id": "depende das chaves e do display da placa",
+}
+# Cada plataforma é uma placa, as extensões que ela liga (``None`` roda tudo) e as etapas dela.
+PLATFORMS: dict[str, dict[str, object]] = {
+    "de0-cv": {"board": "de0-cv", "extensions": None, "stages": STAGES},
+    "de0-nano": {
+        "board": "de0-nano",
+        "extensions": frozenset({"zicsr"}),
+        "stages": {
+            "regression": {
+                "config": "config.nano-regression.yaml",
+                "exclude": {
+                    "uart-echo": "pinos físicos da UART, que as placas não têm ligados",
+                    "uart-tx": "pinos físicos da UART, que as placas não têm ligados",
+                    "uart-errors": "pinos físicos da UART, que as placas não têm ligados",
+                },
+            },
+            "sdram": {
+                "config": "config.nano-sdram.yaml",
+                "exclude": {
+                    **SDRAM_EXCLUDES,
+                    "code-sweep": "o programa de 17 KiB não cabe no banco A de 12 KiB",
+                },
+            },
+        },
+    },
+    "de10-lite": {
+        "board": "de10-lite",
+        "extensions": FULL_EXTENSIONS,
+        "stages": {
+            "regression": {
+                "config": "config.lite-regression.yaml",
+                "exclude": STAGES["regression"]["exclude"],
+            },
+            "sdram": {"config": "config.lite-sdram.yaml", "exclude": SDRAM_EXCLUDES},
+            "irq": {"config": "config.lite-irq.yaml", "exclude": {}},
+        },
+    },
+}
 _VERDICT = re.compile(r"^\s*(PASS|FAIL|TIMEOUT)\s+(\S+)")
 LOCK_WAIT_S = 14400
+
+
+def select_platform(name: str) -> None:
+    """Troca a placa e as etapas do runner pelas da plataforma.
+
+    Parameters
+    ----------
+    name : str
+        Uma chave de ``PLATFORMS``.
+    """
+    global PLATFORM_BOARD, STAGES
+    PLATFORM_BOARD = str(PLATFORMS[name]["board"])
+    STAGES = PLATFORMS[name]["stages"]  # type: ignore[assignment]
+
+
+def applicable(stage: str, extensions: frozenset[str]) -> list[str]:
+    """Lista os programas de uma etapa que a plataforma consegue rodar.
+
+    Parameters
+    ----------
+    stage : str
+        Nome da etapa.
+    extensions : frozenset of str
+        Extensões que a plataforma liga, em minúsculas.
+
+    Returns
+    -------
+    list of str
+        Os programas sem extensão fora da lista, ordenados.
+    """
+    text = (TESTS_ROOT / BUILD / str(STAGES[stage]["config"])).read_text()
+    folders = re.findall(r"^\s*(?:c_dir|asm_dir):\s*(\S+)", text, re.MULTILINE)
+    found: set[str] = set()
+    for folder in dict.fromkeys(folders):
+        for path in sorted((TESTS_ROOT / folder).iterdir()):
+            source = "".join(p.read_text() for p in path.glob("*.[cS]"))
+            match = re.search(r"RV32_EXT:\s*(.+)", source)
+            wanted = (
+                {e.strip().lower() for e in match.group(1).split(",")}
+                if match
+                else set()
+            )
+            if wanted <= extensions:
+                found.add(path.name)
+    return sorted(found)
 
 
 def tools_command() -> list[str]:
@@ -190,7 +293,9 @@ def board_session(
         line = lock.stdout.readline() if lock.stdout else ""
         if not line:
             lock.wait()
-            raise RuntimeError(f"riscv-tools board lock falhou (status {lock.returncode})")
+            raise RuntimeError(
+                f"riscv-tools board lock falhou (status {lock.returncode})"
+            )
         try:
             yield json.loads(line)
         finally:
@@ -399,9 +504,18 @@ def cmd_prepare(args: argparse.Namespace) -> None:
     """Compila as etapas (``compile --emit mif``)."""
     for stage in args.stages:
         config = f"{BUILD}/{STAGES[stage]['config']}"
+        extensions = PLATFORMS[args.platform]["extensions"]
+        only = (
+            ["--only", ",".join(applicable(stage, extensions))]  # type: ignore[arg-type]
+            if extensions is not None
+            else []
+        )
         for sub in ("generate-header", "compile --emit mif"):
             subprocess.run(
-                tools_command() + ["--config", config] + sub.split(),
+                tools_command()
+                + ["--config", config]
+                + sub.split()
+                + (only if "compile" in sub else []),
                 cwd=TESTS_ROOT,
                 check=True,
             )
@@ -474,7 +588,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
     prep = sub.add_parser("prepare", help="compila as etapas")
-    prep.add_argument("--stages", nargs="+", default=list(STAGES))
+    prep.add_argument("--stages", nargs="+", default=None)
     prep.set_defaults(func=cmd_prepare)
     for name, func in (("run", cmd_run), ("act", cmd_act)):
         p = sub.add_parser(name)
@@ -491,12 +605,17 @@ def main() -> None:
         p.add_argument("--out", default="build/board")
         p.set_defaults(func=func)
         if name == "run":
-            p.add_argument("--stages", nargs="+", default=list(STAGES))
+            p.add_argument("--stages", nargs="+", default=None)
         else:
             p.add_argument("--config", required=True)
             p.add_argument("--root", required=True)
             p.add_argument("--target", required=True, help="pasta de work do ACT4")
+    for choice in sub.choices.values():
+        choice.add_argument("--platform", default="de0-cv", choices=sorted(PLATFORMS))
     args = parser.parse_args()
+    select_platform(args.platform)
+    if getattr(args, "stages", None) is None and args.cmd != "act":
+        args.stages = list(STAGES)
     if args.cmd != "prepare" and not args.skip_program and not args.sof:
         parser.error("--sof é obrigatório sem --skip-program")
     args.func(args)

@@ -43,6 +43,24 @@ python3 tools/board/board_run.py act --host ws --part 1/2 --sof de0-cv.sof \
   --target rv32im_full_zifencei__board
 ```
 
+## 5. Outras placas
+
+A opção `--platform` (`de0-cv`, padrão, `de0-nano` ou `de10-lite`) troca a placa a procurar e as etapas. Nas plataformas que ligam só parte das extensões, o `prepare` compila só os programas cujo cabeçalho `RV32_EXT` cita extensões que a plataforma tem, e o runner nunca vê os outros.
+
+| Plataforma | Placa | Extensões dos programas | Etapas |
+| :--- | :--- | :--- | :--- |
+| `de0-nano` | `de0-nano` | Só Zicsr (RV32I) | `regression`, `sdram` |
+| `de10-lite` | `de10-lite` | As do perfil completo | `regression`, `sdram`, `irq` |
+
+```bash
+RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
+  python3 tools/board/board_run.py prepare --platform de0-nano
+RISCV_TOOLS="uv run --project ../Tools riscv-tools" \
+  python3 tools/board/board_run.py run --platform de0-nano --host ws --sof de0-nano.sof
+```
+
+O arquivo `include-<plataforma>/rv32_platform.h` de cada plataforma repete o mapa do `platform.yaml` dela, e o `config.platform-<plataforma>.yaml` sai do `platform sync`.
+
 ---
 
 Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).
