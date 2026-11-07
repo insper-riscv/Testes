@@ -35,3 +35,8 @@ tools/riscv_build/config.generated-plic.yaml
 build-de2-115/
 build-de2-115-n2/
 tools/riscv_build/include-de2-115*/rv32_test.h
+build-nano-regression/
+build-nano-sdram/
+build-lite-regression/
+build-lite-sdram/
+build-lite-irq/

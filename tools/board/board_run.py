@@ -37,6 +37,21 @@ TESTS_ROOT = Path(__file__).resolve().parents[2]
 BUILD = "tools/riscv_build"
 
 # Cada etapa é um config do Tests e os programas que a placa não roda, com o motivo.
+# Extensões da plataforma completa: um programa vale numa plataforma se o cabeçalho `RV32_EXT` cita só extensões da lista dela
+# (a letra de uma extensão de uma letra, como ``m``, inclusive).
+FULL_EXTENSIONS = (
+    "m",
+    "zicsr",
+    "zicntr",
+    "zihpm",
+    "zifencei",
+    "zicclsm",
+    "zimop",
+    "zicond",
+    "zihintntl",
+    "zihintpause",
+)
+
 STAGES: dict[str, dict[str, object]] = {
     "regression": {
         "config": "config.sdram-flash-regression.yaml",
@@ -83,12 +98,94 @@ STAGES: dict[str, dict[str, object]] = {
         "board": "de2-115",
         "timeouts": {"hex-id": 90},
     },
+    # A DE0-Nano (RV32I com Zicsr) e a DE10-Lite (perfil completo): `extensions` lista as extensões que a plataforma liga, e o
+    # `prepare` só compila os programas cujo cabeçalho `RV32_EXT` cita extensões dessa lista.
+    "de0-nano-regression": {
+        "config": "config.nano-regression.yaml",
+        "exclude": {
+            "uart-echo": "pinos físicos da UART, que as placas não têm ligados",
+            "uart-tx": "pinos físicos da UART, que as placas não têm ligados",
+            "uart-errors": "pinos físicos da UART, que as placas não têm ligados",
+        },
+        "board": "de0-nano",
+        "extensions": ("zicsr",),
+    },
+    "de0-nano-sdram": {
+        "config": "config.nano-sdram.yaml",
+        "exclude": {
+            "monitor": "espera alguém digitar",
+            "hex-id": "depende das chaves e do display da placa",
+            "code-sweep": "o programa de 17 KiB não cabe no banco A de 12 KiB",
+        },
+        "board": "de0-nano",
+        "extensions": ("zicsr",),
+    },
+    "de10-lite-regression": {
+        "config": "config.lite-regression.yaml",
+        "exclude": {
+            "uart-echo": "pinos físicos da UART, que as placas não têm ligados",
+            "uart-tx": "pinos físicos da UART, que as placas não têm ligados",
+            "uart-errors": "pinos físicos da UART, que as placas não têm ligados",
+        },
+        "board": "de10-lite",
+        "extensions": FULL_EXTENSIONS,
+    },
+    "de10-lite-sdram": {
+        "config": "config.lite-sdram.yaml",
+        "exclude": {
+            "monitor": "espera alguém digitar",
+            "hex-id": "depende das chaves e do display da placa",
+        },
+        "board": "de10-lite",
+        "extensions": FULL_EXTENSIONS,
+    },
+    "de10-lite-irq": {
+        "config": "config.lite-irq.yaml",
+        "exclude": {},
+        "board": "de10-lite",
+        "extensions": FULL_EXTENSIONS,
+    },
 }
 
 # A placa da plataforma das etapas; `main` troca pela do pacote da etapa pedida (`board` da etapa).
 PLATFORM_BOARD = "de0-cv"
+# As etapas que rodam sem `--stages`: as da DE0-CV, porque uma sessão trava uma placa só.
+DEFAULT_STAGES = [
+    name for name, stage in STAGES.items() if stage.get("board", "de0-cv") == "de0-cv"
+]
 _VERDICT = re.compile(r"^\s*(PASS|FAIL|TIMEOUT)\s+(\S+)")
 LOCK_WAIT_S = 14400
+
+
+def applicable(stage: str) -> list[str]:
+    """Lista os programas de uma etapa que a plataforma consegue rodar.
+
+    Parameters
+    ----------
+    stage : str
+        Nome da etapa, com a lista ``extensions``.
+
+    Returns
+    -------
+    list of str
+        Os programas sem extensão fora da lista, ordenados.
+    """
+    allowed = set(STAGES[stage]["extensions"])  # type: ignore[arg-type]
+    text = (TESTS_ROOT / BUILD / str(STAGES[stage]["config"])).read_text()
+    folders = re.findall(r"^\s*(?:c_dir|asm_dir):\s*(\S+)", text, re.MULTILINE)
+    found: set[str] = set()
+    for folder in dict.fromkeys(folders):
+        for path in sorted((TESTS_ROOT / folder).iterdir()):
+            source = "".join(p.read_text() for p in path.glob("*.[cS]"))
+            match = re.search(r"RV32_EXT:\s*(.+)", source)
+            wanted = (
+                {e.strip().lower() for e in match.group(1).split(",")}
+                if match
+                else set()
+            )
+            if wanted <= allowed:
+                found.add(path.name)
+    return sorted(found)
 
 
 def tools_command() -> list[str]:
@@ -219,7 +316,9 @@ def board_session(
         line = lock.stdout.readline() if lock.stdout else ""
         if not line:
             lock.wait()
-            raise RuntimeError(f"riscv-tools board lock falhou (status {lock.returncode})")
+            raise RuntimeError(
+                f"riscv-tools board lock falhou (status {lock.returncode})"
+            )
         try:
             yield json.loads(line)
         finally:
@@ -428,9 +527,17 @@ def cmd_prepare(args: argparse.Namespace) -> None:
     """Compila as etapas (``compile --emit mif``)."""
     for stage in args.stages:
         config = f"{BUILD}/{STAGES[stage]['config']}"
+        only = (
+            ["--only", ",".join(applicable(stage))]
+            if "extensions" in STAGES[stage]
+            else []
+        )
         for sub in ("generate-header", "compile --emit mif"):
             subprocess.run(
-                tools_command() + ["--config", config] + sub.split(),
+                tools_command()
+                + ["--config", config]
+                + sub.split()
+                + (only if "compile" in sub else []),
                 cwd=TESTS_ROOT,
                 check=True,
             )
@@ -503,7 +610,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
     prep = sub.add_parser("prepare", help="compila as etapas")
-    prep.add_argument("--stages", nargs="+", default=list(STAGES))
+    prep.add_argument("--stages", nargs="+", default=DEFAULT_STAGES)
     prep.set_defaults(func=cmd_prepare)
     for name, func in (("run", cmd_run), ("act", cmd_act)):
         p = sub.add_parser(name)
@@ -524,13 +631,15 @@ def main() -> None:
         p.add_argument("--out", default="build/board")
         p.set_defaults(func=func)
         if name == "run":
-            p.add_argument("--stages", nargs="+", default=list(STAGES))
+            p.add_argument("--stages", nargs="+", default=DEFAULT_STAGES)
         else:
             p.add_argument("--config", required=True)
             p.add_argument("--root", required=True)
             p.add_argument("--target", required=True, help="pasta de work do ACT4")
     args = parser.parse_args()
-    boards = {str(STAGES[s].get("board", PLATFORM_BOARD)) for s in getattr(args, "stages", [])}
+    boards = {
+        str(STAGES[s].get("board", PLATFORM_BOARD)) for s in getattr(args, "stages", [])
+    }
     if len(boards) > 1:
         parser.error(f"as etapas pedidas são de placas diferentes: {sorted(boards)}")
     if getattr(args, "platform_board", None):

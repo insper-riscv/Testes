@@ -1,0 +1,8 @@
+# The existing programs (c/ and asm/) on the DE10-Lite, with the same profile as the DE0-CV.
+extends: config.platform-de10-lite.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-de10-lite
+  build_dir: build-lite-regression
+  c_dir: c
+  asm_dir: asm
