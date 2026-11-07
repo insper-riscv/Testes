@@ -118,6 +118,10 @@ class Clint:
             self.mtimecmp = (self.mtimecmp & ~0xFFFFFFFF) | value
         elif offset == 0x4004:
             self.mtimecmp = (self.mtimecmp & 0xFFFFFFFF) | (value << 32)
+        elif offset == 0xBFF8:
+            self.mtime = (self.mtime & ~0xFFFFFFFF) | value
+        elif offset == 0xBFFC:
+            self.mtime = (self.mtime & 0xFFFFFFFF) | (value << 32)
 
 
 def merge(old, new, byteena):
@@ -175,6 +179,7 @@ class Bus:
         dut.i_irq_timer.value = self.clint.timer
         dut.i_irq_software.value = self.clint.msip
         dut.i_irq_external.value = 0
+        dut.i_mtime.value = self.clint.mtime
 
 
 async def run(dut, image):
@@ -261,3 +266,27 @@ async def test_irq_lcofi(dut):
 async def test_irq_lcofi_priority(dut):
     """O estouro tem a menor prioridade e vai a BASE + 52 no modo vetorado."""
     await check(dut, "irq-lcofi-priority")
+
+
+@cocotb.test()
+async def test_access_store_fault(dut):
+    """O store em ROM, em buraco e em janela vazia gera a causa 7."""
+    await check(dut, "access-store-fault")
+
+
+@cocotb.test()
+async def test_access_load_fault(dut):
+    """O load em buraco e em janela vazia gera a causa 5, também desalinhado."""
+    await check(dut, "access-load-fault")
+
+
+@cocotb.test()
+async def test_access_fetch_fault(dut):
+    """A busca em janela vazia e em buraco gera a causa 1."""
+    await check(dut, "access-fetch-fault")
+
+
+@cocotb.test()
+async def test_time_follows_mtime(dut):
+    """O CSR time é o sombreamento do mtime do CLINT."""
+    await check(dut, "time-follows-mtime")

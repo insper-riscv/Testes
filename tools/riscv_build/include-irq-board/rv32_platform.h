@@ -23,6 +23,13 @@
 #define RV32_PRECISE_ADDS 12000
 #define RV32_PRECISE_STEP 37
 
+/* Addresses for the access-fault programs: a byte of the read-only ROM, an address in no region of the map, and an
+ * address in a slot of the peripheral bus where no peripheral answers (the core faults them with causes 5 and 7, and
+ * a fetch from the empty slot or from the hole with cause 1). */
+#define RV32_ROM_ADDR    0x00002000
+#define RV32_HOLE_ADDR   0x10000000
+#define RV32_EMPTY_SLOT  0x90000000
+
 #define RV32_MIE_MSIE    0x00000008   /* bit 3 of mie and mip */
 #define RV32_MIE_MTIE    0x00000080   /* bit 7 of mie and mip */
 #define RV32_MIE_MEIE    0x00000800   /* bit 11 of mie and mip */

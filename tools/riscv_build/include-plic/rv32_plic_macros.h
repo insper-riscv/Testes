@@ -93,10 +93,15 @@
     lw   t4, 0(t3); \
     addi t4, t4, 1; \
     sw   t4, 0(t3)
+/* The bound of WAIT_COUNT in loop turns; the platform header may raise it (on the board the host that drains the
+ * UART attaches seconds after the program starts, while the simulation host answers at once). */
+#ifndef RVPLIC_WAIT_POLLS
+#define RVPLIC_WAIT_POLLS 400000
+#endif
 /* Waits until the handler has run n times in total (the count in s0), up to a bound, or fails. Clobbers
  * s1, t1 and t2. */
 #define WAIT_COUNT(n, code) \
-    li   s1, 400000; \
+    li   s1, RVPLIC_WAIT_POLLS; \
 8:  lw   t1, 0(s0); \
     li   t2, n; \
     bgeu t1, t2, 9f; \
