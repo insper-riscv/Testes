@@ -15,9 +15,6 @@ paths:
   - Insper-RISC-V/src/simulation/internal-mem/runtime/stdio.c
   boot_memory: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_memory.S
   boot_memory_linker_script: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_memory.ld
-freq_sweep:
-  pll_file: Insper-RISC-V/src/simulation/internal-mem/pll/pll_0002.v
-  phase_count: 3
 quartus:
   project_dir: Insper-RISC-V/src/simulation/internal-mem/quartus
   project_name: core_fpga_test
@@ -109,11 +106,13 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_mem.vhd
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
+  - Insper-RISC-V/Memory/src/block_ram/altera/block_ram.vhd
   - Insper-RISC-V/Memory/src/RAM/FPGA/Cyclone-V/ram.vhd
   - Insper-RISC-V/Memory/src/ROM/Cyclone-V/boot_memory.vhd
   - Insper-RISC-V/Memory/src/ROM/Cyclone-V/flash.vhd
   - Insper-RISC-V/Memory/src/ROM/SoC/flash_jtag_core.vhd
   - Insper-RISC-V/Memory/src/ROM/SoC/flash_loader.vhd
+  - Insper-RISC-V/Common-Components/src/altera/virtual_jtag.vhd
   - Insper-RISC-V/Memory/src/ROM/Cyclone-V/flash_jtag_shell.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/baudGen.vhd
