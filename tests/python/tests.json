@@ -800,8 +800,6 @@
         }
     },
     "irq-programs": {
-        "skip": true,
-        "skip_reason": "Needs the Core of the interrupt entry (Core track 1.1) in the Insper-RISC-V pointer of this repository; with an older Core the cause of every timer interrupt is never taken and the programs time out. Run it by name once the pointer is updated: runner.py irq-programs.",
         "toplevel": "core",
         "sources": [
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",

@@ -38,7 +38,7 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 | `tools/board/` | `board_run.py`, que roda os programas nas placas DE0-CV, DE0-Nano, DE10-Lite e DE2-115, e `board_update.py`, que conduz os programas de atualização da FLASH ([board-runner.md](docs/pt-br/testing/board-runner.md)) |
 | `tools/headers/` | `check_platform_headers.py`, que confere cada `include-<placa>/rv32_platform.h` com o `platform.yaml` da plataforma (`make check-headers`) |
 | `tests/host/` | Testes unitários do harness de UART física, do runner de placa, da regressão e da conferência dos cabeçalhos, sem precisar da placa |
-| `tests/python/` | Testes por entidade remanescentes: sequências de instrução cruas, todas com `skip`, no `tests.json` ([documentação](tests/python/README.md)) |
+| `tests/python/` | Testes por entidade remanescentes no `tests.json`: sequências de instrução cruas, todas com `skip`, e `irq-programs`, que roda os programas de interrupção no núcleo ([documentação](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação) e `sim-fpga.yml` (simulação do topo de hardware) |
 | `docs/` | Bugs investigados em `docs/pt-br/bugs/`; a arquitetura de memória, o boot, o runtime e a programação da placa estão em `docs/` do submódulo `Insper-RISC-V` |
 

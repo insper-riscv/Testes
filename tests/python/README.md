@@ -6,7 +6,8 @@ moved to [Core](https://github.com/insper-riscv/Core), the memory model tests to
 [Memory](https://github.com/insper-riscv/Memory) and the clock generator's to
 [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V), with their history. What stays
 here needs the platform's simulation top: the whole-core instruction tests
-(`unittests/instructions`), all `skip`ped. Paths in
+(`unittests/instructions`), all `skip`ped, and the interrupt programs
+(`unittests/irq`, entry `irq-programs`), which run. Paths in
 `tests.json` are relative to this repository's root: `Insper-RISC-V/Core/...` for the core,
 `Insper-RISC-V/Memory/...` for the memories and `Insper-RISC-V/src/...` for the platform's
 simulation top.

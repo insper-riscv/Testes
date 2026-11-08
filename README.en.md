@@ -37,7 +37,7 @@ Real-hardware tests require a workstation with Quartus, a self-hosted GitHub Act
 | `tools/board/` | `board_run.py`, which runs the programs on the DE0-CV, DE0-Nano, DE10-Lite and DE2-115 boards, and `board_update.py`, which drives the FLASH update programs ([board-runner.md](docs/en/testing/board-runner.md)) |
 | `tools/headers/` | `check_platform_headers.py`, which checks each `include-<board>/rv32_platform.h` against the `platform.yaml` of the platform (`make check-headers`) |
 | `tests/host/` | Unit tests of the physical UART harness, the board runner, the regression and the header check, with no board needed |
-| `tests/python/` | Remaining per-entity tests: raw instruction sequences, all marked `skip`, in `tests.json` ([documentation](tests/python/README.md)) |
+| `tests/python/` | Remaining per-entity tests in `tests.json`: raw instruction sequences, all marked `skip`, and `irq-programs`, which runs the interrupt programs on the core ([documentation](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (real hardware), `sim.yml` (simulation), and `sim-fpga.yml` (hardware-top simulation) |
 | `docs/` | Investigated bugs in `docs/en/bugs/`; the memory architecture, boot, runtime, and board programming are in the `docs/` of the `Insper-RISC-V` submodule |
 
