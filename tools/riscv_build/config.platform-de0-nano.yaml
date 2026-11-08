@@ -172,7 +172,7 @@ sim:
     HAS_ZICOND: false
     HAS_ZIHINTNTL: false
     HAS_ZIHINTPAUSE: false
-    HAS_ZIFENCEI: false
+    HAS_ZIFENCEI: true
     HAS_ZICCLSM: false
     HAS_INTERRUPTS: false
     HAS_SSCOFPMF: false

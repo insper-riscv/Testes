@@ -5,10 +5,11 @@
 
 /* The SDRAM is the RAM of the SDRAM platform: .data and .bss from its base, the stack from its
  * top, and the words the host shares with the program at the very top. The programs of c-sdram/
- * test a window of it that none of those use: 16 MB from 16 MB above the base, away from the
- * program's own data and from the stack. */
-#define RV32_SDRAM_TEST_BASE  (RV32_RAM_BASE + 0x01000000u)
-#define RV32_SDRAM_TEST_WORDS (1u << 22)
+ * test a window of it that none of those use: 8 MB from 8 MB above the base, away from the
+ * program's own data and from the stack (the RAM of the DE0-Nano is 32 MB, so a 16 MB window
+ * from 16 MB would end on the words of the host). */
+#define RV32_SDRAM_TEST_BASE  (RV32_RAM_BASE + 0x00800000u)
+#define RV32_SDRAM_TEST_WORDS (1u << 21)
 
 #define RV32_SDRAM ((volatile unsigned int *)RV32_SDRAM_TEST_BASE)
 

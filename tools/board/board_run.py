@@ -116,6 +116,7 @@ STAGES: dict[str, dict[str, object]] = {
             "monitor": "espera alguém digitar",
             "hex-id": "depende das chaves e do display da placa",
             "code-sweep": "o programa de 17 KiB não cabe no banco A de 12 KiB",
+            "flash-const": "precisa da falha de acesso (extra AccessFaults), que a plataforma não liga",
         },
         "board": "de0-nano",
         "extensions": ("zicsr", "zifencei"),
@@ -168,7 +169,7 @@ def applicable(stage: str) -> list[str]:
     Returns
     -------
     list of str
-        Os programas sem extensão fora da lista, ordenados.
+        Os programas sem extensão fora da lista e fora dos excluídos da etapa, ordenados.
     """
     allowed = set(STAGES[stage]["extensions"])  # type: ignore[arg-type]
     text = (TESTS_ROOT / BUILD / str(STAGES[stage]["config"])).read_text()
@@ -185,7 +186,7 @@ def applicable(stage: str) -> list[str]:
             )
             if wanted <= allowed:
                 found.add(path.name)
-    return sorted(found)
+    return sorted(found - set(STAGES[stage]["exclude"]))  # type: ignore[arg-type]
 
 
 def tools_command() -> list[str]:
