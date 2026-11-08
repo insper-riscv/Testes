@@ -67,7 +67,7 @@ The `de0-nano-*` and `de10-lite-*` stages (`--stages`) carry their board. On the
 
 | Platform | Board | Extensions of the programs | Stages |
 | :--- | :--- | :--- | :--- |
-| `de0-nano` | `de0-nano` | Zicsr only (RV32I) | `de0-nano-regression`, `de0-nano-sdram` |
+| `de0-nano` | `de0-nano` | Zicsr and Zifencei (RV32I) | `de0-nano-regression`, `de0-nano-sdram` |
 | `de10-lite` | `de10-lite` | Those of the full profile | `de10-lite-regression`, `de10-lite-sdram`, `de10-lite-irq` |
 
 ```bash

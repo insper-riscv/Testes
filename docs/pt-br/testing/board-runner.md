@@ -67,7 +67,7 @@ A opção as etapas `de0-nano-*` e `de10-lite-*` (`--stages`) trazem a placa del
 
 | Plataforma | Placa | Extensões dos programas | Etapas |
 | :--- | :--- | :--- | :--- |
-| `de0-nano` | `de0-nano` | Só Zicsr (RV32I) | `de0-nano-regression`, `de0-nano-sdram` |
+| `de0-nano` | `de0-nano` | Zicsr e Zifencei (RV32I) | `de0-nano-regression`, `de0-nano-sdram` |
 | `de10-lite` | `de10-lite` | As do perfil completo | `de10-lite-regression`, `de10-lite-sdram`, `de10-lite-irq` |
 
 ```bash

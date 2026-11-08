@@ -108,7 +108,7 @@ STAGES: dict[str, dict[str, object]] = {
             "uart-errors": "pinos físicos da UART, que as placas não têm ligados",
         },
         "board": "de0-nano",
-        "extensions": ("zicsr",),
+        "extensions": ("zicsr", "zifencei"),
     },
     "de0-nano-sdram": {
         "config": "config.nano-sdram.yaml",
@@ -118,7 +118,7 @@ STAGES: dict[str, dict[str, object]] = {
             "code-sweep": "o programa de 17 KiB não cabe no banco A de 12 KiB",
         },
         "board": "de0-nano",
-        "extensions": ("zicsr",),
+        "extensions": ("zicsr", "zifencei"),
     },
     "de10-lite-regression": {
         "config": "config.lite-regression.yaml",
