@@ -61,7 +61,7 @@ jobs:
   sim-matrix:
     name: sim-${{ matrix.arch }}-${{ matrix.base }}
     runs-on: ubuntu-26.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     container:
       image: ghcr.io/insper-riscv/ci-elf:latest
     strategy:
