@@ -71,6 +71,7 @@ and uses that to name the test's `sim_build/` subfolder.
    import cocotb
    from cocotb.triggers import Timer
 
+
    @cocotb.test()
    async def test_basic(dut):
        dut.my_input.value = 1
