@@ -5,10 +5,10 @@
 #define RV32_PLATFORM_H
 
 #define RV32_RAM_BASE    0x40000000   /* first byte of RAM (the SDRAM) */
-#define RV32_RAM_END     0x44000000   /* one past the last byte of RAM */
-#define RV32_STDOUT_BASE 0x43FFFBE0   /* the stdout buffer, at the top of RAM */
+#define RV32_RAM_END     0x48000000   /* one past the last byte of RAM */
+#define RV32_STDOUT_BASE 0x47FFFBE0   /* the stdout buffer, at the top of RAM */
 
-#define RV32_TOHOST      0x43FFFFE8   /* HTIF tohost, 8 bytes; fromhost is 8 bytes above */
+#define RV32_TOHOST      0x47FFFFE8   /* HTIF tohost, 8 bytes; fromhost is 8 bytes above */
 
 #define RV32_UART_BASE       0xC0000000   /* JTAG UART, slot 4: txdata +0x0, rxdata +0x4, status +0x8 */
 #define RV32_FLASH_CTRL_BASE 0xB0000000   /* FLASH controller, slot 3: CMD, ADDR, STATUS, BUF_PTR, BUF_DATA (word offsets 0 to 4) */
