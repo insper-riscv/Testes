@@ -1,4 +1,4 @@
-"""Roda na placa DE0-CV os programas de atualização de programa da FLASH e o de PLIC da FLASH, com um veredito por programa.
+"""Roda na placa DE0-CV os programas de atualização da FLASH e o de PLIC da FLASH, com um veredito por programa.
 
 Os programas ``flash-update`` e ``flash-update-interrupted`` (``c-sdram-update/``) recebem pela UART sobre
 JTAG a imagem da banca B, atualizam a FLASH pelo controlador e reiniciam pela memória de boot. O
@@ -14,14 +14,14 @@ O roteiro roda onde estão o Quartus e o cabo, sob o lock da placa, e escreve ``
 """
 
 import argparse
-import contextlib
 import json
+import os
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
-from board_run import board_lock
+from board_run import board_session
 from riscv_tools import (
     flash_image,
     flash_loader,
@@ -42,8 +42,39 @@ BUILD = TESTS_ROOT / "tools/riscv_build"
 SURVIVOR_OFFSET = 0x03000000
 FLASH_WORDS = 65536
 
+
+class Case(TypedDict):
+    """Como um programa de atualização roda na placa.
+
+    Attributes
+    ----------
+    config : str
+        Config do Tests que o compilou.
+    build : str
+        Diretório de build desse config.
+    source : str
+        Diretório do fonte do programa.
+    send : bool
+        Se a imagem da banca B é enviada pela UART.
+    truncate : NotRequired[bool]
+        Se só as palavras que cabem na FLASH são gravadas.
+    expected_from : NotRequired[str]
+        Diretório de onde vem o texto esperado, quando não é o do próprio programa.
+    expected : NotRequired[str]
+        O texto esperado, quando não vem de um arquivo.
+    """
+
+    config: str
+    build: str
+    source: str
+    send: bool
+    truncate: NotRequired[bool]
+    expected_from: NotRequired[str]
+    expected: NotRequired[str]
+
+
 # Cada programa: config, diretório do fonte, origem do que se envia pela UART e fim esperado.
-CASES = {
+CASES: dict[str, Case] = {
     "flash-update": {
         "config": "config.sdram-flash-update.yaml",
         "build": "build-sdram-flash-update",
@@ -76,9 +107,7 @@ CASES = {
 }
 
 
-def stdout_buffer(
-    link: JtagLink, cfg: dict[str, Any], target: ram_target.RamTarget
-) -> str:
+def stdout_buffer(link: JtagLink, cfg: dict[str, Any], target: ram_target.RamTarget) -> str:
     """Lê o que o programa imprimiu no buffer de ``stdout`` da SDRAM (a cópia que o teste confere).
 
     Parameters
@@ -96,15 +125,61 @@ def stdout_buffer(
         O texto impresso, vazio se o buffer está vazio.
     """
     memory = cfg["memory"]
-    first = htif.word_offset(
-        memory["ram_base"], memory["tohost_addr"] - 0x408
-    )  # stdout: 1 KiB + 8 bytes below tohost
+    first = htif.word_offset(memory["ram_base"], memory["tohost_addr"] - 0x408)  # stdout: 1 KiB + 8 bytes below tohost
     length = ram_target.read_words(link, target, first, 1)[0]
     if length == 0 or length > 1024:
         return ""
     words = ram_target.read_words(link, target, first + 2, (length + 3) // 4)
     data = b"".join(w.to_bytes(4, "little") for w in words)
     return data[:length].decode(errors="replace")
+
+
+def expected_text(case: Case) -> str:
+    """Devolve o texto que o programa tem de imprimir.
+
+    Parameters
+    ----------
+    case : Case
+        O programa.
+
+    Returns
+    -------
+    str
+        O campo ``expected`` ou o conteúdo de ``uart_expected.txt`` do diretório de origem.
+    """
+    expected = case.get("expected")
+    if expected is not None:
+        return expected
+    directory = TESTS_ROOT / case.get("expected_from", case["source"])
+    return (directory / "uart_expected.txt").read_text(errors="replace")
+
+
+def wait_for_verdict(link: JtagLink, cfg: dict[str, Any], printed: bytearray, finish_s: float) -> str:
+    """Espera o ``tohost`` e acumula o que a UART imprime enquanto isso.
+
+    Parameters
+    ----------
+    link : JtagLink
+        Qual cabo e chip.
+    cfg : dict
+        O config carregado.
+    printed : bytearray
+        Recebe os bytes lidos da UART.
+    finish_s : float
+        Quanto esperar o ``tohost``.
+
+    Returns
+    -------
+    str
+        PASS, FAIL com o código ou TIMEOUT.
+    """
+    deadline = time.monotonic() + finish_s
+    while time.monotonic() < deadline:
+        uart_console.read_console(link, printed.extend, seconds=3)
+        value = htif.read_tohost_configured(link, cfg)
+        if htif.is_done(value):
+            return "PASS" if value == 1 else f"FAIL({htif.fail_code(value)})"
+    return "TIMEOUT"
 
 
 def run_case(name: str, wait_s: float, finish_s: float) -> tuple[str, str]:
@@ -125,20 +200,13 @@ def run_case(name: str, wait_s: float, finish_s: float) -> tuple[str, str]:
         PASS, FAIL ou TIMEOUT e o texto impresso pelo programa.
     """
     case = CASES[name]
-    cfg = load_config(str(BUILD / str(case["config"])))
+    cfg = load_config(BUILD / case["config"])
     link = jtag_link(cfg)
-    memory = cfg["memory"]
     target = ram_target.target_from_config(cfg, link)
-    source = TESTS_ROOT / str(case["source"])
-    mif = TESTS_ROOT / str(case["build"]) / "real" / f"{name}.mif"
-    expected_dir = TESTS_ROOT / str(case.get("expected_from", case["source"]))
-    expected = case.get("expected")
-    if expected is None:
-        expected = (expected_dir / "uart_expected.txt").read_text(errors="replace")
+    mif = TESTS_ROOT / case["build"] / "real" / f"{name}.mif"
+    expected = expected_text(case)
 
-    survivor = htif.word_offset(
-        memory["ram_base"], memory["ram_base"] + SURVIVOR_OFFSET
-    )
+    survivor = htif.word_offset(cfg["memory"]["ram_base"], cfg["memory"]["ram_base"] + SURVIVOR_OFFSET)
     ram_target.write_word(link, target, survivor, 0)
     htif.clear_tohost_configured(link, cfg)
 
@@ -151,46 +219,71 @@ def run_case(name: str, wait_s: float, finish_s: float) -> tuple[str, str]:
 
     if case["send"]:
         time.sleep(wait_s)
-        image = (source / "uart_input.txt").read_bytes()
+        image = (TESTS_ROOT / case["source"] / "uart_input.txt").read_bytes()
         flash_image.send_image(link, image, printed.extend)
-    deadline = time.monotonic() + finish_s
-    verdict = "TIMEOUT"
-    while time.monotonic() < deadline:
-        uart_console.read_console(link, printed.extend, seconds=3)
-        value = htif.read_tohost_configured(link, cfg)
-        if htif.is_done(value):
-            verdict = "PASS" if value == 1 else f"FAIL({htif.fail_code(value)})"
-            break
+    verdict = wait_for_verdict(link, cfg, printed, finish_s)
     text = stdout_buffer(link, cfg, target) or printed.decode(errors="replace")
     if verdict == "PASS" and expected.strip() not in text:
         verdict = "FAIL(output)"
     return verdict, text
 
 
+def run_cases(names: list[str], wait_s: float, finish_s: float) -> dict[str, str]:
+    """Roda os programas pedidos, um a um, e devolve o veredito de cada um.
+
+    Parameters
+    ----------
+    names : list of str
+        Nomes de programas, chaves de ``CASES``.
+    wait_s : float
+        Quanto esperar entre soltar o núcleo e enviar a imagem.
+    finish_s : float
+        Quanto esperar o ``tohost`` depois do envio.
+
+    Returns
+    -------
+    dict of {str: str}
+        PASS, FAIL ou TIMEOUT por programa.
+    """
+    results: dict[str, str] = {}
+    for name in names:
+        verdict, text = run_case(name, wait_s, finish_s)
+        print(f"{verdict} {name}: {text!r}", flush=True)
+        results[name] = verdict
+    return results
+
+
 def main() -> None:
-    """Lê a linha de comando, toma o lock da placa e roda os programas."""
-    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
-    parser.add_argument("--board", choices=["laptop", "ws"], required=True)
+    """Lê a linha de comando, toma a trava da placa e roda os programas."""
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n", maxsplit=1)[0])
+    parser.add_argument(
+        "--host",
+        "--board",
+        dest="host",
+        choices=["laptop", "ws"],
+        required=True,
+        help="rótulo do host da placa, no nome da trava e do arquivo de resultado",
+    )
     parser.add_argument("--cases", nargs="+", default=list(CASES))
     parser.add_argument("--wait", type=float, default=4.0)
     parser.add_argument("--finish", type=float, default=60.0)
     parser.add_argument("--out", default="build/board")
     parser.add_argument(
-        "--skip-lock", action="store_true", help="o chamador já segura o lock"
+        "--skip-lock",
+        action="store_true",
+        help="o chamador já segura a trava e exporta RISCV_TOOLS_CABLE",
     )
     args = parser.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    results = {}
-    lock = contextlib.nullcontext() if args.skip_lock else board_lock(args.board)
-    with lock:
-        for name in args.cases:
-            verdict, text = run_case(name, args.wait, args.finish)
-            print(f"{verdict} {name}: {text!r}", flush=True)
-            results[name] = verdict
-    (out / f"results-update-{args.board}.json").write_text(
-        json.dumps(results, indent=1, sort_keys=True)
-    )
+    if args.skip_lock:
+        results = run_cases(args.cases, args.wait, args.finish)
+    else:
+        with board_session(args.host) as board:
+            # o riscv-tools que jtag_link() consulta usa o cabo da placa travada
+            os.environ["RISCV_TOOLS_CABLE"] = board["cable"]
+            results = run_cases(args.cases, args.wait, args.finish)
+    (out / f"results-update-{args.host}.json").write_text(json.dumps(results, indent=1, sort_keys=True))
     sys.exit(0 if all(v == "PASS" for v in results.values()) else 1)
 
 
