@@ -1,4 +1,4 @@
-# Program results on the DE0-CV board
+# Program results on the boards
 
 🌐 [Português](../../pt-br/testing/board-results.md) · [English](board-results.md)
 
@@ -222,6 +222,22 @@ The bitstream of the project that `riscv-tools program` writes and compiles (Ins
 | Total | 161 | 161 | 0 | 0 |
 
 `hpm-cpi` failed on this board with the generated bitstream and with the hand-written one. The cause was the RTL. The registered read of the Zihpm bank keeps the value of the counter it read, and `csr_file` ORed that register into the read of any CSR without its own case, so the `csrr` of `instret` right after a `csrr` of `mhpmcounterK` received the bits of the counter and the `instret` window of the test came out wrong. The test stayed as it was, and the Core now connects the bank output only when the address belongs to the bank.
+
+## 8. Other boards
+
+The programs of Tests also ran on the boards below, with `board_run.py` and the stages of each one ([board-runner.md](board-runner.md)). The description, the fit and the timing of each platform are in the board documents of the `Insper-RISC-V` submodule.
+
+| Board | Stage | Programs | Result | Left out |
+| :--- | :--- | ---: | :--- | :--- |
+| DE0-Nano | `de0-nano-regression` | 71 | 71 pass | `code-sweep` (17 KiB, more than the 12 KiB bank A), `flash-const`, `monitor`, `hex-id` and the three UART-pin ones |
+| DE0-Nano | `de0-nano-sdram` | 7 | 7 pass | |
+| DE10-Lite | `de10-lite-regression` | 128 | 128 pass | `monitor`, `hex-id` and the three UART-pin ones |
+| DE10-Lite | `de10-lite-sdram` | 18 | 18 pass | |
+| DE10-Lite | `de10-lite-irq` | 13 | 13 pass | |
+| DE2-115 (N2) | `de2-115-n2` | 5 | 4 pass | `clint-mtip` fails with code 2; the programs of the 16 MB SDRAM window are out of the level |
+| DE2-115 (N4) | `de2-115` | 18 | 16 pass | `clint-mtip` (code 2) and `flash-const` (code 6) fail; `monitor` and `hex-id` need a person |
+
+On the DE2-115 the banks A and B through the firmware and the ACT4 ELFs did not run. The details are in [resultados-de2-115.md](../../../Insper-RISC-V/docs/pt-br/boards/resultados-de2-115.md).
 
 ---
 

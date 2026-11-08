@@ -35,7 +35,9 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 | `c-sdram-bank-b/` | O programa da banca B que os testes de atualização enviam (`update-new`), ligado a partir da banca B e empacotado como versão 2; `make flash-update-images` o reconstrói e escreve o `uart_input.txt` dos testes |
 | `tools/flash_update/` | `make_images.sh`, que constrói a imagem da banca B e a confere contra o `uart_input.txt` com `--check` |
 | `tools/riscv_build/` | Configuração deste projeto para o `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` e as variantes dela para a DE0-CV, `config.hpm-reduced.yaml` e `config.hpm-reduced-asm.yaml` para o núcleo de 4 contadores de 40 bits): estende o `config.platform-*.yaml` da plataforma, que `riscv-tools platform sync` gera a partir do submódulo [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) (toolchain, mapa de memória, runtime, projeto do Quartus, simulação), e acrescenta só os caminhos dos testes |
-| `tests/host/` | Testes unitários do harness de UART física, sem precisar da placa |
+| `tools/board/` | `board_run.py`, que roda os programas nas placas DE0-CV, DE0-Nano, DE10-Lite e DE2-115, e `board_update.py`, que conduz os programas de atualização da FLASH ([board-runner.md](docs/pt-br/testing/board-runner.md)) |
+| `tools/headers/` | `check_platform_headers.py`, que confere cada `include-<placa>/rv32_platform.h` com o `platform.yaml` da plataforma (`make check-headers`) |
+| `tests/host/` | Testes unitários do harness de UART física, do runner de placa, da regressão e da conferência dos cabeçalhos, sem precisar da placa |
 | `tests/python/` | Testes por entidade remanescentes: sequências de instrução cruas, todas com `skip`, no `tests.json` ([documentação](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação) e `sim-fpga.yml` (simulação do topo de hardware) |
 | `docs/` | Bugs investigados em `docs/pt-br/bugs/`; a arquitetura de memória, o boot, o runtime e a programação da placa estão em `docs/` do submódulo `Insper-RISC-V` |

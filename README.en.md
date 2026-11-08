@@ -34,6 +34,9 @@ Real-hardware tests require a workstation with Quartus, a self-hosted GitHub Act
 | `c-sdram-bank-b/` | The bank B program that the update tests send (`update-new`), linked from bank B and packed as version 2; `make flash-update-images` rebuilds it and writes the `uart_input.txt` of the tests |
 | `tools/flash_update/` | `make_images.sh`, which builds the image of bank B and checks it against the `uart_input.txt` with `--check` |
 | `tools/riscv_build/` | This project's configuration for `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` and its variants for the DE0-CV, `config.hpm-reduced.yaml` and `config.hpm-reduced-asm.yaml` for the core of 4 counters of 40 bits): it extends the `config.platform-*.yaml` that `riscv-tools platform sync` generates from the [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) submodule (toolchain, memory map, runtime, Quartus project, and simulation), and adds only the test paths |
+| `tools/board/` | `board_run.py`, which runs the programs on the DE0-CV, DE0-Nano, DE10-Lite and DE2-115 boards, and `board_update.py`, which drives the FLASH update programs ([board-runner.md](docs/en/testing/board-runner.md)) |
+| `tools/headers/` | `check_platform_headers.py`, which checks each `include-<board>/rv32_platform.h` against the `platform.yaml` of the platform (`make check-headers`) |
+| `tests/host/` | Unit tests of the physical UART harness, the board runner, the regression and the header check, with no board needed |
 | `tests/python/` | Remaining per-entity tests: raw instruction sequences, all marked `skip`, in `tests.json` ([documentation](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (real hardware), `sim.yml` (simulation), and `sim-fpga.yml` (hardware-top simulation) |
 | `docs/` | Investigated bugs in `docs/en/bugs/`; the memory architecture, boot, runtime, and board programming are in the `docs/` of the `Insper-RISC-V` submodule |
