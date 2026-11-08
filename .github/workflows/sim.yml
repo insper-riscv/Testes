@@ -243,6 +243,65 @@ jobs:
           path: "**/*.ghw"
           if-no-files-found: ignore
 
+  # A atualização de programa da FLASH: o programa da banca A recebe a imagem da banca B pela UART, atualiza a FLASH pelo
+  # controlador e reinicia; a boot ROM executa a banca nova (flash-update) ou volta à banca A (flash-update-interrupted).
+  # Com o chip de FLASH rápido e com o lento: o resultado não pode depender da latência.
+  sim-update:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/insper-riscv/ci-elf:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [config.sdram-flash-update.yaml, config.sdram-flash-update-slow.yaml]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: The update programs on the simulation top with the FLASH controller
+        run: |
+          config=tools/riscv_build/${{ matrix.config }}
+          riscv-tools --config $config generate-header
+          riscv-tools --config $config compile --emit hex
+          riscv-tools --config $config sim
+
+      - name: The image the programs receive is the one the toolchain builds
+        if: matrix.config == 'config.sdram-flash-update.yaml'
+        run: tools/flash_update/make_images.sh --check
+
+      - name: Upload waveforms
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: waveforms-update-${{ matrix.config }}
+          path: "**/*.ghw"
+          if-no-files-found: ignore
+
+  unit-vhdl:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/insper-riscv/ci-elf:latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Run per-entity VHDL unit tests (tests/python/)
+        run: |
+          uv sync
+          uv run python tests/python/runner.py
+
+      - name: Upload waveforms
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: waveforms-unit-vhdl
+          path: "**/*.ghw"
+          if-no-files-found: ignore
+
   # A regressao completa com a verificacao cruzada do Spike repete as simulacoes acima, entao so roda
   # na main e a pedido (nao atrasa o PR). Um job pulado conta como sucesso no agregador.
   regression:
@@ -274,7 +333,7 @@ jobs:
   # quando todos os jobs acima passaram (ou, no caso da regressao, foram pulados).
   test-sim:
     if: always()
-    needs: [sim-host, sim-matrix, sim-sdram-flash, sim-flash-slow, regression]
+    needs: [sim-host, sim-matrix, sim-sdram-flash, sim-flash-slow, sim-update, unit-vhdl, regression]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
