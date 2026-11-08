@@ -211,7 +211,7 @@ cable) is in [RUNNER_SETUP.md](https://github.com/insper-riscv/Infra/blob/main/d
 of Infra. What is specific to the tests:
 
 - the JTAG device is `@1: 5CE(BA4|FA4) (0x02B050DD)`, and the cable name changes with the USB port, so
-  scripts find it by the IDCODE `02B050DD` in the `jtagconfig` output;
+  `riscv-tools board select` finds the board by that IDCODE and the USB port of the cable;
 - the Quartus project of the `de0-cv` platform is in `Insper-RISC-V/src/cyclone-v/de0-cv`, with the
   In-System Memory Content Editor instances for the FLASH and the SDRAM debug port that the
   `htif`, `ram_dump`, `rom_writer` and `sdram_debug` modules of `riscv-tools` rely on;

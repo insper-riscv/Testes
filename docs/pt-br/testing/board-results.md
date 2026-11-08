@@ -210,6 +210,19 @@ O bitstream da frente de frequência (Insper-RISC-V `a612e9c`, núcleo e busca a
 
 Uma rodada anterior, com o RTL que ainda trazia o atributo `maxfan` e os testes antigos, deu 159 de 161: `clint-mtip` (código 2) esperava o `mip` logo depois da escrita no `msip`, e as linhas de interrupção agora entram no núcleo por um registrador; `flash-const` esperava que o store na FLASH fosse ignorado, e o núcleo com falhas de acesso o recusa com `mcause` 7. Os dois programas foram ajustados (`c990ab0`) e passam na simulação e na placa. Os ELFs do ACT4 não foram rodados nesta sessão.
 
+## 7. Projeto gerado pelo `board generate`
+
+O bitstream do projeto que o `riscv-tools program` escreve e compila (Insper-RISC-V `a3d9d03`, semente 5, pior folga de setup +0,759 ns) rodou na placa do notebook (`/tmp/de0cv-laptop.lock`, `board_run.py run --host laptop`) com os 161 programas da seção 6.
+
+| Etapa | Programas | PASS | FAIL | TIMEOUT |
+| :--- | ---: | ---: | ---: | ---: |
+| `regression` | 128 | 128 | 0 | 0 |
+| `sdram` | 20 | 20 | 0 | 0 |
+| `irq` | 13 | 13 | 0 | 0 |
+| Total | 161 | 161 | 0 | 0 |
+
+O `hpm-cpi` falhava nesta placa com o bitstream gerado e com o escrito à mão. A causa era o RTL. A leitura registrada do banco do Zihpm guarda o valor do contador lido, e o `csr_file` fazia o OU desse registrador na leitura de qualquer CSR sem caso próprio, de modo que o `csrr` de `instret` logo depois de um `csrr` de `mhpmcounterK` recebia os bits do contador e a janela de `instret` do teste saía errada. O teste ficou como estava, e o Core passou a ligar a saída do banco só quando o endereço é do banco.
+
 ---
 
 Copyright 2026 Insper. Licenciado sob a [Apache License, Version 2.0](../../../LICENSE).

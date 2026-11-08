@@ -1,0 +1,16 @@
+# The programs that use the SDRAM (c-sdram/), on the SDRAM platform. They are self-checking: each one
+# signals RV32_FAIL() when a read does not return what was written, so no reference output is needed.
+extends: config.platform-de2-115.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-de2-115
+  build_dir: build-de2-115
+  c_dir: c-sdram
+  asm_dir: asm-sdram
+
+# the monitor waits for someone to type and hex-id pauses for a person to read the display: on the
+# board each runs with --only (for the monitor, `console --interactive` then talks to it)
+orchestrator:
+  interactive: [monitor, hex-id]
+  # On the board, the display shows the number of the program that runs, in decimal, on the six digits
+  board_display: true

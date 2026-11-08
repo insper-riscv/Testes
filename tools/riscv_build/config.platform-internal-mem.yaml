@@ -15,9 +15,6 @@ paths:
   - Insper-RISC-V/src/simulation/internal-mem/runtime/stdio.c
   boot_memory: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_memory.S
   boot_memory_linker_script: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_memory.ld
-freq_sweep:
-  pll_file: Insper-RISC-V/src/simulation/internal-mem/pll/pll_0002.v
-  phase_count: 3
 quartus:
   project_dir: Insper-RISC-V/src/simulation/internal-mem/quartus
   project_name: core_fpga_test
