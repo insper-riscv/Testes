@@ -1,3 +1,5 @@
+"""Testes do roteiro de UART na placa, com a serial e o JTAG simulados."""
+
 import argparse
 import fcntl
 import os
@@ -16,6 +18,8 @@ from tools.riscv_build import uart_hardware_test as uart_hw
 
 
 class UartHardwareTestUnitTests(unittest.TestCase):
+    """As funções do roteiro que não precisam de placa."""
+
     def test_default_payload_is_exact_firmware_contract(self) -> None:
         self.assertEqual(uart_hw.DEFAULT_PAYLOAD, b"RX test\r\n")
         self.assertEqual(len(uart_hw.DEFAULT_PAYLOAD), uart_hw.ECHO_BYTE_COUNT)
@@ -142,9 +146,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
         with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "byte 8"):
             uart_hw.validate_echo(uart_hw.DEFAULT_PAYLOAD, b"RX test\rX")
         with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "extra bytes"):
-            uart_hw.validate_echo(
-                uart_hw.DEFAULT_PAYLOAD, uart_hw.DEFAULT_PAYLOAD, b"!"
-            )
+            uart_hw.validate_echo(uart_hw.DEFAULT_PAYLOAD, uart_hw.DEFAULT_PAYLOAD, b"!")
 
     def test_validate_tohost_accepts_only_pass(self) -> None:
         uart_hw.validate_tohost(htif.PASS)
@@ -349,15 +351,11 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             self.assertEqual(artifacts.errors_mif, errors_mif)
 
             tx_mif.unlink()
-            with self.assertRaisesRegex(
-                uart_hw.UartHardwareTestError, "compiled uart-tx MIF"
-            ):
+            with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "compiled uart-tx MIF"):
                 uart_hw.validate_artifacts(root, cfg, port, uart_hw.UART_TX_TEST)
 
             errors_mif.unlink()
-            with self.assertRaisesRegex(
-                uart_hw.UartHardwareTestError, "compiled uart-errors MIF"
-            ):
+            with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "compiled uart-errors MIF"):
                 uart_hw.validate_artifacts(
                     root,
                     cfg,
@@ -366,9 +364,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
                 )
 
             active_mif.write_bytes(b"different")
-            with self.assertRaisesRegex(
-                uart_hw.UartHardwareTestError, "is not uart-echo.mif"
-            ):
+            with self.assertRaisesRegex(uart_hw.UartHardwareTestError, "is not uart-echo.mif"):
                 uart_hw.validate_artifacts(root, cfg, port)
 
     def test_missing_port_fails_before_config_or_jtag(self) -> None:
@@ -381,7 +377,7 @@ class UartHardwareTestUnitTests(unittest.TestCase):
             skip_program=False,
             test=uart_hw.ALL_TESTS,
         )
-        cfg = {"paths": {"build_dir": "build"}, "quartus": {}}
+        cfg: dict[str, dict[str, str]] = {"paths": {"build_dir": "build"}, "quartus": {}}
         with (
             mock.patch.object(uart_hw, "load_config", return_value=cfg),
             mock.patch.object(uart_hw, "jtag_link") as detect,

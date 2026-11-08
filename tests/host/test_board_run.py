@@ -1,4 +1,5 @@
-import json
+"""Testes do runner de placa: seleção da placa, trava e partição da lista de programas."""
+
 import os
 import re
 import stat
@@ -23,6 +24,8 @@ elif "--all" in args:
 
 
 class BoardRunUnitTests(unittest.TestCase):
+    """As funções do runner que não precisam de placa."""
+
     def test_the_runner_names_neither_a_lock_nor_an_idcode(self) -> None:
         source = Path(board_run.__file__).read_text(encoding="utf-8")
         self.assertNotIn("LOCKS", source)
@@ -36,9 +39,7 @@ class BoardRunUnitTests(unittest.TestCase):
     def test_part_auto_is_the_position_among_the_present_boards(self) -> None:
         boards = [{"id": "de0-cv-ws"}, {"id": "de0-cv-ws-2"}]
         with mock.patch.object(board_run, "present_boards", return_value=boards):
-            self.assertEqual(
-                board_run.part_of("auto", "ws", {"id": "de0-cv-ws-2"}), "1/2"
-            )
+            self.assertEqual(board_run.part_of("auto", "ws", {"id": "de0-cv-ws-2"}), "1/2")
             self.assertEqual(board_run.part_of("0/2", "ws", {"id": "x"}), "0/2")
 
     def test_the_board_comes_from_the_package_when_it_exists(self) -> None:
@@ -50,8 +51,8 @@ class BoardRunUnitTests(unittest.TestCase):
                 self.assertEqual(board_run.board_args(), ["--board", "de0-cv"])
 
     def test_the_stages_of_the_de2_115_choose_its_package(self) -> None:
-        self.assertEqual(board_run.STAGES["de2-115"]["board"], "de2-115")
-        self.assertEqual(board_run.STAGES["de2-115-n2"]["board"], "de2-115")
+        self.assertEqual(board_run.STAGES["de2-115"].get("board"), "de2-115")
+        self.assertEqual(board_run.STAGES["de2-115-n2"].get("board"), "de2-115")
         with tempfile.TemporaryDirectory() as root:
             package = Path(root) / "Insper-RISC-V/boards/de2-115"
             package.mkdir(parents=True)
@@ -63,10 +64,12 @@ class BoardRunUnitTests(unittest.TestCase):
                 self.assertEqual(board_run.board_args(), ["--board", "de2-115"])
 
     def test_without_the_package_the_runner_says_what_to_update(self) -> None:
-        with tempfile.TemporaryDirectory() as root:
-            with mock.patch.object(board_run, "TESTS_ROOT", Path(root)):
-                with self.assertRaisesRegex(RuntimeError, "Insper-RISC-V"):
-                    board_run.board_args()
+        with (
+            tempfile.TemporaryDirectory() as root,
+            mock.patch.object(board_run, "TESTS_ROOT", Path(root)),
+            self.assertRaisesRegex(RuntimeError, "Insper-RISC-V"),
+        ):
+            board_run.board_args()
 
     def test_the_session_holds_the_lock_until_it_ends(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -87,9 +90,9 @@ class BoardRunUnitTests(unittest.TestCase):
             mock.patch.dict(os.environ, {"RISCV_TOOLS": "true"}),
             mock.patch.object(board_run, "board_args", return_value=["--board", "de0-cv"]),
             self.assertRaises(RuntimeError),
+            board_run.board_session("ws"),
         ):
-            with board_run.board_session("ws"):
-                pass
+            pass
 
 
 if __name__ == "__main__":

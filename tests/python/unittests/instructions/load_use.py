@@ -1,7 +1,10 @@
+import os
+
 import cocotb
 from cocotb.triggers import Timer
-import os
-os.environ['COCOTB_RESOLVE_X'] = 'ZEROS'
+
+os.environ["COCOTB_RESOLVE_X"] = "ZEROS"
+
 
 @cocotb.test()
 async def test_load_use_hazard(dut):
@@ -11,9 +14,10 @@ async def test_load_use_hazard(dut):
     await Timer(10, units="ns")
     n = [0]
     written = []
+
     async def step():
         n[0] += 1
-        for i in range(3):
+        for _ in range(3):
             dut.CLK.value = 1
             await Timer(10, units="ns")
             dut.CLK.value = 0
@@ -22,9 +26,10 @@ async def test_load_use_hazard(dut):
             int(dut.ram_wdata.value),
             str(dut.core.u_reg_ex_mem.r_weRAM.value),
         )
+
     for _ in range(30):
         wdata, weRAM = await step()
-        if weRAM == '1':
+        if weRAM == "1":
             written.append(wdata)
         if len(written) >= 2:
             break

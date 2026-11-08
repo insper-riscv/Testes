@@ -1,13 +1,15 @@
 import cocotb
 from cocotb.triggers import Timer
 
+
 def sext(val, bits):
     """Extensão de sinal."""
     mask = (1 << bits) - 1
     val &= mask
     if val & (1 << (bits - 1)):
-        val -= (1 << bits)
+        val -= 1 << bits
     return val
+
 
 @cocotb.test()
 async def test_jal(dut):
@@ -16,11 +18,12 @@ async def test_jal(dut):
     await Timer(10, units="ns")
 
     async def step():
-        for i in range (3):
+        for _ in range(3):
             dut.CLK.value = 1
             await Timer(10, units="ns")
             dut.CLK.value = 0
             await Timer(10, units="ns")
+
     """Testa apenas JAL verificando PC_out e registrador de retorno."""
 
     # ====== Executa JAL ======
@@ -28,7 +31,7 @@ async def test_jal(dut):
     await step()
     await step()
     await step()
-    pc_after = int(dut.core.pc_if_out.value)   # PC após salto (após 3 steps)
+    pc_after = int(dut.core.pc_if_out.value)  # PC após salto (após 3 steps)
 
     # Cálculo esperado
     offset = sext(8, 21)  # imediato do JAL
@@ -45,7 +48,7 @@ async def test_jal(dut):
     await step()
     await step()
     await step()
-    reg_val = int(dut.core.alu_out_idexmem.value)    
+    reg_val = int(dut.core.alu_out_idexmem.value)
 
     # EXECUTA JALR: 1 step após o ADD
     await step()

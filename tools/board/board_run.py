@@ -29,16 +29,17 @@ import shlex
 import subprocess
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import NotRequired, TypedDict
 
 TESTS_ROOT = Path(__file__).resolve().parents[2]
 BUILD = "tools/riscv_build"
 
 # Cada etapa é um config do Tests e os programas que a placa não roda, com o motivo.
-# Extensões da plataforma completa: um programa vale numa plataforma se o cabeçalho `RV32_EXT` cita só extensões da lista dela
-# (a letra de uma extensão de uma letra, como ``m``, inclusive).
+# Extensões da plataforma completa: um programa vale numa plataforma se o cabeçalho `RV32_EXT` cita só
+# extensões da lista dela (a letra de uma extensão de uma letra, como ``m``, inclusive).
 FULL_EXTENSIONS = (
     "m",
     "zicsr",
@@ -52,7 +53,32 @@ FULL_EXTENSIONS = (
     "zihintpause",
 )
 
-STAGES: dict[str, dict[str, object]] = {
+
+class Stage(TypedDict):
+    """Uma etapa da placa.
+
+    Attributes
+    ----------
+    config : str
+        Config do Tests que compila a etapa.
+    exclude : dict of {str: str}
+        Programas que a placa não roda, com o motivo.
+    timeouts : NotRequired[dict[str, int]]
+        Timeout, em segundos, dos programas lentos.
+    board : NotRequired[str]
+        Pacote de placa da etapa; o padrão é a DE0-CV.
+    extensions : NotRequired[tuple[str, ...]]
+        Extensões que a plataforma liga, quando a etapa filtra os programas por elas.
+    """
+
+    config: str
+    exclude: dict[str, str]
+    timeouts: NotRequired[dict[str, int]]
+    board: NotRequired[str]
+    extensions: NotRequired[tuple[str, ...]]
+
+
+STAGES: dict[str, Stage] = {
     "regression": {
         "config": "config.sdram-flash-regression.yaml",
         "exclude": {
@@ -98,8 +124,8 @@ STAGES: dict[str, dict[str, object]] = {
         "board": "de2-115",
         "timeouts": {"hex-id": 90},
     },
-    # A DE0-Nano (RV32I com Zicsr) e a DE10-Lite (perfil completo): `extensions` lista as extensões que a plataforma liga, e o
-    # `prepare` só compila os programas cujo cabeçalho `RV32_EXT` cita extensões dessa lista.
+    # A DE0-Nano (RV32I com Zicsr) e a DE10-Lite (perfil completo): `extensions` lista as extensões que a
+    # plataforma liga, e o `prepare` só compila os programas cujo cabeçalho `RV32_EXT` cita extensões dessa lista.
     "de0-nano-regression": {
         "config": "config.nano-regression.yaml",
         "exclude": {
@@ -151,11 +177,29 @@ STAGES: dict[str, dict[str, object]] = {
 # A placa da plataforma das etapas; `main` troca pela do pacote da etapa pedida (`board` da etapa).
 PLATFORM_BOARD = "de0-cv"
 # As etapas que rodam sem `--stages`: as da DE0-CV, porque uma sessão trava uma placa só.
-DEFAULT_STAGES = [
-    name for name, stage in STAGES.items() if stage.get("board", "de0-cv") == "de0-cv"
-]
+DEFAULT_STAGES = [name for name, stage in STAGES.items() if stage.get("board", "de0-cv") == "de0-cv"]
 _VERDICT = re.compile(r"^\s*(PASS|FAIL|TIMEOUT)\s+(\S+)")
 LOCK_WAIT_S = 14400
+
+
+def declared_extensions(folder: Path) -> set[str]:
+    """Lê as extensões que o cabeçalho ``RV32_EXT`` de um programa cita.
+
+    Parameters
+    ----------
+    folder : Path
+        A pasta do programa.
+
+    Returns
+    -------
+    set of str
+        As extensões, em minúsculas; vazio quando o programa não cita nenhuma.
+    """
+    source = "".join(f.read_text() for f in folder.glob("*.[cS]"))
+    match = re.search(r"RV32_EXT:\s*(.+)", source)
+    if not match:
+        return set()
+    return {e.strip().lower() for e in str(match.group(1)).split(",")}
 
 
 def applicable(stage: str) -> list[str]:
@@ -171,22 +215,16 @@ def applicable(stage: str) -> list[str]:
     list of str
         Os programas sem extensão fora da lista e fora dos excluídos da etapa, ordenados.
     """
-    allowed = set(STAGES[stage]["extensions"])  # type: ignore[arg-type]
-    text = (TESTS_ROOT / BUILD / str(STAGES[stage]["config"])).read_text()
+    allowed = set(STAGES[stage].get("extensions", ()))
+    text = (TESTS_ROOT / BUILD / STAGES[stage]["config"]).read_text()
     folders = re.findall(r"^\s*(?:c_dir|asm_dir):\s*(\S+)", text, re.MULTILINE)
-    found: set[str] = set()
-    for folder in dict.fromkeys(folders):
-        for path in sorted((TESTS_ROOT / folder).iterdir()):
-            source = "".join(p.read_text() for p in path.glob("*.[cS]"))
-            match = re.search(r"RV32_EXT:\s*(.+)", source)
-            wanted = (
-                {e.strip().lower() for e in match.group(1).split(",")}
-                if match
-                else set()
-            )
-            if wanted <= allowed:
-                found.add(path.name)
-    return sorted(found - set(STAGES[stage]["exclude"]))  # type: ignore[arg-type]
+    found = {
+        path.name
+        for folder in dict.fromkeys(folders)
+        for path in sorted((TESTS_ROOT / folder).iterdir())
+        if declared_extensions(path) <= allowed
+    }
+    return sorted(found - set(STAGES[stage]["exclude"]))
 
 
 def tools_command() -> list[str]:
@@ -219,8 +257,7 @@ def board_args() -> list[str]:
     package = TESTS_ROOT / "Insper-RISC-V" / "boards" / PLATFORM_BOARD / "board.yaml"
     if not package.is_file():
         raise RuntimeError(
-            f"{package} não existe: atualize o submódulo Insper-RISC-V para um commit com os "
-            "pacotes de placa"
+            f"{package} não existe: atualize o submódulo Insper-RISC-V para um commit com os pacotes de placa"
         )
     return ["--board", PLATFORM_BOARD]
 
@@ -279,9 +316,7 @@ def present_boards(host: str) -> list[dict[str, str]]:
 
 
 @contextmanager
-def board_session(
-    host: str, wait_s: int = LOCK_WAIT_S, free: bool = False
-) -> Iterator[dict[str, str]]:
+def board_session(host: str, wait_s: int = LOCK_WAIT_S, free: bool = False) -> Generator[dict[str, str]]:
     """Escolhe a placa e segura a trava dela durante toda a sessão.
 
     A trava é do ``riscv-tools board lock --hold``, que a segura enquanto a entrada padrão
@@ -317,9 +352,7 @@ def board_session(
         line = lock.stdout.readline() if lock.stdout else ""
         if not line:
             lock.wait()
-            raise RuntimeError(
-                f"riscv-tools board lock falhou (status {lock.returncode})"
-            )
+            raise RuntimeError(f"riscv-tools board lock falhou (status {lock.returncode})")
         try:
             yield json.loads(line)
         finally:
@@ -383,7 +416,7 @@ def manifest_names(stage: str) -> list[str]:
     list of str
         Os nomes do manifesto, ordenados.
     """
-    config = yaml_build_dir(str(STAGES[stage]["config"]))
+    config = yaml_build_dir(STAGES[stage]["config"])
     manifest = TESTS_ROOT / config / "real" / "manifest.json"
     return sorted(e["name"] for e in json.loads(manifest.read_text()))
 
@@ -427,9 +460,7 @@ def partition(names: list[str], part: str) -> list[str]:
     return names[index::count]
 
 
-def run_stage(
-    stage: str, host: str, part: str, out: Path, cable: str
-) -> dict[str, str]:
+def run_stage(stage: str, host: str, part: str, out: Path, cable: str) -> dict[str, str]:
     """Roda uma etapa na placa e devolve o veredito de cada programa.
 
     Parameters
@@ -451,7 +482,7 @@ def run_stage(
         PASS, FAIL ou TIMEOUT por programa.
     """
     config = STAGES[stage]["config"]
-    excluded = set(STAGES[stage]["exclude"])  # type: ignore[arg-type]
+    excluded = set(STAGES[stage]["exclude"])
     names = [n for n in manifest_names(stage) if n not in excluded]
     wanted = partition(names, part)
     if not wanted:
@@ -491,11 +522,11 @@ def set_timeouts(stage: str, wanted: list[str]) -> None:
     wanted : list of str
         Os programas que a placa vai rodar.
     """
-    timeouts: dict[str, int] = STAGES[stage].get("timeouts", {})  # type: ignore[assignment]
+    timeouts = STAGES[stage].get("timeouts", {})
     mine = {n: t for n, t in timeouts.items() if n in wanted}
     if not mine:
         return
-    config = yaml_build_dir(str(STAGES[stage]["config"]))
+    config = yaml_build_dir(STAGES[stage]["config"])
     path = TESTS_ROOT / config / "real" / "manifest.json"
     entries = json.loads(path.read_text())
     for entry in entries:
@@ -516,7 +547,7 @@ def parse_verdicts(text: str) -> dict[str, str]:
     dict of {str: str}
         O veredito de cada nome que aparece no resumo.
     """
-    found = {}
+    found: dict[str, str] = {}
     for line in text.splitlines():
         match = _VERDICT.match(line)
         if match:
@@ -528,17 +559,10 @@ def cmd_prepare(args: argparse.Namespace) -> None:
     """Compila as etapas (``compile --emit mif``)."""
     for stage in args.stages:
         config = f"{BUILD}/{STAGES[stage]['config']}"
-        only = (
-            ["--only", ",".join(applicable(stage))]
-            if "extensions" in STAGES[stage]
-            else []
-        )
+        only = ["--only", ",".join(applicable(stage))] if "extensions" in STAGES[stage] else []
         for sub in ("generate-header", "compile --emit mif"):
             subprocess.run(
-                tools_command()
-                + ["--config", config]
-                + sub.split()
-                + (only if "compile" in sub else []),
+                tools_command() + ["--config", config] + sub.split() + (only if "compile" in sub else []),
                 cwd=TESTS_ROOT,
                 check=True,
             )
@@ -555,12 +579,8 @@ def cmd_run(args: argparse.Namespace) -> None:
             program(Path(args.sof), board["cable"])
         for stage in args.stages:
             results[stage] = run_stage(stage, args.host, part, out, board["cable"])
-    (out / f"results-{args.host}.json").write_text(
-        json.dumps(results, indent=1, sort_keys=True)
-    )
-    failed = [
-        f"{s}/{n}" for s, r in results.items() for n, v in r.items() if v != "PASS"
-    ]
+    (out / f"results-{args.host}.json").write_text(json.dumps(results, indent=1, sort_keys=True))
+    failed = [f"{s}/{n}" for s, r in results.items() for n, v in r.items() if v != "PASS"]
     print(f"{sum(len(r) for r in results.values())} programas, falhas: {failed}")
     sys.exit(1 if failed else 0)
 
@@ -598,9 +618,7 @@ def cmd_act(args: argparse.Namespace) -> None:
             )
     verdicts = parse_verdicts(log.read_text())
     results = {n: verdicts.get(n, "TIMEOUT") for n in wanted}
-    (out / f"act-{args.host}.json").write_text(
-        json.dumps(results, indent=1, sort_keys=True)
-    )
+    (out / f"act-{args.host}.json").write_text(json.dumps(results, indent=1, sort_keys=True))
     failed = sorted(n for n, v in results.items() if v != "PASS")
     print(f"{len(results)} ELFs, falhas: {failed}")
     sys.exit(1 if failed else 0)
@@ -608,7 +626,7 @@ def cmd_act(args: argparse.Namespace) -> None:
 
 def main() -> None:
     """Lê a linha de comando e despacha."""
-    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n", maxsplit=1)[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
     prep = sub.add_parser("prepare", help="compila as etapas")
     prep.add_argument("--stages", nargs="+", default=DEFAULT_STAGES)
@@ -638,9 +656,7 @@ def main() -> None:
             p.add_argument("--root", required=True)
             p.add_argument("--target", required=True, help="pasta de work do ACT4")
     args = parser.parse_args()
-    boards = {
-        str(STAGES[s].get("board", PLATFORM_BOARD)) for s in getattr(args, "stages", [])
-    }
+    boards = {STAGES[s].get("board", PLATFORM_BOARD) for s in getattr(args, "stages", [])}
     if len(boards) > 1:
         parser.error(f"as etapas pedidas são de placas diferentes: {sorted(boards)}")
     if getattr(args, "platform_board", None):

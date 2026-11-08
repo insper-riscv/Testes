@@ -22,18 +22,20 @@ SYMBOLS = {
 
 
 class CheckHeaderTests(unittest.TestCase):
+    """A comparação de um cabeçalho com os símbolos de uma plataforma."""
+
     def test_a_header_that_matches_has_no_divergence(self) -> None:
         self.assertEqual(check.check_header("include-x", HEADER, SYMBOLS), [])
 
     def test_a_different_value_is_reported_with_both_numbers(self) -> None:
         text = HEADER.replace("0x42000000", "0x44000000")
-        (found,) = check.check_header("include-x", text, SYMBOLS)
+        found = check.check_header("include-x", text, SYMBOLS)[0]
         self.assertEqual((found.macro, found.found, found.expected), ("RV32_RAM_END", 0x44000000, 0x42000000))
         self.assertIn("0x42000000", str(found))
 
     def test_an_address_the_platform_lacks_is_reported(self) -> None:
         symbols = {k: v for k, v in SYMBOLS.items() if k != "BANK_A.size"}
-        (found,) = check.check_header("include-x", HEADER, symbols)
+        found = check.check_header("include-x", HEADER, symbols)[0]
         self.assertIsNone(found.expected)
         self.assertIn("não tem BANK_A.size", str(found))
 
@@ -53,6 +55,8 @@ class CheckHeaderTests(unittest.TestCase):
 
 
 class RepositoryHeadersTests(unittest.TestCase):
+    """Os cabeçalhos versionados deste repositório."""
+
     def test_every_header_folder_is_listed_in_the_mapping(self) -> None:
         mapping = json.loads(check.MAPPING.read_text(encoding="utf-8"))
         on_disk = {p.parent.name for p in check.INCLUDE_ROOT.glob("include*/rv32_platform.h")}

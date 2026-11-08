@@ -64,20 +64,17 @@ def build(name):
     flags += ["-nostartfiles", f"-T{linker}"]
     flags += [f"-DRV32_CLINT_BASE={CLINT_BASE:#x}", f"-I{INCLUDE_DIR}"]
     source = ASM_DIR / name / "src.S"
-    subprocess.run(  # noqa: S603
-        ["riscv32-unknown-elf-gcc", *flags, "-o", elf, crt, source],  # noqa: S607
+    subprocess.run(
+        ["riscv32-unknown-elf-gcc", *flags, "-o", elf, crt, source],
         check=True,
     )
-    subprocess.run(  # noqa: S603
-        ["riscv32-unknown-elf-objcopy", "-O", "binary", elf, binary],  # noqa: S607
+    subprocess.run(
+        ["riscv32-unknown-elf-objcopy", "-O", "binary", elf, binary],
         check=True,
     )
     data = binary.read_bytes()
     data += bytes(-len(data) % 4)
-    return {
-        i: int.from_bytes(data[i : i + 4], "little")
-        for i in range(0, len(data), 4)
-    }
+    return {i: int.from_bytes(data[i : i + 4], "little") for i in range(0, len(data), 4)}
 
 
 class Clint:

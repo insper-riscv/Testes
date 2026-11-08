@@ -75,12 +75,8 @@ class Divergence:
     def __str__(self) -> str:
         """Descreve a divergência em uma linha."""
         if self.expected is None:
-            return (
-                f"{self.header}: {self.macro} = {self.found:#x}, mas a plataforma não tem {self.symbol}"
-            )
-        return (
-            f"{self.header}: {self.macro} = {self.found:#x}, a plataforma ({self.symbol}) tem {self.expected:#x}"
-        )
+            return f"{self.header}: {self.macro} = {self.found:#x}, mas a plataforma não tem {self.symbol}"
+        return f"{self.header}: {self.macro} = {self.found:#x}, a plataforma ({self.symbol}) tem {self.expected:#x}"
 
 
 def platform_symbols(platform_file: Path) -> dict[str, int]:
@@ -221,7 +217,7 @@ def check_all(write: bool = False) -> list[Divergence]:
 
 def main() -> int:
     """Roda a conferência e devolve o código de saída (0 quando todos os cabeçalhos batem)."""
-    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n", maxsplit=1)[0])
     parser.add_argument("--write", action="store_true", help="corrige os valores divergentes nos cabeçalhos")
     args = parser.parse_args()
     problems = check_all(write=args.write)
