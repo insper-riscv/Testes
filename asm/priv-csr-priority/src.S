@@ -51,44 +51,44 @@ main:
     csrw mtvec, t0
 
     // exceções: cada caso é uma instrução cujo endereço, causa e mtval o tratador registra
-    li   s2, 6                    # x18: valor com o bit 1 aceso, alvo desalinhado dos saltos
-    li   s3, 7                    # x19: valor diferente de s2
+    li   a4, 6                    # x14: valor com o bit 1 aceso, alvo desalinhado dos saltos
+    li   a5, 7                    # x15: valor diferente de a4
 site_jalr_f1:
-    .word 0x00091067               # jalr com funct3 = 001 e alvo 6 (s2)
+    .word 0x00071067               # jalr com funct3 = 001 e alvo 6 (a4)
 site_jalr_f7:
-    .word 0x00097067               # jalr com funct3 = 111 e alvo 6
+    .word 0x00077067               # jalr com funct3 = 111 e alvo 6
 site_br_f2_eq:
-    .word 0x01292363               # desvio funct3 = 010, rs1 = rs2, deslocamento 6
+    .word 0x00E72363               # desvio funct3 = 010, rs1 = rs2, deslocamento 6
 site_br_f2_ne:
-    .word 0x01392363               # desvio funct3 = 010, rs1 != rs2
+    .word 0x00F72363               # desvio funct3 = 010, rs1 != rs2
 site_br_f3_eq:
-    .word 0x01293363               # desvio funct3 = 011, rs1 = rs2
+    .word 0x00E73363               # desvio funct3 = 011, rs1 = rs2
 site_br_f3_ne:
-    .word 0x01393363               # desvio funct3 = 011, rs1 != rs2
+    .word 0x00F73363               # desvio funct3 = 011, rs1 != rs2
 site_jalr_ok:
     jalr x0, 2(x0)                # salto legal ao endereço 2
 site_beq_ok:
     beq  x0, x0, .+6              # desvio legal tomado, alvo desalinhado
 site_dbg0:
-    csrr t6, 0x7B0               # CSR do bloco de depuração
+    csrr a3, 0x7B0               # CSR do bloco de depuração
 site_dbg1:
-    csrr t6, 0x7B1               # CSR do bloco de depuração
+    csrr a3, 0x7B1               # CSR do bloco de depuração
 site_dbg2:
-    csrr t6, 0x7B2               # CSR do bloco de depuração
+    csrr a3, 0x7B2               # CSR do bloco de depuração
 site_dbg3:
-    csrr t6, 0x7B3               # CSR do bloco de depuração
+    csrr a3, 0x7B3               # CSR do bloco de depuração
 site_dbg4:
-    csrr t6, 0x7B4               # CSR do bloco de depuração
+    csrr a3, 0x7B4               # CSR do bloco de depuração
 site_dbg5:
-    csrr t6, 0x7BF               # CSR do bloco de depuração
+    csrr a3, 0x7BF               # CSR do bloco de depuração
 site_wr_hartid:
     csrrw x0, mhartid, x0         # escrita em CSR somente leitura
 site_wr_vendor:
-    csrrs x0, mvendorid, s2       # escrita efetiva (rs1 != x0) em CSR somente leitura
-    csrrs t6, mvendorid, x0       # leitura sem escrita: legal
-    csrrs t6, mhartid, x0
-    csrrs t6, misa, x0
-    csrrs t6, mstatush, x0
+    csrrs x0, mvendorid, a4       # escrita efetiva (rs1 != x0) em CSR somente leitura
+    csrrs a3, mvendorid, x0       # leitura sem escrita: legal
+    csrrs a3, mhartid, x0
+    csrrs a3, misa, x0
+    csrrs a3, mstatush, x0
 
     lw   t0, 0(s0)
     li   t1, 16
@@ -265,26 +265,26 @@ fail9:
     RVMODEL_HALT_FAIL(9)
 
 /* Registra mcause, mepc e mtval do trap k em RV32_RAM_BASE + 0x100 + 12k, conta o trap e retoma depois da instrução.
- * Usa t3 a t6 (t5 salvo em mscratch), e os casos usam s2 e s3 como valores. */
+ * Usa a0 a a3 (a2 salvo em mscratch), e os casos usam a4 e a5 como valores. */
     .balign 4
 handler:
-    csrw mscratch, t5
-    li   t5, RV32_RAM_BASE
-    lw   t6, 0(t5)
-    slli t4, t6, 3
-    slli t3, t6, 2
-    add  t4, t4, t3
-    add  t4, t4, t5
-    csrr t3, mcause
-    sw   t3, 0x100(t4)
-    csrr t3, mepc
-    sw   t3, 0x104(t4)
-    csrr t3, mtval
-    sw   t3, 0x108(t4)
-    addi t6, t6, 1
-    sw   t6, 0(t5)
-    csrr t3, mepc
-    addi t3, t3, 4
-    csrw mepc, t3
-    csrr t5, mscratch
+    csrw mscratch, a2
+    li   a2, RV32_RAM_BASE
+    lw   a3, 0(a2)
+    slli a1, a3, 3
+    slli a0, a3, 2
+    add  a1, a1, a0
+    add  a1, a1, a2
+    csrr a0, mcause
+    sw   a0, 0x100(a1)
+    csrr a0, mepc
+    sw   a0, 0x104(a1)
+    csrr a0, mtval
+    sw   a0, 0x108(a1)
+    addi a3, a3, 1
+    sw   a3, 0(a2)
+    csrr a0, mepc
+    addi a0, a0, 4
+    csrw mepc, a0
+    csrr a2, mscratch
     mret
