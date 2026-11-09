@@ -100,7 +100,7 @@ jobs:
                platform=Insper-RISC-V/src/cyclone-v/de0-cv/config.yaml
                include=tools/riscv_build/include-sdram
                # the UART programs need the physical pins of the board top
-               skip="uart-echo uart-tx uart-errors";;
+               skip="uart-echo uart-tx uart-errors uart-stdio";;
           esac
           case $z in
             none)         ext="_zicntr_zihpm";;
@@ -130,7 +130,7 @@ jobs:
             for dir in asm/*/; do
               name=${dir#asm/}; name=${name%/}
               if sed -e 's://.*$::' -e 's:[;#].*$::' "$dir/src.S" \
-                | grep -qE '\b(x(1[6-9]|2[0-9]|3[01])|a[67]|s([2-9]|1[01])|t[3-6])\b'; then
+                | grep -E '\b(x(1[6-9]|2[0-9]|3[01])|a[67]|s([2-9]|1[01])|t[3-6])\b' >/dev/null; then
                 excl="$excl $name"
               fi
             done
