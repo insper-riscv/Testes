@@ -13,26 +13,28 @@ paths:
   sources:
   - Insper-RISC-V/src/cyclone-v/de0-cv/runtime/_exit.c
   - Insper-RISC-V/src/cyclone-v/de0-cv/runtime/stdio.c
-  boot_rom: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_rom.S
-  boot_rom_linker_script: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_rom.ld
-freq_sweep:
-  pll_file: Insper-RISC-V/src/simulation/internal-mem/pll/pll_0002.v
-  phase_count: 3
+  boot_memory: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_memory.S
+  boot_memory_linker_script: Insper-RISC-V/src/cyclone-v/de0-cv/runtime/boot_memory.ld
 quartus:
-  project_dir: Insper-RISC-V/src/cyclone-v/de0-cv
-  project_name: de0-cv
-  sof_file: output_files/de0-cv.sof
-  rom_mif_target: flash_init.mif
-  boot_rom_mif_target: boot_rom_init.mif
+  project_dir: Insper-RISC-V/build/de0-cv-de0-cv
+  project_name: de0_cv_de0_cv
+  sof_file: output_files/de0_cv_de0_cv.sof
+  rom_mif_target: init.mif
+  boot_memory_mif_target: boot_memory_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   ram_mem_instance: 0
-  rom_write_method: mem_edit
-  rom_mem_instances:
-  - 0
+  rom_write_method: jtag_loader
+  rom_mem_instances: []
   program_wait_seconds: 15
   poll_interval_seconds: 2.5
   default_timeout_s: 15
+  generate:
+    platform: Insper-RISC-V/src/cyclone-v/de0-cv/platform.yaml
+    out: Insper-RISC-V/build
+    boards_dir: Insper-RISC-V/boards
+    chips_dir: Insper-RISC-V/Memory/chips
   ram_backend: sdram_debug
+  sdram_debug_instance: 3
 sim:
   toplevel: rv32im_sdram_flash_sim_test
   vhdl_sources:
@@ -125,6 +127,7 @@ sim:
   - Insper-RISC-V/Memory/src/RAM/SoC/sim/sdram_system.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/dcache.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/icache.vhd
+  - Insper-RISC-V/Memory/src/latency/SoC/latency_counter.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/flash_chip.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/flash_arbiter.vhd
   - Insper-RISC-V/Memory/src/cache/SoC/mem_region_router.vhd
@@ -135,8 +138,10 @@ sim:
   - Insper-RISC-V/Peripherals/src/CLINT/soc/clint_consts.vhd
   - Insper-RISC-V/Peripherals/src/CLINT/soc/clint_mtime.vhd
   - Insper-RISC-V/Peripherals/src/CLINT/soc/clint.vhd
-  - Insper-RISC-V/Peripherals/src/intc/soc/ext_irq_consts.vhd
-  - Insper-RISC-V/Peripherals/src/intc/soc/ext_irq_controller.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic_consts.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic_gateway.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic_arbiter.vhd
+  - Insper-RISC-V/Peripherals/src/PLIC/soc/plic.vhd
   - Insper-RISC-V/Peripherals/src/flash-controller/soc/flash_controller.vhd
   - Insper-RISC-V/src/cyclone-v/de0-cv/de0-cv_sim_top.vhd
   test_module: testbench.test_c_program
@@ -146,15 +151,15 @@ sim:
     SIM_TIMEOUT_CYCLES: '12000000'
     TOHOST_ADDR: '0x43FFFFE8'
     STDOUT_ADDR: '0x43FFFBE0'
-    SIM_EXTRA_CLOCKS: CLK_MEM:7
+    SIM_EXTRA_CLOCKS: i_clk_mem:10
     SIM_SAMPLE_CLOCK: pll_clk_idexmem
     UART_START_ON_ACCESS: '1'
     UART_SLOT: '4'
   ghdl_std: 08
   parameters:
-    BOOT_ROM_FILE: '{boot_rom_hex_path}'
+    BOOT_MEMORY_FILE: '{boot_memory_hex_path}'
     ROM_FILE: '{hex_path}'
-    boot_rom_addr_width: '10'
+    boot_memory_addr_width: '10'
     rom_addr_width: '16'
     ram_addr_width: '16'
     HAS_E: false
@@ -165,11 +170,13 @@ sim:
     HAS_ZIHPM: true
     HAS_ZIMOP: true
     HAS_ZICOND: true
-    HAS_ZIHINTNTL: false
-    HAS_ZIHINTPAUSE: false
+    HAS_ZIHINTNTL: true
+    HAS_ZIHINTPAUSE: true
     HAS_ZIFENCEI: true
     HAS_ZICCLSM: true
     HAS_INTERRUPTS: true
+    HAS_SSCOFPMF: true
+    HAS_ACCESS_FAULTS: true
     ROM_EXTERNAL: true
     RAM_EXTERNAL: true
     HAS_ICACHE: true
@@ -182,8 +189,8 @@ emulator:
   gcc_flags:
   - -DRV32_SPIKE
 memory:
-  boot_rom_base: 0
-  boot_rom_words: 1024
+  boot_memory_base: 0
+  boot_memory_words: 1024
   rom_base: 4096
   rom_words: 64512
   ram_base: 1073741824

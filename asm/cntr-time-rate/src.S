@@ -1,11 +1,16 @@
 // RV32_EXT: M,Zicsr
 // RV32_TEST_KIND: memory
 //
-// time advances by one tick every 50 cycles at 50 MHz: the cycles between two ticks, read from
-// cycle, are close to 50 (45 to 55) and time never goes backwards. The measure runs twice and the
+// time advances by one tick every RV32_TICK_CYCLES cycles (the platform's interrupts.clock_hz over
+// mtime_hz; 50 when the platform header does not say): the cycles between two ticks, read from
+// cycle, are close to it (5 below to 5 above) and time never goes backwards. The measure runs twice and the
 // second one counts, so the instruction fetches of the first fill the caches and a slow FLASH
 // does not add a miss to the cycles between two ticks.
 #include "rv32_platform.h"
+
+#ifndef RV32_TICK_CYCLES
+#define RV32_TICK_CYCLES 50
+#endif
 
     .section .text
     .globl main
@@ -24,10 +29,10 @@ main:
     sub  x10, x9, x8              # cycles between two ticks
     addi x16, x16, -1
     bnez x16, 0b                  # measure again with the caches warm
-    li   x11, 45
+    li   x11, RV32_TICK_CYCLES - 5
     sltu x12, x10, x11
     xori x12, x12, 1              # x12 = 1: at least 45
-    li   x13, 56
+    li   x13, RV32_TICK_CYCLES + 6
     sltu x14, x10, x13            # x14 = 1: below 56
     sub  x15, x7, x6              # time moved by exactly 1
     sw   x12, 0(x5)

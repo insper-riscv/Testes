@@ -1,7 +1,10 @@
+import os
+
 import cocotb
 from cocotb.triggers import Timer
-import os
-os.environ['COCOTB_RESOLVE_X'] = 'ZEROS'
+
+os.environ["COCOTB_RESOLVE_X"] = "ZEROS"
+
 
 @cocotb.test()
 async def test_forwarding_raw(dut):
@@ -10,9 +13,10 @@ async def test_forwarding_raw(dut):
     dut.CLK.value = 0
     await Timer(10, units="ns")
     n = [0]
+
     async def step():
         n[0] += 1
-        for i in range(3):
+        for _ in range(3):
             dut.CLK.value = 1
             await Timer(10, units="ns")
             dut.CLK.value = 0
@@ -21,10 +25,11 @@ async def test_forwarding_raw(dut):
             int(dut.ram_wdata.value),
             str(dut.core.u_reg_ex_mem.r_weRAM.value),
         )
+
     found = False
     for _ in range(20):
         wdata, weRAM = await step()
-        if weRAM == '1' and wdata == 8:
+        if weRAM == "1" and wdata == 8:
             dut._log.info(f"FORWARDING RAW OK: SW escreveu wdata=8 no step {n[0]}")
             found = True
             break

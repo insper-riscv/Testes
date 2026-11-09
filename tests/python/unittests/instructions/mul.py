@@ -1,7 +1,10 @@
+import os
+
 import cocotb
 from cocotb.triggers import Timer
-import os
-os.environ['COCOTB_RESOLVE_X'] = 'ZEROS'
+
+os.environ["COCOTB_RESOLVE_X"] = "ZEROS"
+
 
 @cocotb.test()
 async def test_mul(dut):
@@ -10,9 +13,10 @@ async def test_mul(dut):
     await Timer(10, units="ns")
 
     n = [0]
+
     async def step():
         n[0] += 1
-        for i in range(3):
+        for _ in range(3):
             dut.CLK.value = 1
             await Timer(10, units="ns")
             dut.CLK.value = 0
@@ -25,9 +29,9 @@ async def test_mul(dut):
 
     found = False
     for _ in range(55):
-        alu, wdata, weRAM = await step()
+        _, wdata, weRAM = await step()
         # O SW executa quando weRAM=1; nesse ciclo ram_wdata tem x12=42
-        if weRAM == '1' and wdata == 42:
+        if weRAM == "1" and wdata == 42:
             dut._log.info(f"MUL OK: SW executou com wdata=42 no step {n[0]}")
             found = True
             break

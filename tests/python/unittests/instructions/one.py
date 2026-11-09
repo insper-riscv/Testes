@@ -1,6 +1,7 @@
 import cocotb
 from cocotb.triggers import Timer
 
+
 def sext_20(imm):
     """Aplica extensão de sinal para 20 bits -> 32 bits."""
     imm20 = imm & 0xFFFFF
@@ -10,22 +11,24 @@ def sext_20(imm):
         imm32 = imm20
     return imm32
 
+
 def lui_value(imm):
     return (sext_20(imm) << 12) & 0xFFFFFFFF
 
+
 def auipc_value(pc, imm):
     return (pc + (sext_20(imm) << 12)) & 0xFFFFFFFF
+
 
 @cocotb.test()
 async def test_lui_auipc(dut):
 
     async def step():
-        for i in range (3):
+        for _ in range(3):
             dut.CLK.value = 1
             await Timer(10, units="ns")
             dut.CLK.value = 0
             await Timer(10, units="ns")
-
 
     """Testa LUI e AUIPC em casos normais e limites."""
     # deixa a CPU rodar as instruções AUIPC
@@ -44,7 +47,7 @@ async def test_lui_auipc(dut):
     ]
     # PC de cada AUIPC: começa em 4 * nº da instrução (simples modelo single-cycle)
     pcs = [i * 4 for i in range(len(auipc_immediates))]
-    auipc_expected = [auipc_value(pc, imm) for pc, imm in zip(pcs, auipc_immediates)]
+    auipc_expected = [auipc_value(pc, imm) for pc, imm in zip(pcs, auipc_immediates, strict=False)]
 
     for expected in auipc_expected:
         await step()
@@ -73,5 +76,3 @@ async def test_lui_auipc(dut):
         got = int(dut.core.alu_out_idexmem.value)
         assert got == expected, f"LUI falhou: esperado {expected:#010x}, obtido {got:#010x}"
         dut._log.info(f"LUI OK: {got:#010x}")
-
-

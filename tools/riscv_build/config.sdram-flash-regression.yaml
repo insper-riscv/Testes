@@ -1,5 +1,5 @@
 # The existing programs (c/ and asm/) on the SDRAM platform with the FLASH behind the caches
-# (right after the BOOT_ROM, at 0x800): every result must be the one of internal-mem.
+# (right after the BOOT_MEMORY, at 0x800): every result must be the one of internal-mem.
 extends: config.platform-de0-cv.yaml
 
 paths:

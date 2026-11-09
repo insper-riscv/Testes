@@ -1,0 +1,8 @@
+# The existing programs (c/ and asm/) that the reduced profile of the DE0-Nano (RV32I with Zicsr) runs, on the SDRAM platform with the FLASH behind the caches.
+extends: config.platform-de0-nano.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-de0-nano
+  build_dir: build-nano-regression
+  c_dir: c
+  asm_dir: asm

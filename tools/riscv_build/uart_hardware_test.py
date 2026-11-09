@@ -5,9 +5,9 @@ side.  It verifies that the existing Quartus bitstream was built from the
 ``uart-echo`` image, opens the Pico/Debug Probe UART in raw 115200 8N1 mode,
 reprograms that bitstream to start from a clean state, and checks the exact
 echo plus the JTAG tohost. It can then replace FLASH over JTAG with
-``uart-tx`` and ``uart-errors``, restart through the boot ROM, and validate
-TX/RX FIFOs, sticky error flags, W1C clearing and a raw byte burst without
-another Quartus compile.
+``uart-tx``, ``uart-errors`` and ``uart-stdio``, restart through the boot memory,
+and validate TX/RX FIFOs, sticky error flags, W1C clearing, a raw byte burst and
+picolibc ``printf``/``scanf`` without another Quartus compile.
 """
 
 from __future__ import annotations
@@ -30,8 +30,12 @@ from pathlib import Path
 from typing import Any
 
 from riscv_tools import htif, quartus_program, rom_writer
-from riscv_tools.jtag import JtagLink, detect_jtag_hardware
+from riscv_tools.cli.common import jtag_link
+from riscv_tools.jtag import JtagLink
 from riscv_tools.settings import load_config
+
+# Lista vazia de descritores para as vagas do select() que a chamada não usa.
+_NO_FDS: list[int] = []
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = REPOSITORY_ROOT / "tools/riscv_build/config.yaml"
@@ -54,7 +58,11 @@ ECHO_BYTE_COUNT = 9
 UART_ECHO_TEST = "uart-echo"
 UART_TX_TEST = "uart-tx"
 UART_ERRORS_TEST = "uart-errors"
+UART_STDIO_TEST = "uart-stdio"
 ALL_TESTS = "all"
+UART_STDIO_PROMPT = b"READY\n"
+UART_STDIO_INPUT = b"UART 42\n"
+UART_STDIO_RESULT = b"Hello, UART! value=42\n"
 
 
 class UartHardwareTestError(RuntimeError):
@@ -71,10 +79,12 @@ class Artifacts:
     echo_mif: Path
     tx_mif: Path | None
     errors_mif: Path | None
+    stdio_mif: Path | None
     active_mif: Path
     echo_mif_sha256: str
     tx_mif_sha256: str | None
     errors_mif_sha256: str | None
+    stdio_mif_sha256: str | None
 
 
 def format_bytes(payload: bytes) -> str:
@@ -89,9 +99,7 @@ def parse_payload_hex(value: str) -> bytes:
     except ValueError as exc:
         raise argparse.ArgumentTypeError(f"invalid hexadecimal payload: {exc}") from exc
     if len(payload) != ECHO_BYTE_COUNT:
-        raise argparse.ArgumentTypeError(
-            f"uart-echo requires exactly {ECHO_BYTE_COUNT} bytes, got {len(payload)}"
-        )
+        raise argparse.ArgumentTypeError(f"uart-echo requires exactly {ECHO_BYTE_COUNT} bytes, got {len(payload)}")
     return payload
 
 
@@ -119,14 +127,13 @@ def validate_artifacts(
 ) -> Artifacts:
     """Validate every local precondition before touching JTAG hardware."""
     if not port.exists():
-        raise UartHardwareTestError(
-            f"serial port not found: {port} (check /dev/ttyACM* and the Pico USB cable)"
-        )
+        raise UartHardwareTestError(f"serial port not found: {port} (check /dev/ttyACM* and the Pico USB cable)")
 
     build_dir = root / cfg["paths"]["build_dir"]
     echo_mif = build_dir / "real/uart-echo.mif"
     tx_mif = build_dir / "real/uart-tx.mif"
     errors_mif = build_dir / "real/uart-errors.mif"
+    stdio_mif = build_dir / "real/uart-stdio.mif"
     project_dir = (root / cfg["quartus"]["project_dir"]).resolve()
     active_mif = project_dir / cfg["quartus"]["rom_mif_target"]
     sof_file = cfg["quartus"]["sof_file"]
@@ -141,6 +148,10 @@ def validate_artifacts(
         _required_file(errors_mif, "compiled uart-errors MIF")
     else:
         errors_mif = None
+    if selected_test in (UART_STDIO_TEST, ALL_TESTS):
+        _required_file(stdio_mif, "compiled uart-stdio MIF")
+    else:
+        stdio_mif = None
     _required_file(active_mif, "Quartus active MIF")
     _required_file(sof_path, "Quartus SOF")
 
@@ -151,9 +162,7 @@ def validate_artifacts(
             "compile with build/real/uart-echo.mif before this test"
         )
     if sof_path.stat().st_mtime_ns < active_mif.stat().st_mtime_ns:
-        raise UartHardwareTestError(
-            f"{sof_path} is older than {active_mif}; recompile Quartus before testing"
-        )
+        raise UartHardwareTestError(f"{sof_path} is older than {active_mif}; recompile Quartus before testing")
 
     return Artifacts(
         project_dir=project_dir,
@@ -162,18 +171,12 @@ def validate_artifacts(
         echo_mif=echo_mif,
         tx_mif=tx_mif,
         errors_mif=errors_mif,
+        stdio_mif=stdio_mif,
         active_mif=active_mif,
         echo_mif_sha256=hashlib.sha256(echo_image).hexdigest(),
-        tx_mif_sha256=(
-            hashlib.sha256(tx_mif.read_bytes()).hexdigest()
-            if tx_mif is not None
-            else None
-        ),
-        errors_mif_sha256=(
-            hashlib.sha256(errors_mif.read_bytes()).hexdigest()
-            if errors_mif is not None
-            else None
-        ),
+        tx_mif_sha256=(hashlib.sha256(tx_mif.read_bytes()).hexdigest() if tx_mif is not None else None),
+        errors_mif_sha256=(hashlib.sha256(errors_mif.read_bytes()).hexdigest() if errors_mif is not None else None),
+        stdio_mif_sha256=(hashlib.sha256(stdio_mif.read_bytes()).hexdigest() if stdio_mif is not None else None),
     )
 
 
@@ -227,10 +230,8 @@ def write_all(fd: int, payload: bytes, timeout_s: float) -> None:
     while remaining_payload:
         remaining_time = deadline - time.monotonic()
         if remaining_time <= 0:
-            raise UartHardwareTestError(
-                f"timeout while sending {len(payload)} UART bytes"
-            )
-        _, writable, _ = select.select([], [fd], [], remaining_time)
+            raise UartHardwareTestError(f"timeout while sending {len(payload)} UART bytes")
+        _, writable, _ = select.select(_NO_FDS, [fd], _NO_FDS, remaining_time)
         if not writable:
             continue
         try:
@@ -250,7 +251,7 @@ def read_exact(fd: int, size: int, timeout_s: float) -> bytes:
         remaining_time = deadline - time.monotonic()
         if remaining_time <= 0:
             break
-        readable, _, _ = select.select([fd], [], [], remaining_time)
+        readable, _, _ = select.select([fd], _NO_FDS, _NO_FDS, remaining_time)
         if not readable:
             break
         try:
@@ -258,9 +259,7 @@ def read_exact(fd: int, size: int, timeout_s: float) -> bytes:
         except BlockingIOError:
             continue
         if not chunk:
-            raise UartHardwareTestError(
-                "serial port disconnected while waiting for UART data"
-            )
+            raise UartHardwareTestError("serial port disconnected while waiting for UART data")
         received.extend(chunk)
     return bytes(received)
 
@@ -273,7 +272,7 @@ def read_for(fd: int, duration_s: float) -> bytes:
         remaining_time = deadline - time.monotonic()
         if remaining_time <= 0:
             return bytes(received)
-        readable, _, _ = select.select([fd], [], [], remaining_time)
+        readable, _, _ = select.select([fd], _NO_FDS, _NO_FDS, remaining_time)
         if not readable:
             return bytes(received)
         try:
@@ -281,9 +280,7 @@ def read_for(fd: int, duration_s: float) -> bytes:
         except BlockingIOError:
             continue
         if not chunk:
-            raise UartHardwareTestError(
-                "serial port disconnected during the UART quiet window"
-            )
+            raise UartHardwareTestError("serial port disconnected during the UART quiet window")
         received.extend(chunk)
 
 
@@ -302,11 +299,7 @@ def validate_uart_output(
         )
     if received != expected:
         mismatch = next(
-            index
-            for index, (actual, wanted) in enumerate(
-                zip(received, expected, strict=True)
-            )
-            if actual != wanted
+            index for index, (actual, wanted) in enumerate(zip(received, expected, strict=True)) if actual != wanted
         )
         raise UartHardwareTestError(
             f"{label} mismatch at byte {mismatch}: "
@@ -316,9 +309,7 @@ def validate_uart_output(
             f"  received: {format_bytes(received)}"
         )
     if extra:
-        raise UartHardwareTestError(
-            f"{label} returned unexpected extra bytes: {format_bytes(extra)}"
-        )
+        raise UartHardwareTestError(f"{label} returned unexpected extra bytes: {format_bytes(extra)}")
 
 
 def validate_echo(expected: bytes, received: bytes, extra: bytes = b"") -> None:
@@ -411,12 +402,8 @@ def validate_tohost(value: int) -> None:
     if value == htif.PASS:
         return
     if htif.is_done(value):
-        raise UartHardwareTestError(
-            f"firmware reported FAIL (code {htif.fail_code(value)})"
-        )
-    raise UartHardwareTestError(
-        f"firmware did not finish: TOHOST={value} (expected {htif.PASS})"
-    )
+        raise UartHardwareTestError(f"firmware reported FAIL (code {htif.fail_code(value)})")
+    raise UartHardwareTestError(f"firmware did not finish: TOHOST={value} (expected {htif.PASS})")
 
 
 def load_and_start_firmware(
@@ -425,7 +412,7 @@ def load_and_start_firmware(
     cfg: dict[str, Any],
     mif_path: Path,
 ) -> None:
-    """Replace both FLASH copies and restart a core parked in boot ROM."""
+    """Replace both FLASH copies and restart a core parked in boot memory."""
     rom_writer.write_rom(link, cfg["quartus"]["rom_mem_instances"], mif_path)
 
     # Flush before the restart pulse. A UART firmware may start transmitting
@@ -437,6 +424,65 @@ def load_and_start_firmware(
         cfg["memory"]["ram_base"],
         cfg["memory"]["fromhost_addr"],
     )
+
+
+def exchange_stdio(fd: int, timeout_s: float) -> tuple[bytes, bytes]:
+    """Run the prompt/input/result protocol of the picolibc stdio test."""
+    prompt = receive_expected(fd, UART_STDIO_PROMPT, timeout_s, "UART stdio printf prompt")
+    write_all(fd, UART_STDIO_INPUT, timeout_s)
+    result = receive_expected(fd, UART_STDIO_RESULT, timeout_s, "UART stdio scanf/printf result")
+    return prompt, result
+
+
+def run_tx_test(fd: int, link: JtagLink, cfg: dict[str, Any], artifacts: Artifacts, timeout: float) -> None:
+    """Load uart-tx through JTAG, check the serial bytes and the tohost PASS."""
+    if artifacts.tx_mif is None:
+        raise UartHardwareTestError("uart-tx was selected without a validated uart-tx MIF")
+    print(f"Loading {UART_TX_TEST} through JTAG...")
+    load_and_start_firmware(fd, link, cfg, artifacts.tx_mif)
+    tx_received = receive_expected(fd, UART_TX_EXPECTED, timeout, "UART TX")
+    print(f"RX[{len(tx_received)}]: {format_bytes(tx_received)}")
+    print("UART TX: PASS")
+
+    tx_tohost = wait_for_result_tohost(link, cfg, timeout)
+    validate_tohost(tx_tohost)
+    print(f"uart-tx TOHOST={tx_tohost}: PASS")
+
+
+def run_errors_test(fd: int, link: JtagLink, cfg: dict[str, Any], artifacts: Artifacts, timeout: float) -> None:
+    """Load uart-errors through JTAG, check the FIFO, error and burst bytes and the tohost PASS."""
+    if artifacts.errors_mif is None:
+        raise UartHardwareTestError("uart-errors was selected without a validated uart-errors MIF")
+    print(f"Loading {UART_ERRORS_TEST} through JTAG...")
+    load_and_start_firmware(fd, link, cfg, artifacts.errors_mif)
+    prefix, ready, burst_and_final = exchange_errors_and_burst(fd, timeout)
+    print(f"RX[{len(prefix)}] TX FIFO overflow/W1C: {format_bytes(prefix)}")
+    print(f"TX[{len(UART_ERRORS_RX_INPUT)}] RX FIFO overflow stimulus: {format_bytes(UART_ERRORS_RX_INPUT)}")
+    print(f"RX[{len(ready)}] RX FIFO overflow/W1C: {format_bytes(ready)}")
+    print(f"TX[{len(UART_BURST_PAYLOAD)}] burst: {format_bytes(UART_BURST_PAYLOAD)}")
+    print(f"RX[{len(burst_and_final)}] burst + PASS marker: {format_bytes(burst_and_final)}")
+    print("UART FIFOS, ERRORS, W1C AND BURST: PASS")
+
+    errors_tohost = wait_for_result_tohost(link, cfg, timeout)
+    validate_tohost(errors_tohost)
+    print(f"uart-errors TOHOST={errors_tohost}: PASS")
+
+
+def run_stdio_test(fd: int, link: JtagLink, cfg: dict[str, Any], artifacts: Artifacts, timeout: float) -> None:
+    """Load uart-stdio through JTAG, check the picolibc printf/scanf bytes and the tohost PASS."""
+    if artifacts.stdio_mif is None:
+        raise UartHardwareTestError("uart-stdio was selected without a validated uart-stdio MIF")
+    print(f"Loading {UART_STDIO_TEST} through JTAG...")
+    load_and_start_firmware(fd, link, cfg, artifacts.stdio_mif)
+    prompt, result = exchange_stdio(fd, timeout)
+    print(f"RX[{len(prompt)}] printf prompt: {format_bytes(prompt)}")
+    print(f"TX[{len(UART_STDIO_INPUT)}] scanf input: {format_bytes(UART_STDIO_INPUT)}")
+    print(f"RX[{len(result)}] printf result: {format_bytes(result)}")
+    print("UART PICOLIBC PRINTF/SCANF: PASS")
+
+    stdio_tohost = wait_for_result_tohost(link, cfg, timeout)
+    validate_tohost(stdio_tohost)
+    print(f"uart-stdio TOHOST={stdio_tohost}: PASS")
 
 
 def run_hardware_test(args: argparse.Namespace) -> None:
@@ -452,30 +498,22 @@ def run_hardware_test(args: argparse.Namespace) -> None:
         f"  uart-echo SHA256: {artifacts.echo_mif_sha256}"
     )
     if artifacts.tx_mif is not None:
-        print(
-            f"  uart-tx MIF: {artifacts.tx_mif}\n"
-            f"  uart-tx SHA256: {artifacts.tx_mif_sha256}"
-        )
+        print(f"  uart-tx MIF: {artifacts.tx_mif}\n  uart-tx SHA256: {artifacts.tx_mif_sha256}")
     if artifacts.errors_mif is not None:
-        print(
-            f"  uart-errors MIF: {artifacts.errors_mif}\n"
-            f"  uart-errors SHA256: {artifacts.errors_mif_sha256}"
-        )
+        print(f"  uart-errors MIF: {artifacts.errors_mif}\n  uart-errors SHA256: {artifacts.errors_mif_sha256}")
+    if artifacts.stdio_mif is not None:
+        print(f"  uart-stdio MIF: {artifacts.stdio_mif}\n  uart-stdio SHA256: {artifacts.stdio_mif_sha256}")
 
     with serial_session(args.port) as fd:
         print(f"UART: {args.port}, {BAUD_RATE} 8N1 raw")
-        hardware_name = detect_jtag_hardware()
-        link = JtagLink(
-            hardware_name=hardware_name,
-            device_name=cfg["quartus"]["jtag_device"],
-        )
+        link = jtag_link(cfg)
 
         if args.skip_program:
             print("FPGA programming: SKIPPED (firmware must be freshly waiting for RX)")
         else:
-            print(f"Programming FPGA through {hardware_name}...")
+            print(f"Programming FPGA through {link.hardware_name}...")
             quartus_program.program_only(
-                hardware_name=hardware_name,
+                hardware_name=link.hardware_name,
                 project_dir=artifacts.project_dir,
                 sof_file=artifacts.sof_file,
             )
@@ -495,57 +533,14 @@ def run_hardware_test(args: argparse.Namespace) -> None:
 
         completed_tests = [UART_ECHO_TEST]
         if args.test in (UART_TX_TEST, ALL_TESTS):
-            if artifacts.tx_mif is None:
-                raise UartHardwareTestError(
-                    "uart-tx was selected without a validated uart-tx MIF"
-                )
-            print(f"Loading {UART_TX_TEST} through JTAG...")
-            load_and_start_firmware(fd, link, cfg, artifacts.tx_mif)
-            tx_received = receive_expected(
-                fd,
-                UART_TX_EXPECTED,
-                args.timeout,
-                "UART TX",
-            )
-            print(f"RX[{len(tx_received)}]: {format_bytes(tx_received)}")
-            print("UART TX: PASS")
-
-            tx_tohost = wait_for_result_tohost(link, cfg, args.timeout)
-            validate_tohost(tx_tohost)
-            print(f"uart-tx TOHOST={tx_tohost}: PASS")
+            run_tx_test(fd, link, cfg, artifacts, args.timeout)
             completed_tests.append(UART_TX_TEST)
-
         if args.test in (UART_ERRORS_TEST, ALL_TESTS):
-            if artifacts.errors_mif is None:
-                raise UartHardwareTestError(
-                    "uart-errors was selected without a validated uart-errors MIF"
-                )
-            print(f"Loading {UART_ERRORS_TEST} through JTAG...")
-            load_and_start_firmware(fd, link, cfg, artifacts.errors_mif)
-            prefix, ready, burst_and_final = exchange_errors_and_burst(
-                fd,
-                args.timeout,
-            )
-            print(f"RX[{len(prefix)}] TX FIFO overflow/W1C: {format_bytes(prefix)}")
-            print(
-                f"TX[{len(UART_ERRORS_RX_INPUT)}] RX FIFO overflow stimulus: "
-                f"{format_bytes(UART_ERRORS_RX_INPUT)}"
-            )
-            print(f"RX[{len(ready)}] RX FIFO overflow/W1C: {format_bytes(ready)}")
-            print(
-                f"TX[{len(UART_BURST_PAYLOAD)}] burst: "
-                f"{format_bytes(UART_BURST_PAYLOAD)}"
-            )
-            print(
-                f"RX[{len(burst_and_final)}] burst + PASS marker: "
-                f"{format_bytes(burst_and_final)}"
-            )
-            print("UART FIFOS, ERRORS, W1C AND BURST: PASS")
-
-            errors_tohost = wait_for_result_tohost(link, cfg, args.timeout)
-            validate_tohost(errors_tohost)
-            print(f"uart-errors TOHOST={errors_tohost}: PASS")
+            run_errors_test(fd, link, cfg, artifacts, args.timeout)
             completed_tests.append(UART_ERRORS_TEST)
+        if args.test in (UART_STDIO_TEST, ALL_TESTS):
+            run_stdio_test(fd, link, cfg, artifacts, args.timeout)
+            completed_tests.append(UART_STDIO_TEST)
 
     print(f"INTEGRATED UART HARDWARE TEST: PASS ({', '.join(completed_tests)})")
 
@@ -554,7 +549,7 @@ def build_parser() -> argparse.ArgumentParser:
     """Build the command-line parser."""
     parser = argparse.ArgumentParser(
         description=(
-            "Validate uart-echo, uart-tx and uart-errors on the physical UART "
+            "Validate uart-echo, uart-tx, uart-errors and uart-stdio on the physical UART "
             "plus the RV32 PASS in tohost. Close picocom before running."
         )
     )
@@ -563,7 +558,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--root", type=Path, default=REPOSITORY_ROOT)
     parser.add_argument(
         "--test",
-        choices=(ALL_TESTS, UART_ECHO_TEST, UART_TX_TEST, UART_ERRORS_TEST),
+        choices=(ALL_TESTS, UART_ECHO_TEST, UART_TX_TEST, UART_ERRORS_TEST, UART_STDIO_TEST),
         default=ALL_TESTS,
         help=(
             "test to validate (default: all); every selection first runs the "
@@ -582,9 +577,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--timeout",
         type=positive_float,
         default=DEFAULT_TIMEOUT_SECONDS,
-        help=(
-            f"serial read/write timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS})"
-        ),
+        help=(f"serial read/write timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS})"),
     )
     parser.add_argument(
         "--skip-program",
@@ -600,8 +593,7 @@ def build_parser() -> argparse.ArgumentParser:
 def _print_os_error(exc: OSError, port: Path) -> None:
     if isinstance(exc, PermissionError):
         print(
-            f"FAIL: permission denied opening {port}; check membership in the "
-            "dialout group",
+            f"FAIL: permission denied opening {port}; check membership in the dialout group",
             file=sys.stderr,
         )
     elif exc.errno in (errno.EBUSY, errno.EAGAIN):

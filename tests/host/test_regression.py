@@ -1,4 +1,5 @@
 """Testes do plano e do relatório da regressão."""
+
 import json
 import tempfile
 import unittest
@@ -8,6 +9,8 @@ from tools.regression import regression as reg
 
 
 class RegressionTests(unittest.TestCase):
+    """O plano e o relatório da regressão."""
+
     def test_plan_is_valid(self) -> None:
         plan = reg.load_plan()
         self.assertTrue(plan["stages"])
@@ -28,9 +31,7 @@ class RegressionTests(unittest.TestCase):
     def test_classify_divergences(self) -> None:
         sim = {"a": True, "b": True, "c": True}
         spike = {"a": True, "b": False, "c": False}
-        classified, unclassified, stale = reg.classify_divergences(
-            sim, spike, {"b": "motivo", "z": "motivo"}
-        )
+        classified, unclassified, stale = reg.classify_divergences(sim, spike, {"b": "motivo", "z": "motivo"})
         self.assertEqual(classified, {"b": "motivo"})
         self.assertEqual(unclassified, ["c"])
         self.assertEqual(stale, ["z"])

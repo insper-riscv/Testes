@@ -2,7 +2,7 @@
 // RV32_TEST_KIND: memory
 //
 // Misaligned accesses outside the main memory trap (mcause 4 and 6, mtval = the effective
-// address): loads from the BOOT_ROM (lw at offset 1, lh and lhu at 3) and stores to the
+// address): loads from the BOOT_MEMORY (lw at offset 1, lh and lhu at 3) and stores to the
 // peripheral window (sw at 2, sh at 3). The load does not write rd and the store does not reach
 // the bus. The same accesses to the RAM run in two steps instead (see misaligned-crossing).
 #include "rv32_platform.h"
@@ -22,7 +22,7 @@ main:
     li   x7, 4369
     li   x8, 4369
     li   x15, 0xDEADBEEF
-    li   x25, 0x400               # inside the BOOT_ROM: the loads trap
+    li   x25, 0x400               # inside the BOOT_MEMORY: the loads trap
     li   x26, 0x80000000          # peripheral window: the stores trap
     la   x20, site_lw
 site_lw:
