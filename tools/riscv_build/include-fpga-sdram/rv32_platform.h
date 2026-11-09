@@ -1,19 +1,21 @@
-/* The memory map of the fpga-external-data, fpga-external, fpga-uart-jtag and fpga-uart-pins (Insper-RISC-V, src/cyclone-v), as plain numbers
- * an assembly program can use as well as a C one. It must match the platform.yaml of each,
- * which `check-memory-map` verifies. */
+/* O mapa de memória das plataformas fpga-external-data, fpga-external, fpga-uart-jtag e fpga-uart-pins
+ * (Insper-RISC-V, src/cyclone-v), como números simples que um programa em assembly usa tanto quanto um em C.
+ * Deve coincidir com o platform.yaml de cada uma, que o `check-memory-map` verifica.
+ *
+ * Os números ficam em #define (e não em constexpr ou enum) porque o assembly (.S) inclui este arquivo e só o
+ * pré-processador os enxerga (ISO/IEC 9899:2024, 6.10); o C de 6.7.2 não é visível ao montador. */
 #ifndef RV32_PLATFORM_H
 #define RV32_PLATFORM_H
 
-#define RV32_RAM_BASE    0x40000000   /* first byte of RAM */
-#define RV32_RAM_END     0x42000000   /* one past the last byte of RAM */
-#define RV32_STDOUT_BASE 0x41FFFBE0   /* the stdout buffer, at the top of RAM */
+#define RV32_RAM_BASE    0x40000000   /* primeiro byte da RAM */
+#define RV32_RAM_END     0x42000000   /* um após o último byte da RAM */
+#define RV32_STDOUT_BASE 0x41FFFBE0   /* o buffer de stdout, no topo da RAM */
 
-#define RV32_TOHOST      0x41FFFFE8   /* HTIF tohost, 8 bytes; fromhost is 8 bytes above */
+#define RV32_TOHOST      0x41FFFFE8   /* tohost do HTIF, 8 bytes; o fromhost fica 8 bytes acima */
 
 #ifdef __ASSEMBLER__
-/* How an assembly test ends, with the names of the riscv-arch-test model (rv32_test.h has
- * the C ones). tohost = 1 is a pass, (code << 1) | 1 a failure with that code. Clobbers
- * t0 and t1. */
+/* Como um teste em assembly termina, com os nomes do modelo do riscv-arch-test (o rv32_test.h tem os
+ * de C). tohost = 1 é aprovação, (código << 1) | 1 é falha com esse código. Altera t0 e t1. */
 #define RVMODEL_HALT_PASS \
     li   t0, RV32_TOHOST; \
     li   t1, 1; \

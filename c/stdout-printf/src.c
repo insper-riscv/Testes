@@ -1,23 +1,27 @@
 // RV32_EXT: M
 // RV32_TEST_KIND: unit
-#include "rv32_test.h"
-#include "rv32_platform.h"
+#include <stdint.h>
 #include <stdio.h>
 
-// printf, puts and putchar write to stdout's buffer in RAM (see
-// platform/stdio.c). The layout below is that file's: a header with the
-// length and a "truncated" flag, then the bytes. Text only: the integer
-// conversions are in stdout-printf-int.
-#define STDOUT_BASE RV32_STDOUT_BASE
+#include "rv32_platform.h"
+#include "rv32_test.h"
 
+// Layout do buffer de stdout de platform/stdio.c: um cabeçalho com o comprimento e o sinalizador de
+// truncamento, depois os bytes.
 struct stdout_buffer {
-    volatile unsigned int length;
-    volatile unsigned int truncated;
+    volatile uint32_t length;
+    volatile uint32_t truncated;
     volatile char data[1024];
 };
 
+// Endereço do buffer de stdout no topo da RAM. Fica como macro porque o ponteiro para um endereço fixo
+// não pode ser constexpr (ISO/IEC 9899:2024, 6.7.2: só o ponteiro nulo).
+#define STDOUT_BUFFER ((const struct stdout_buffer *)RV32_STDOUT_BASE)
+
+// printf, puts e putchar escrevem no buffer de stdout na RAM (veja platform/stdio.c). Só texto: as
+// conversões de inteiro estão em stdout-printf-int.
 int main(void) {
-    const struct stdout_buffer *out = (const struct stdout_buffer *)STDOUT_BASE;
+    const struct stdout_buffer *out = STDOUT_BUFFER;
     const char expected[] = "hello riscv c\nsecond line\nx";
 
     printf("hello %s %c\n", "riscv", 'c');
@@ -25,7 +29,7 @@ int main(void) {
     putchar('x');
 
     if (out->length != sizeof(expected) - 1) RV32_FAIL(1);
-    for (unsigned int i = 0; i < out->length; i++) {
+    for (uint32_t i = 0; i < out->length; i++) {
         if (out->data[i] != expected[i]) RV32_FAIL(2);
     }
     if (out->truncated != 0) RV32_FAIL(3);

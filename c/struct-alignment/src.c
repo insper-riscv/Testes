@@ -1,28 +1,31 @@
 // RV32_TEST_KIND: unit
-#include "rv32_test.h"
 #include <stdint.h>
 
-typedef uint32_t u32;
-typedef uint16_t u16;
-typedef uint8_t u8;
+#include "rv32_test.h"
 
+// Estrutura com campos de alinhamento crescente misturados: o ABI do RISC-V
+// insere preenchimento entre eles.
 typedef struct {
-    u8 a;
-    u16 b;
-    u32 c;
-    u8 d;
-} Greater;
+    uint8_t a;
+    uint16_t b;
+    uint32_t c;
+    uint8_t d;
+} greater_t;
 
+// Os mesmos tipos ordenados do maior para o menor, que só precisam de preenchimento no fim.
 typedef struct {
-    u32 a;
-    u16 b;
-    u8 c;
-    u8 d;
-} Lesser;
+    uint32_t a;
+    uint16_t b;
+    uint8_t c;
+    uint8_t d;
+} lesser_t;
 
+// Confere os tamanhos das duas estruturas. O layout é não especificado pela norma (ISO/IEC
+// 9899:2024, 6.7.3.2 e 6.2.6.1), então o teste mede o ABI do RISC-V: 8 bytes para lesser_t e 12
+// para greater_t.
 int main(void) {
-    volatile u32 size_lesser = sizeof(Lesser);
-    volatile u32 size_greater = sizeof(Greater);
+    volatile uint32_t size_lesser = sizeof(lesser_t);
+    volatile uint32_t size_greater = sizeof(greater_t);
 
     if (size_lesser != 8 || size_greater != 12) RV32_FAIL(1);
 

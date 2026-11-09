@@ -1,42 +1,45 @@
 // RV32_TEST_KIND: unit
-#include "rv32_test.h"
+#include <stdint.h>
+
 #include "rv32_sdram.h"
+#include "rv32_test.h"
 
-// Loops over the SDRAM: a load followed by a branch back, the shape that needs the pipeline to keep a
-// taken branch while the memory stage waits.
+// Laços sobre a SDRAM: uma leitura seguida de um desvio para trás, a forma que exige que o pipeline mantenha
+// um desvio tomado enquanto o estágio de memória espera.
 
+// Executa os laços de soma, de leitura reversa com saída antecipada e aninhado, e confere cada resultado.
 int main(void) {
-    volatile unsigned int *m = RV32_SDRAM;
-    unsigned int want = 0;
+    volatile uint32_t *m = RV32_SDRAM;
+    uint32_t want = 0;
 
-    for (unsigned int i = 0; i < 512; i++) {
+    for (uint32_t i = 0; i < 512; i++) {
         m[i] = i ^ 0x5555u;
         want += i ^ 0x5555u;
     }
 
-    unsigned int sum = 0;
-    unsigned int i = 0;
+    uint32_t sum = 0;
+    uint32_t i = 0;
     while (i < 512) {                 // lw, add, addi, bne
         sum += m[i];
         i++;
     }
     if (sum != want) RV32_FAIL(1);
 
-    // read from the end, with an early exit that depends on the loaded value
-    unsigned int n = 0;
-    for (int j = 511; j >= 0; j--) {
+    // lê a partir do fim, com uma saída antecipada que depende do valor lido
+    uint32_t n = 0;
+    for (int32_t j = 511; j >= 0; j--) {
         if (m[j] == (0u ^ 0x5555u)) break;      // m[0]
         n++;
     }
     if (n != 511) RV32_FAIL(2);
 
-    // nested: a row of loads inside an outer loop that also stores
-    for (unsigned int r = 0; r < 8; r++) {
-        for (unsigned int c = 0; c < 16; c++) m[1024 + r * 16 + c] = r + c;
+    // aninhado: uma fileira de leituras dentro de um laço externo que também escreve
+    for (uint32_t r = 0; r < 8; r++) {
+        for (uint32_t c = 0; c < 16; c++) m[1024 + r * 16 + c] = r + c;
     }
-    unsigned int tot = 0;
-    for (unsigned int r = 0; r < 8; r++) {
-        for (unsigned int c = 0; c < 16; c++) {
+    uint32_t tot = 0;
+    for (uint32_t r = 0; r < 8; r++) {
+        for (uint32_t c = 0; c < 16; c++) {
             if (m[1024 + r * 16 + c] != r + c) RV32_FAIL(3);
             tot += m[1024 + r * 16 + c];
         }

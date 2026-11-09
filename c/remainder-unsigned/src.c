@@ -1,15 +1,17 @@
 // RV32_EXT: M
 // RV32_TEST_KIND: memory
+#include <stdint.h>
+
 #include "rv32_test.h"
 
-// Checked against Spike (the RISC-V Foundation reference model) at
-// compile time, not a hand-computed literal — see
-// docs/creating-a-c-test.md.
-volatile unsigned int results[1];
+// Conferido contra o Spike (modelo de referência da RISC-V Foundation) na compilação,
+// não contra um literal calculado à mão; veja docs/creating-a-c-test.md.
+volatile uint32_t results[1];
 
+// Calcula o resto da divisão de dois operandos sem sinal (100 por 9) e guarda o resto.
 int main(void) {
-    volatile unsigned int a = 100u;
-    volatile unsigned int b = 9u;
+    volatile uint32_t a = 100u;
+    volatile uint32_t b = 9u;
     results[0] = a % b;
     RV32_PASS();
 }

@@ -1,97 +1,130 @@
-/* The program update of the FLASH, on the firmware side (front E of the Insper-RISC-V plan).
+/* A atualização de programa da FLASH, do lado do firmware (frente E do plano do Insper-RISC-V).
  *
- * The host sends the image of a bank over the JTAG UART with `riscv-tools flash-image send`: the 256-byte
- * header page first and then the payload, as many bytes as the header says, with no framing. The firmware
- * (a program that runs from bank A, say) does five things, one function each:
+ * O host envia a imagem de uma banca pela UART JTAG com `riscv-tools flash-image send`: primeiro a página de
+ * cabeçalho de 256 bytes e depois a carga, tantos bytes quanto o cabeçalho diz, sem enquadramento. O firmware
+ * (um programa que roda da banca A, por exemplo) faz cinco coisas, uma função cada:
  *
- *   rv32_update_receive   reads the header, then the payload, and checks the magic, the CRC-32 of the header
- *                         and the CRC-32 of the payload, so a stream that was cut or damaged never reaches
- *                         the FLASH;
- *   rv32_update_bank      copies the update routine to the SDRAM and runs it there: erase the sectors of the
- *                         destination bank, program the payload pages, program the header page LAST, read
- *                         everything back and compare with the buffer, then restart through the boot memory;
- *   rv32_update_running   tells which bank the firmware runs from;
- *   rv32_update_check     reads a bank back from the FLASH and says whether its header and payload are valid
- *                         (what the boot memory asks of it);
- *   rv32_update_cut       a flag of rv32_update_bank that leaves the header page erased, the state of an
- *                         update that lost power before the end: the boot memory must refuse the bank.
+ *   rv32_update_receive   lê o cabeçalho e depois a carga, e confere o número mágico, o CRC-32 do cabeçalho e o
+ *                         CRC-32 da carga, de modo que um fluxo cortado ou danificado nunca chega à FLASH;
+ *   rv32_update_bank      copia a rotina de atualização para a SDRAM e a executa lá: apaga os setores da banca
+ *                         de destino, programa as páginas da carga, programa a página de cabeçalho POR ÚLTIMO,
+ *                         lê tudo de volta e compara com o buffer, e então reinicia pela memória de boot;
+ *   rv32_update_running   diz de qual banca o firmware executa;
+ *   rv32_update_check     lê uma banca de volta da FLASH e diz se o cabeçalho e a carga são válidos (o que a
+ *                         memória de boot pergunta a ela);
+ *   rv32_update_cut       um sinalizador de rv32_update_bank que deixa a página de cabeçalho apagada, o estado
+ *                         de uma atualização que perdeu energia antes do fim: a memória de boot deve recusar a banca.
  *
- * The routine is written in assembly, with no absolute address but the parameters it receives, so the
- * copy in the SDRAM runs as it is. It runs from the SDRAM because a FLASH chip of one bank cannot be read
- * while it is erased; here the destination is the other bank and the model keeps reading, but the firmware
- * does not depend on that. The registers of the controller are in Peripherals/docs/<lang>/flash-controller.
+ * A rotina é escrita em assembly, sem endereço absoluto além dos parâmetros que recebe, para que a cópia na SDRAM
+ * rode como está. Ela roda da SDRAM porque um chip de FLASH de uma banca não pode ser lido enquanto é apagado;
+ * aqui o destino é a outra banca e o modelo continua lendo, mas o firmware não depende disso. Os registradores
+ * do controlador estão em Peripherals/docs/<idioma>/flash-controller.
  *
- * Include it once per program. The program is built with Zifencei (// RV32_EXT: Zifencei), for the fence.i
- * that follows the copy of the routine. */
+ * O assembly da rotina é um bloco __asm__ de nível de arquivo: `asm` não é palavra-chave da norma (ISO/IEC
+ * 9899:2024, 6.4.2), e `__asm__` é a única extensão do GCC que este arquivo usa. Os deslocamentos da estrutura
+ * rv32_update_job que a rotina lê por posição fixa são fixados por static_assert (6.7.12).
+ *
+ * Inclua uma vez por programa. O programa é construído com Zifencei (// RV32_EXT: Zifencei), para o fence.i que
+ * segue a cópia da rotina. */
 #ifndef RV32_FLASH_UPDATE_H
 #define RV32_FLASH_UPDATE_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "rv32_platform.h"
 
-/* What the update of one bank answers. */
+/* O que a atualização de uma banca responde. */
 enum {
     RV32_UPDATE_OK = 0,
-    RV32_UPDATE_REFUSED = 1,  /* the chip refused an erase or a program (protected sector, bad address) */
-    RV32_UPDATE_MISMATCH = 2, /* what the FLASH holds after the update is not what was sent */
-    RV32_UPDATE_TIMEOUT = 3,  /* the host stopped sending */
+    RV32_UPDATE_REFUSED = 1,  /* o chip recusou um apagamento ou uma programação (setor protegido, endereço inválido) */
+    RV32_UPDATE_MISMATCH = 2, /* o que a FLASH guarda após a atualização não é o que foi enviado */
+    RV32_UPDATE_TIMEOUT = 3,  /* o host parou de enviar */
     RV32_UPDATE_BAD_HEADER = 4,
     RV32_UPDATE_TOO_BIG = 5,
     RV32_UPDATE_BAD_CRC = 6,
     RV32_UPDATE_NO_BANK = 7
 };
 
-/* Flags of rv32_update_bank. */
-#define RV32_UPDATE_CUT 1u     /* do not write the header page */
-#define RV32_UPDATE_RESTART 2u /* on success, restart through the boot memory instead of returning */
+/* Sinalizadores de rv32_update_bank. */
+/* Não escreve a página de cabeçalho. */
+static constexpr uint32_t RV32_UPDATE_CUT = 1u;
+/* Em caso de sucesso, reinicia pela memória de boot em vez de retornar. */
+static constexpr uint32_t RV32_UPDATE_RESTART = 2u;
 
-#define RV32_HEADER_SIZE 256u
-/* The NOR sectors of the chip (chip catalog, S29GL064N): eight of 8 KiB at the bottom of the chip (the first 64 KiB, from
- * RV32_BOOT_SECTORS_END) and then 64 KiB sectors. The erase of the update steps by the size of the sector it is on. */
-#define RV32_SECTOR_SIZE 65536u
+/* Tamanho da página de cabeçalho de uma imagem, em bytes. */
+static constexpr uint32_t RV32_HEADER_SIZE = 256u;
+/* Tamanho de um setor de apagamento da FLASH, em bytes. Os setores NOR do chip (catálogo do chip, S29GL064N) são
+ * oito de 8 KiB na base (os primeiros 64 KiB, até RV32_BOOT_SECTORS_END_ASM) e depois setores de 64 KiB; o
+ * apagamento da atualização avança pelo tamanho do setor em que está. */
+static constexpr uint32_t RV32_SECTOR_SIZE = 65536u;
+/* Os mesmos valores como texto, porque a rotina em assembly os concatena às instruções (não há como um
+ * constexpr entrar numa literal de __asm__). */
 #define RV32_BOOT_SECTOR_SIZE_ASM "8192"
 #define RV32_SECTOR_SIZE_ASM "65536"
 #define RV32_BOOT_SECTORS_END_ASM "0x11000"
-#define RV32_PAGE_SIZE 256u
-#define RV32_FLASH_ERASED_WORD 0xFFFFFFFFu
+/* Tamanho de uma página de programação da FLASH, em bytes. */
+static constexpr uint32_t RV32_PAGE_SIZE = 256u;
+/* Palavra que a FLASH apagada guarda. */
+static constexpr uint32_t RV32_FLASH_ERASED_WORD = 0xFFFFFFFFu;
+/* Número de leituras do status da UART à espera de um byte ou do host. */
+static constexpr uint32_t RV32_UPDATE_POLLS = 40000000u;
 
+/* Registradores de recepção e de estado da UART JTAG. Ficam como macros porque um ponteiro para endereço fixo
+ * não pode ser constexpr (ISO/IEC 9899:2024, 6.7.2: só o ponteiro nulo); o acesso é volatile (6.7.4.1) e
+ * alinhado a palavra. */
 #define RV32_UART_RXDATA ((volatile uint32_t *)(RV32_UART_BASE + 4u))
 #define RV32_UART_STATUS ((volatile uint32_t *)(RV32_UART_BASE + 8u))
-#define RV32_UART_RX_VALID(word) (((word) >> 8) & 1u)
-#define RV32_UART_HOST_ATTACHED(status) (((status) >> 17) & 1u)
-#define RV32_UPDATE_POLLS 40000000u
 
-/* The parameters of the routine, read by the assembly below at these offsets. */
+/* Diz se a palavra lida de rxdata traz um byte válido (bit 8). */
+static inline bool rv32_uart_rx_valid(uint32_t word) {
+    return ((word >> 8) & 1u) != 0u;
+}
+
+/* Diz se um host está ligado à UART JTAG (bit 17 do estado). */
+static inline bool rv32_uart_host_attached(uint32_t status) {
+    return ((status >> 17) & 1u) != 0u;
+}
+
+/* Os parâmetros da rotina, lidos pelo assembly abaixo nestes deslocamentos. */
 struct rv32_update_job {
-    uint32_t image;  /* 0: the image in the SDRAM, header page first, a whole number of pages */
-    uint32_t size;   /* 4: bytes of the image */
-    uint32_t dest;   /* 8: base of the destination bank in the FLASH, aligned to a sector */
-    uint32_t ctrl;   /* 12: base of the FLASH controller */
+    uint32_t image;  /* 0: a imagem na SDRAM, página de cabeçalho primeiro, um número inteiro de páginas */
+    uint32_t size;   /* 4: bytes da imagem */
+    uint32_t dest;   /* 8: base da banca de destino na FLASH, alinhada a um setor */
+    uint32_t ctrl;   /* 12: base do controlador da FLASH */
     uint32_t flags;  /* 16: RV32_UPDATE_CUT, RV32_UPDATE_RESTART */
 };
 
-/* CRC-32 of the IEEE 802.3, as zlib and the header of the image: the bitwise form, which is small and fast
- * enough for the few KB of a bank in a test. */
+/* O assembly lê os campos por posição fixa (lw s0, 0(a0) a lw s4, 16(a0)); estas asserções falham a compilação
+ * se o layout mudar sem a rotina mudar. */
+static_assert(offsetof(struct rv32_update_job, image) == 0);
+static_assert(offsetof(struct rv32_update_job, size) == 4);
+static_assert(offsetof(struct rv32_update_job, dest) == 8);
+static_assert(offsetof(struct rv32_update_job, ctrl) == 12);
+static_assert(offsetof(struct rv32_update_job, flags) == 16);
+static_assert(sizeof(struct rv32_update_job) == 20);
+
+/* CRC-32 do IEEE 802.3, como o zlib e o cabeçalho da imagem: a forma bit a bit, que é pequena e rápida o bastante
+ * para os poucos KB de uma banca num teste. */
 static inline uint32_t rv32_crc32(uint32_t crc, const volatile uint8_t *data, uint32_t length) {
     crc = ~crc;
     for (uint32_t i = 0; i < length; i++) {
         crc ^= data[i];
-        for (int bit = 0; bit < 8; bit++) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+        for (uint32_t bit = 0; bit < 8; bit++) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
     }
     return ~crc;
 }
 
-/* The word a field of the header page holds, little-endian. */
-static inline uint32_t rv32_header_word(const volatile uint8_t *header, unsigned int index) {
+/* A palavra que um campo da página de cabeçalho guarda, em little-endian. */
+static inline uint32_t rv32_header_word(const volatile uint8_t *header, uint32_t index) {
     return (uint32_t)header[4 * index] | ((uint32_t)header[4 * index + 1] << 8) |
            ((uint32_t)header[4 * index + 2] << 16) | ((uint32_t)header[4 * index + 3] << 24);
 }
 
-/* Checks the header page at `header`; on success sets *size to the bytes of the payload. */
+/* Confere a página de cabeçalho em `header`; em caso de sucesso grava em *size os bytes da carga. */
 static inline int rv32_header_valid(const volatile uint8_t *header, uint32_t max_payload, uint32_t *size) {
     uint8_t body[16];
-    for (int i = 0; i < 16; i++) body[i] = header[i];
+    for (uint32_t i = 0; i < 16; i++) body[i] = header[i];
     uint32_t length = rv32_header_word(header, 1);
     if (rv32_header_word(header, 0) != RV32_IMAGE_MAGIC) return RV32_UPDATE_BAD_HEADER;
     if (rv32_crc32(0, body, 16) != rv32_header_word(header, 4)) return RV32_UPDATE_BAD_HEADER;
@@ -101,22 +134,22 @@ static inline int rv32_header_valid(const volatile uint8_t *header, uint32_t max
     return RV32_UPDATE_OK;
 }
 
-/* Reads one byte from the UART; -1 when none arrived within the polls. */
+/* Lê um byte da UART; -1 quando nenhum chegou dentro das leituras. */
 static inline int rv32_update_getc(uint32_t polls) {
     for (uint32_t i = 0; i < polls; i++) {
         uint32_t word = *RV32_UART_RXDATA;
-        if (RV32_UART_RX_VALID(word)) return (int)(word & 0xFFu);
+        if (rv32_uart_rx_valid(word)) return (int)(word & 0xFFu);
     }
     return -1;
 }
 
-/* Receives an image into `buffer` (a multiple of four bytes, `capacity` bytes) and checks it. On success
- * *length is the bytes of the image (header page and payload), already padded with the erased byte to a
- * whole number of pages for the routine, and the buffer holds the image. */
+/* Recebe uma imagem em `buffer` (múltiplo de quatro bytes, `capacity` bytes) e a confere. Em caso de sucesso,
+ * *length são os bytes da imagem (página de cabeçalho e carga), já completados com o byte de apagado até um
+ * número inteiro de páginas para a rotina, e o buffer guarda a imagem. */
 static inline int rv32_update_receive(uint8_t *buffer, uint32_t capacity, uint32_t *length) {
-    for (uint32_t i = 0; i < RV32_UPDATE_POLLS && !RV32_UART_HOST_ATTACHED(*RV32_UART_STATUS); i++) {
+    for (uint32_t i = 0; i < RV32_UPDATE_POLLS && !rv32_uart_host_attached(*RV32_UART_STATUS); i++) {
     }
-    if (!RV32_UART_HOST_ATTACHED(*RV32_UART_STATUS)) return RV32_UPDATE_TIMEOUT;
+    if (!rv32_uart_host_attached(*RV32_UART_STATUS)) return RV32_UPDATE_TIMEOUT;
     uint32_t received = 0;
     uint32_t payload = 0;
     uint32_t total = RV32_HEADER_SIZE;
@@ -138,14 +171,14 @@ static inline int rv32_update_receive(uint8_t *buffer, uint32_t capacity, uint32
     return RV32_UPDATE_OK;
 }
 
-/* The bank (RV32_BANK_x_BASE) that holds the code at `address`; 0 when it is in neither. */
+/* A banca (RV32_BANK_x_BASE) que guarda o código em `address`; 0 quando ele não está em nenhuma. */
 static inline uint32_t rv32_update_bank_of(uint32_t address) {
     if (address >= RV32_BANK_A_BASE && address < RV32_BANK_A_BASE + RV32_BANK_A_SIZE) return RV32_BANK_A_BASE;
     if (address >= RV32_BANK_B_BASE && address < RV32_BANK_B_BASE + RV32_BANK_B_SIZE) return RV32_BANK_B_BASE;
     return 0;
 }
 
-/* Reads the bank back and says whether its image is valid, as the boot memory sees it. */
+/* Lê a banca de volta e diz se a sua imagem é válida, como a memória de boot a vê. */
 static inline int rv32_update_check(uint32_t base, uint32_t bank_size, uint32_t *version) {
     const volatile uint8_t *header = (const volatile uint8_t *)base;
     uint32_t payload = 0;
@@ -156,9 +189,9 @@ static inline int rv32_update_check(uint32_t base, uint32_t bank_size, uint32_t 
     return RV32_UPDATE_OK;
 }
 
-/* The routine, at the start and at the end of its code (copied as a block). int routine(job *): returns
- * RV32_UPDATE_OK, RV32_UPDATE_REFUSED or RV32_UPDATE_MISMATCH, or does not return on success with
- * RV32_UPDATE_RESTART. s0 = image, s1 = size, s2 = dest, s3 = controller, s4 = flags, s5 = offset. */
+/* A rotina, do início ao fim do seu código (copiada como um bloco). int rotina(job *): retorna
+ * RV32_UPDATE_OK, RV32_UPDATE_REFUSED ou RV32_UPDATE_MISMATCH, ou não retorna em caso de sucesso com
+ * RV32_UPDATE_RESTART. s0 = imagem, s1 = tamanho, s2 = destino, s3 = controlador, s4 = sinalizadores, s5 = deslocamento. */
 __asm__(
     ".section .text.rv32_flash_update,\"ax\",@progbits\n"
     ".balign 4\n"
@@ -178,7 +211,7 @@ __asm__(
     "    lw   s2, 8(a0)\n"
     "    lw   s3, 12(a0)\n"
     "    lw   s4, 16(a0)\n"
-    /* erase every sector of the destination */
+    /* apaga cada setor do destino */
     "    li   s5, 0\n"
     "1:  bgeu s5, s1, 2f\n"
     "    add  a1, s2, s5\n"
@@ -191,20 +224,20 @@ __asm__(
     "    li   t0, " RV32_SECTOR_SIZE_ASM "\n"
     "11: add  s5, s5, t0\n"
     "    j    1b\n"
-    /* program the payload pages, from the second page on */
+    /* programa as páginas da carga, da segunda página em diante */
     "2:  li   s5, 256\n"
     "3:  bgeu s5, s1, 4f\n"
     "    jal  ra, 9f\n"
     "    bnez a3, 7f\n"
     "    addi s5, s5, 256\n"
     "    j    3b\n"
-    /* the header page last, unless the update is cut */
+    /* a página de cabeçalho por último, a menos que a atualização seja cortada */
     "4:  andi t0, s4, 1\n"
     "    bnez t0, 5f\n"
     "    li   s5, 0\n"
     "    jal  ra, 9f\n"
     "    bnez a3, 7f\n"
-    /* read everything back and compare with the buffer (the header page too unless it was not written) */
+    /* lê tudo de volta e compara com o buffer (a página de cabeçalho também, a menos que não tenha sido escrita) */
     "5:  li   s5, 0\n"
     "    andi t0, s4, 1\n"
     "    beqz t0, 51f\n"
@@ -235,7 +268,7 @@ __asm__(
     "    lw   s5, 4(sp)\n"
     "    addi sp, sp, 32\n"
     "    ret\n"
-    /* 8: command a2 on the address a1 with write enable first; a3 = nonzero when the chip refused (link in t6) */
+    /* 8: comando a2 no endereço a1 com a habilitação de escrita antes; a3 = diferente de zero quando o chip recusou (retorno em t6) */
     "8:  sw   a1, 4(s3)\n"
     "81: lw   t3, 8(s3)\n"
     "    andi t3, t3, 1\n"
@@ -252,7 +285,7 @@ __asm__(
     "    lw   a3, 8(s3)\n"
     "    andi a3, a3, 4\n"
     "    jr   t6\n"
-    /* 9: program the page at offset s5 with the 64 words of the buffer (link in ra) */
+    /* 9: programa a página no deslocamento s5 com as 64 palavras do buffer (retorno em ra) */
     "9:  sw   x0, 12(s3)\n"
     "    add  a4, s0, s5\n"
     "    li   a5, 64\n"
@@ -266,24 +299,34 @@ __asm__(
     "    jal  t6, 8b\n"
     "    ret\n"
     "rv32_flash_update_end:\n"
+    /* fora do bloco copiado: o número de palavras da rotina, calculado pelo montador */
+    ".globl rv32_flash_update_words\n"
+    "rv32_flash_update_words:\n"
+    "    .word (rv32_flash_update_end - rv32_flash_update_start) / 4\n"
     ".text\n");
 
+/* O início do código da rotina e o seu tamanho em palavras, ambos definidos pelo assembly acima. O tamanho vem de
+ * uma palavra que o montador calcula, e não da diferença entre dois ponteiros, que só é definida para elementos
+ * do mesmo objeto de vetor (ISO/IEC 9899:2024, 6.5.7). */
 extern const uint32_t rv32_flash_update_start[];
-extern const uint32_t rv32_flash_update_end[];
+extern const uint32_t rv32_flash_update_words;
 
-/* Runs the update of the bank at `dest` with the image in `image` (`size` bytes, a whole number of pages) from
- * a copy of the routine in the SDRAM. `ram_code` is the buffer for the copy, at least `words` words. Returns
- * RV32_UPDATE_OK, RV32_UPDATE_REFUSED or RV32_UPDATE_MISMATCH; with RV32_UPDATE_RESTART it does not return on
- * success. */
+/* Executa a atualização da banca em `dest` com a imagem em `image` (`size` bytes, um número inteiro de páginas) a
+ * partir de uma cópia da rotina na SDRAM. `ram_code` é o buffer da cópia, de pelo menos `words` palavras.
+ * Retorna RV32_UPDATE_OK, RV32_UPDATE_REFUSED ou RV32_UPDATE_MISMATCH; com RV32_UPDATE_RESTART não retorna em
+ * caso de sucesso. A conversão do endereço do buffer para ponteiro de função passa por uintptr_t: a norma não
+ * define a conversão de ponteiro para objeto em ponteiro para função (ISO/IEC 9899:2024, 6.3.3.3 e cláusula 4),
+ * e a de inteiro em ponteiro tem resultado definido pela implementação, que no GCC para RISC-V preserva o
+ * endereço. */
 static inline int rv32_update_bank(
     uint32_t dest, uint8_t *image, uint32_t size, uint32_t flags, uint32_t *ram_code, uint32_t words) {
-    uint32_t routine = (uint32_t)(rv32_flash_update_end - rv32_flash_update_start);
+    uint32_t routine = rv32_flash_update_words;
     if (routine > words) return RV32_UPDATE_TOO_BIG;
     for (uint32_t i = 0; i < routine; i++) ram_code[i] = rv32_flash_update_start[i];
     __asm__ volatile("fence.i" ::: "memory");
     volatile struct rv32_update_job job = {
-        .image = (uint32_t)image, .size = size, .dest = dest, .ctrl = RV32_FLASH_CTRL_BASE, .flags = flags};
-    return ((int (*)(volatile struct rv32_update_job *))ram_code)(&job);
+        .image = (uint32_t)(uintptr_t)image, .size = size, .dest = dest, .ctrl = RV32_FLASH_CTRL_BASE, .flags = flags};
+    return ((int (*)(volatile struct rv32_update_job *))(uintptr_t)ram_code)(&job);
 }
 
 #endif

@@ -1,14 +1,16 @@
 // RV32_TEST_KIND: memory
+#include <stdint.h>
+
 #include "rv32_test.h"
 
-// Checked against Spike (the RISC-V Foundation reference model) at
-// compile time, not a hand-computed literal — see
-// docs/creating-a-c-test.md.
-volatile unsigned int results[1];
+// Conferido contra o Spike (modelo de referência da RISC-V Foundation) na compilação,
+// não contra um literal calculado à mão; veja docs/creating-a-c-test.md.
+volatile uint32_t results[1];
 
+// Aplica OU bit a bit a dois operandos voláteis e guarda o resultado.
 int main(void) {
-    volatile unsigned int a = 0x55AA00FFu;
-    volatile unsigned int b = 0x0F0FF0F0u;
+    volatile uint32_t a = 0x55AA00FFu;
+    volatile uint32_t b = 0x0F0FF0F0u;
     results[0] = a | b;
     RV32_PASS();
 }

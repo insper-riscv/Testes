@@ -1,8 +1,9 @@
 // RV32_EXT: M, Zicsr
 // RV32_TEST_KIND: unit
-#include "rv32_test.h"
-#include "rv32_platform.h"
 #include <stdint.h>
+
+#include "rv32_platform.h"
+#include "rv32_test.h"
 
 // O CLINT gera as linhas MSIP e MTIP do núcleo, e o csr mip as mostra. O programa confere que:
 //   1. com o mtimecmp no maior valor e o msip em zero, o mip não tem MSIP nem MTIP;
@@ -56,6 +57,8 @@ static int wait_mip(uint32_t mask, uint32_t value) {
     return 0;
 }
 
+// Confere os cinco estados do mip descritos no início: repouso, MSIP ligado e desligado, MTIP armado e
+// desarmado.
 int main(void) {
     write_mtimecmp(UINT32_MAX, UINT32_MAX);
     clint_write(CLINT_MSIP, 0u);

@@ -1,27 +1,32 @@
 // RV32_TEST_KIND: unit
-#include "rv32_test.h"
-#include "rv32_platform.h"
 #include <stdint.h>
 #include <stdio.h>
 
-// stdout's buffer is linear and 1024 bytes (platform/stdio.c): writing
-// more fills it, drops the rest and sets the "truncated" flag.
-#define STDOUT_BASE RV32_STDOUT_BASE
+#include "rv32_platform.h"
+#include "rv32_test.h"
 
+// Layout do buffer de stdout de platform/stdio.c: um cabeçalho com o comprimento e o sinalizador de
+// truncamento, depois os bytes.
 struct stdout_buffer {
-    volatile unsigned int length;
-    volatile unsigned int truncated;
+    volatile uint32_t length;
+    volatile uint32_t truncated;
     volatile char data[1024];
 };
+
+// Endereço do buffer de stdout no topo da RAM. Fica como macro porque o ponteiro para um endereço fixo
+// não pode ser constexpr (ISO/IEC 9899:2024, 6.7.2: só o ponteiro nulo).
+#define STDOUT_BUFFER ((const struct stdout_buffer *)RV32_STDOUT_BASE)
 
 // Este teste confere só a cópia em RAM do stdout. Sem a UART a escrita de 1025 bytes não espera os 115200 baud
 // da simulação e cabe no limite de ciclos (definição forte do símbolo fraco do runtime).
 volatile uint32_t rv32_stdio_uart_enabled = 0u;
 
+// O buffer de stdout é linear e tem 1024 bytes (platform/stdio.c): escrever além disso o enche,
+// descarta o resto e liga o sinalizador de truncamento.
 int main(void) {
-    const struct stdout_buffer *out = (const struct stdout_buffer *)STDOUT_BASE;
+    const struct stdout_buffer *out = STDOUT_BUFFER;
 
-    for (int i = 0; i < 1024; i++) putchar('a');
+    for (uint32_t i = 0; i < 1024; i++) putchar('a');
     if (out->length != 1024 || out->truncated != 0) RV32_FAIL(1);
 
     putchar('b');

@@ -1,11 +1,13 @@
 // RV32_TEST_KIND: memory
+#include <stdint.h>
+
 #include "rv32_test.h"
 
-// Checked against Spike (the RISC-V Foundation reference model) at
-// compile time, not a hand-computed literal — see
-// docs/creating-a-c-test.md.
-volatile unsigned char results[1];
+// Conferido contra o Spike (modelo de referência da RISC-V Foundation) na compilação,
+// não contra um literal calculado à mão; veja docs/creating-a-c-test.md.
+volatile uint8_t results[1];
 
+// Armazena um byte em results para o Spike conferir.
 int main(void) {
     results[0] = 0xA5u;
     RV32_PASS();
