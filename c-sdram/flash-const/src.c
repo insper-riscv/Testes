@@ -1,3 +1,4 @@
+// RV32_EXT: Zicsr
 // RV32_TEST_KIND: unit
 #include <stdint.h>
 
@@ -5,17 +6,19 @@
 #include "rv32_test.h"
 
 // Constantes lidas da FLASH, que é um chip atrás das caches: leituras alinhadas e desalinhadas de uma tabela na
-// FLASH, uma segunda passada depois que o tráfego da SDRAM despejou as linhas, e uma escrita na FLASH que o chip
-// ignora (a tabela deve manter o valor, esteja ou não a sua linha na cache).
+// FLASH, uma segunda passada depois que o tráfego da SDRAM despejou as linhas, e uma escrita na FLASH, que o núcleo
+// recusa com uma falha de acesso de escrita (mcause 7) e que o chip nunca vê (a tabela deve manter o valor, esteja
+// ou não a sua linha na cache).
 //
 // Duas operações aqui não têm definição na norma, e o teste existe justamente para medi-las no hardware, então
 // cada uma é feita por uma instrução explícita em __asm__ volatile, fora da máquina abstrata, em vez de por
 // uma expressão em C:
 //   1. o acesso desalinhado a uma palavra (ISO/IEC 9899:2024, 6.3.3.3 não define o ponteiro desalinhado), que
 //      mede a extensão Zicclsm: lw_misaligned executa uma instrução lw num endereço que não é múltiplo de 4;
-//   2. a escrita num objeto definido const (6.7.4.1 a torna indefinida em C), que mede o chip: sw_flash executa
-//      uma instrução sw sobre a FLASH, que a ignora, de modo que o objeto const nunca muda de fato. As leituras
-//      de conferência passam por ponteiro volatile, para que o compilador não as troque pela constante.
+//   2. a escrita num objeto definido const (6.7.4.1 a torna indefinida em C), que mede o núcleo: sw_flash
+//      executa uma instrução sw sobre a FLASH, que o núcleo recusa com a falha de acesso, de modo que o objeto
+//      const nunca muda de fato. As leituras de conferência passam por ponteiro volatile, para que o compilador
+//      não as troque pela constante.
 
 // Tabela de 64 palavras guardada na FLASH (.rodata).
 static const uint32_t table[64] = {
@@ -36,7 +39,7 @@ static inline uint32_t lw_misaligned(uintptr_t address) {
     return value;
 }
 
-// Escreve uma palavra num endereço da FLASH com a instrução sw; o chip ignora a escrita.
+// Escreve uma palavra num endereço da FLASH com a instrução sw; o núcleo recusa a escrita com a falha de acesso.
 static inline void sw_flash(uintptr_t address, uint32_t value) {
     __asm__ volatile("sw %1, 0(%0)" : : "r"(address), "r"(value) : "memory");
 }
@@ -44,6 +47,21 @@ static inline void sw_flash(uintptr_t address, uint32_t value) {
 // Lê uma palavra alinhada da FLASH por um ponteiro volatile, sempre do chip ou da cache.
 static inline uint32_t read_flash(uintptr_t address) {
     return *(const volatile uint32_t *)address;
+}
+
+// Quantas falhas foram tomadas e a causa da última. O tratador pula a escrita que falhou.
+static volatile uint32_t faults;
+static volatile uint32_t last_cause;
+
+// Tratador de exceção de máquina: registra a causa, conta a falha e retoma depois da instrução que falhou.
+[[gnu::interrupt("machine"), gnu::aligned(4)]] static void store_fault_handler(void) {
+    uint32_t cause;
+    uint32_t epc;
+    __asm__ volatile("csrr %0, mcause" : "=r"(cause));
+    __asm__ volatile("csrr %0, mepc" : "=r"(epc));
+    last_cause = cause;
+    faults++;
+    __asm__ volatile("csrw mepc, %0" : : "r"(epc + 4u));
 }
 
 // Soma de verificação das palavras da tabela, lidas como palavras.
@@ -86,14 +104,18 @@ int main(void) {
     if (sum != 4096u * 4095u / 2u) RV32_FAIL(4);
     if (checksum() != first) RV32_FAIL(5);
 
-    // uma escrita na FLASH é ignorada, numa linha que está na cache e numa que não está
+    // uma escrita na FLASH é recusada com a falha de acesso e não muda nada, numa linha que está na cache e
+    // numa que não está
+    __asm__ volatile("csrw mtvec, %0" : : "r"((uintptr_t)&store_fault_handler));
     const uintptr_t flash = (uintptr_t)&table[3];
     uint32_t before = read_flash(flash);                 // traz a linha
     sw_flash(flash, 0xFFFFFFFFu);
+    if (faults != 1u || last_cause != 7u) RV32_FAIL(10);
     if (read_flash(flash) != before) RV32_FAIL(6);
     const uintptr_t far_word = (uintptr_t)&table[60];
     uint32_t before_far = read_flash(far_word);
     sw_flash(far_word, 0u);
+    if (faults != 2u || last_cause != 7u) RV32_FAIL(11);
     if (read_flash(far_word) != before_far) RV32_FAIL(7);
     for (uint32_t i = 0; i < 4096; i++) sweep[i] = ~i;   // despeja
     if (read_flash(flash) != before || read_flash(far_word) != before_far) RV32_FAIL(8);

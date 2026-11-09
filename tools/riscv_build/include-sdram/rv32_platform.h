@@ -25,6 +25,7 @@
 #define RV32_BANK_B_SIZE 0x00020000
 
 #define RV32_CLINT_BASE  0xE0000000   /* CLINT, slot 6 (64 KiB): msip +0x0, mtimecmp +0x4000, mtime +0xBFF8 */
+#define RV32_TICK_CYCLES 77           /* ciclos de clock por tick do mtime e do csr time (interrupts.clock_hz / mtime_hz) */
 
 #ifdef __ASSEMBLER__
 /* Como um teste em assembly termina, com os nomes do modelo do riscv-arch-test (o rv32_test.h tem os

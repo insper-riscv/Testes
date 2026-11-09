@@ -84,6 +84,8 @@ Qualquer alteração em código, configuração ou documentação deve passar se
 uv run riscv-tools --config tools/riscv_build/config.yaml compile --emit hex  # Compila todos os programas de teste
 uv run riscv-tools --config tools/riscv_build/config.yaml sim                 # Executa a suíte de simulação
 uv run riscv-tools --root . check-tree --kind tests                           # Árvore do repositório
+uv run python -m unittest discover -s tests/host                              # Testes do host (harness, runner, regressão e cabeçalhos)
+make check-headers                                                            # Cada rv32_platform.h contra o platform.yaml
 ```
 
 O job `tree`, de um workflow à parte, confere a árvore do repositório com `riscv-tools check-tree`.

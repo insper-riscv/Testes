@@ -20,6 +20,18 @@
 #define RV32_MTIMECMP    (RV32_CLINT_BASE + 0x4000)
 #define RV32_MTIME       (RV32_CLINT_BASE + 0xBFF8)
 
+/* Acréscimos do irq-mepc-precise e a distância, em ticks do mtime, entre as suas interrupções: a placa conta o
+ * mtime a 1 MHz (50 ciclos de clock por tick), então o seu bloco é longo o bastante para várias interrupções. */
+#define RV32_PRECISE_ADDS 400
+#define RV32_PRECISE_STEP 37
+
+/* Endereços dos programas de falha de acesso: um byte da ROM somente leitura, um endereço em nenhuma região do
+ * mapa e um endereço num slot do barramento de periféricos onde nenhum periférico responde (o núcleo os falha com
+ * as causas 5 e 7, e uma busca no slot vazio ou no buraco com a causa 1). */
+#define RV32_ROM_ADDR    0x00004000
+#define RV32_HOLE_ADDR   0x00400000
+#define RV32_EMPTY_SLOT  0x90000000
+
 #define RV32_MIE_MSIE    0x00000008   /* bit 3 de mie e mip */
 #define RV32_MIE_MTIE    0x00000080   /* bit 7 de mie e mip */
 #define RV32_MIE_MEIE    0x00000800   /* bit 11 de mie e mip */
@@ -42,6 +54,19 @@
     sw   t1, 0(t0); \
     sw   x0, 4(t0); \
     tail rv32_wait_restart
+
+/* O estado que um reset deixa, para uma plataforma que reinicia um programa sem reiniciar o núcleo nem o CLINT:
+ * nenhuma interrupção habilitada ou pendente e o temporizador fora de alcance. É a primeira coisa de todo
+ * programa de asm-irq/. Altera t0 e t1. */
+#define RVIRQ_INIT \
+    csrci mstatus, 8; \
+    csrw  mie, x0; \
+    li    t0, RV32_MSIP; \
+    sw    x0, 0(t0); \
+    li    t0, RV32_MTIMECMP; \
+    li    t1, -1; \
+    sw    t1, 4(t0); \
+    sw    t1, 0(t0)
 
 /* Arma o temporizador para disparar `delta` ticks adiante (a metade baixa do mtime, então para uma espera
  * curta). A metade baixa vai a todos os bits em um primeiro e ao alvo por último, como faz o porte do

@@ -8,12 +8,12 @@
  *                         CRC-32 da carga, de modo que um fluxo cortado ou danificado nunca chega à FLASH;
  *   rv32_update_bank      copia a rotina de atualização para a SDRAM e a executa lá: apaga os setores da banca
  *                         de destino, programa as páginas da carga, programa a página de cabeçalho POR ÚLTIMO,
- *                         lê tudo de volta e compara com o buffer, e então reinicia pela ROM de boot;
+ *                         lê tudo de volta e compara com o buffer, e então reinicia pela memória de boot;
  *   rv32_update_running   diz de qual banca o firmware executa;
  *   rv32_update_check     lê uma banca de volta da FLASH e diz se o cabeçalho e a carga são válidos (o que a
- *                         ROM de boot pergunta a ela);
+ *                         memória de boot pergunta a ela);
  *   rv32_update_cut       um sinalizador de rv32_update_bank que deixa a página de cabeçalho apagada, o estado
- *                         de uma atualização que perdeu energia antes do fim: a ROM de boot deve recusar a banca.
+ *                         de uma atualização que perdeu energia antes do fim: a memória de boot deve recusar a banca.
  *
  * A rotina é escrita em assembly, sem endereço absoluto além dos parâmetros que recebe, para que a cópia na SDRAM
  * rode como está. Ela roda da SDRAM porque um chip de FLASH de uma banca não pode ser lido enquanto é apagado;
@@ -49,7 +49,7 @@ enum {
 /* Sinalizadores de rv32_update_bank. */
 /* Não escreve a página de cabeçalho. */
 static constexpr uint32_t RV32_UPDATE_CUT = 1u;
-/* Em caso de sucesso, reinicia pela ROM de boot em vez de retornar. */
+/* Em caso de sucesso, reinicia pela memória de boot em vez de retornar. */
 static constexpr uint32_t RV32_UPDATE_RESTART = 2u;
 
 /* Tamanho da página de cabeçalho de uma imagem, em bytes. */
@@ -171,7 +171,7 @@ static inline uint32_t rv32_update_bank_of(uint32_t address) {
     return 0;
 }
 
-/* Lê a banca de volta e diz se a sua imagem é válida, como a ROM de boot a vê. */
+/* Lê a banca de volta e diz se a sua imagem é válida, como a memória de boot a vê. */
 static inline int rv32_update_check(uint32_t base, uint32_t bank_size, uint32_t *version) {
     const volatile uint8_t *header = (const volatile uint8_t *)base;
     uint32_t payload = 0;

@@ -19,12 +19,14 @@ int main(void) {
         if (m[0] != ~(1u << b)) RV32_FAIL(2);
     }
 
-    // barramento de endereços: uma palavra em cada deslocamento de potência de dois (e no deslocamento 0), todas
-    // escritas antes de qualquer leitura, de modo que uma linha de endereço presa ou trocada põe um valor em
-    // outra palavra
-    for (uint32_t k = 0; k < 24; k++) m[1u << k] = 0xA0000000u | k;
+    // barramento de endereços: uma palavra em cada deslocamento de potência de dois (e no deslocamento 0) que
+    // fica dentro da RAM, longe da pilha e das palavras do host (8 KiB abaixo do fim dela), todas escritas antes
+    // de qualquer leitura, de modo que uma linha de endereço presa ou trocada põe um valor em outra palavra
+    uint32_t bits = 0;
+    while (bits < 24 && RV32_SDRAM_TEST_BASE + (4u << bits) <= RV32_RAM_END - 0x2000u) bits++;
+    for (uint32_t k = 0; k < bits; k++) m[1u << k] = 0xA0000000u | k;
     m[0] = 0xDEADBEEFu;
-    for (uint32_t k = 0; k < 24; k++) {
+    for (uint32_t k = 0; k < bits; k++) {
         if (m[1u << k] != (0xA0000000u | k)) RV32_FAIL(3);
     }
     if (m[0] != 0xDEADBEEFu) RV32_FAIL(4);

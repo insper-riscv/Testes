@@ -1,11 +1,14 @@
-/* The macros of the PLIC programs (asm-plic/ and asm-plic-de0-cv/), for assembly. The platform header defines the
- * addresses (RV32_RAM_BASE, RV32_TOHOST, RV32_FROMHOST, RV32_PLIC_*, RV32_MIE_MEIE) and includes this file. */
+/* As macros dos programas do PLIC (asm-plic/ e asm-plic-de0-cv/), para assembly. O cabeçalho da plataforma define
+ * os endereços (RV32_RAM_BASE, RV32_TOHOST, RV32_FROMHOST, RV32_PLIC_*, RV32_MIE_MEIE) e inclui este arquivo.
+ *
+ * Os números ficam em #define (e não em constexpr ou enum) porque o assembly (.S) inclui este arquivo e só o
+ * pré-processador os enxerga (ISO/IEC 9899:2024, 6.10); o C de 6.7.2 não é visível ao montador. */
 #ifndef RV32_PLIC_MACROS_H
 #define RV32_PLIC_MACROS_H
 
 #ifdef __ASSEMBLER__
-/* How an assembly test ends, with the names of the riscv-arch-test model. tohost = 1 is a pass,
- * (code << 1) | 1 a failure with that code. Clobbers t0 and t1. */
+/* Como um teste em assembly termina, com os nomes do modelo do riscv-arch-test. tohost = 1 é aprovação,
+ * (código << 1) | 1 é falha com esse código. Altera t0 e t1. */
 #define RVMODEL_HALT_PASS \
     li   t0, RV32_TOHOST; \
     li   t1, 1; \
@@ -19,40 +22,40 @@
     sw   x0, 4(t0); \
     tail rv32_wait_restart
 
-/* Sets the priority of source `id` to the value in register `rv`. Clobbers t0. */
+/* Põe a prioridade da fonte `id` no valor do registrador `rv`. Altera t0. */
 #define RVPLIC_PRIORITY(id, rv) \
     li   t0, RV32_PLIC_PRIORITY + 4 * (id); \
     sw   rv, 0(t0)
-/* Writes the enable mask (bit n is source n) held in register `rv`. Clobbers t0. */
+/* Escreve a máscara de habilitação (o bit n é a fonte n) que está no registrador `rv`. Altera t0. */
 #define RVPLIC_ENABLE(rv) \
     li   t0, RV32_PLIC_ENABLE; \
     sw   rv, 0(t0)
-/* Writes the threshold held in register `rv`. Clobbers t0. */
+/* Escreve o limiar que está no registrador `rv`. Altera t0. */
 #define RVPLIC_THRESHOLD(rv) \
     li   t0, RV32_PLIC_THRESHOLD; \
     sw   rv, 0(t0)
-/* Opens the external interrupt: mie.MEIE and mstatus.MIE. Clobbers t0. */
+/* Abre a interrupção externa: mie.MEIE e mstatus.MIE. Altera t0. */
 #define RVPLIC_OPEN \
     li   t0, RV32_MIE_MEIE; \
     csrs mie, t0; \
     csrsi mstatus, 8
-/* Claims into `rd`: the id of the winning source, or 0. Clobbers t0. */
+/* Reivindica em `rd` o id da fonte vencedora, ou 0. Altera t0. */
 #define RVPLIC_CLAIM(rd) \
     li   t0, RV32_PLIC_CLAIM; \
     lw   rd, 0(t0)
-/* Completes the source held in register `rv`. Clobbers t0. */
+/* Completa a fonte que está no registrador `rv`. Altera t0. */
 #define RVPLIC_COMPLETE(rv) \
     li   t0, RV32_PLIC_CLAIM; \
     sw   rv, 0(t0)
-/* Tells the testbench host to do `what` (RV32_HOST_*). Clobbers t0 and t1. */
+/* Manda o host do testbench fazer `what` (RV32_HOST_*). Altera t0 e t1. */
 #define RVHOST(what) \
     li   t0, RV32_FROMHOST; \
     li   t1, what; \
     sw   t1, 0(t0)
 
-/* The handler of the PLIC programs keeps t0 to t4 of the interrupted code in the save area
- * RV32_RAM_BASE + 0x100 (mscratch points to it from the start of main) and leaves t0 holding that
- * area. Between RVPLIC_ENTER and RVPLIC_LEAVE the handler may use t1 to t4 and must not touch t0. */
+/* O tratador dos programas do PLIC guarda t0 a t4 do código interrompido na área de salvamento
+ * RV32_RAM_BASE + 0x100 (o mscratch aponta para ela desde o início de main) e deixa t0 com essa área. Entre
+ * RVPLIC_ENTER e RVPLIC_LEAVE o tratador pode usar t1 a t4 e não deve tocar em t0. */
 #define RVPLIC_SAVE   (RV32_RAM_BASE + 0x100)
 #define RVPLIC_ENTER \
     csrrw t0, mscratch, t0; \
@@ -70,7 +73,7 @@
     csrw mscratch, t0; \
     lw   t0, 16(t0); \
     mret
-/* The start of main of every program: mtvec, mscratch, the log (s0 = RV32_RAM_BASE, count at +0). */
+/* O início de main de todo programa: mtvec, mscratch e o registro (s0 = RV32_RAM_BASE, contagem em +0). */
 #define RVPLIC_START \
     la   t0, handler; \
     csrw mtvec, t0; \
@@ -78,9 +81,9 @@
     csrw mscratch, t0; \
     li   s0, RV32_RAM_BASE; \
     sw   x0, 0(s0)
-/* The handler logs the entry k at RV32_RAM_BASE + 0x10 + 8k (the source id, then a word of the service)
- * and bumps the count at +0 last, after the complete. Appends: t1 = id, t2 = extra, t3 and t4 scratch.
- * Leaves the new count in t3. */
+/* O tratador registra a entrada k em RV32_RAM_BASE + 0x10 + 8k (o id da fonte e depois uma palavra do
+ * atendimento) e incrementa a contagem em +0 por último, depois do complete. Acrescenta: t1 = id, t2 = extra,
+ * t3 e t4 de rascunho. Deixa a nova contagem em t3. */
 #define RVPLIC_LOG \
     li   t3, RV32_RAM_BASE; \
     lw   t4, 0(t3); \
@@ -93,13 +96,14 @@
     lw   t4, 0(t3); \
     addi t4, t4, 1; \
     sw   t4, 0(t3)
-/* The bound of WAIT_COUNT in loop turns; the platform header may raise it (on the board the host that drains the
- * UART attaches seconds after the program starts, while the simulation host answers at once). */
+/* O limite de WAIT_COUNT em voltas de laço; o cabeçalho da plataforma pode aumentá-lo (na placa, o host que
+ * esvazia a UART se conecta segundos depois de o programa começar, enquanto o host da simulação responde de uma
+ * vez). */
 #ifndef RVPLIC_WAIT_POLLS
 #define RVPLIC_WAIT_POLLS 400000
 #endif
-/* Waits until the handler has run n times in total (the count in s0), up to a bound, or fails. Clobbers
- * s1, t1 and t2. */
+/* Espera até o tratador ter rodado n vezes no total (a contagem em s0), até um limite, ou falha. Altera
+ * s1, t1 e t2. */
 #define WAIT_COUNT(n, code) \
     li   s1, RVPLIC_WAIT_POLLS; \
 8:  lw   t1, 0(s0); \
@@ -109,19 +113,19 @@
     bnez s1, 8b; \
     RVMODEL_HALT_FAIL(code); \
 9:
-/* Spends about n loops, for "nothing happens" checks. Clobbers s1. */
+/* Gasta cerca de n voltas, para as conferências de "nada acontece". Altera s1. */
 #define DELAY(n) \
     li   s1, n; \
 7:  addi s1, s1, -1; \
     bnez s1, 7b
-/* Fails with `code` unless the word at s0 + off is val. Clobbers t1 and t2. */
+/* Falha com `code` a menos que a palavra em s0 + off seja val. Altera t1 e t2. */
 #define CHECK(off, val, code) \
     lw   t1, off(s0); \
     li   t2, val; \
     beq  t1, t2, 9f; \
     RVMODEL_HALT_FAIL(code); \
 9:
-/* Fails with `code` unless (the word at s0 + off) & mask is val. Clobbers t1 and t2. */
+/* Falha com `code` a menos que (a palavra em s0 + off) & mask seja val. Altera t1 e t2. */
 #define CHECKM(off, mask, val, code) \
     lw   t1, off(s0); \
     li   t2, mask; \
@@ -130,7 +134,7 @@
     beq  t1, t2, 9f; \
     RVMODEL_HALT_FAIL(code); \
 9:
-/* Closes and opens mstatus.MIE, to arm several sources before any interrupt is taken. */
+/* Fecha e abre o mstatus.MIE, para armar várias fontes antes de qualquer interrupção ser tomada. */
 #define RVPLIC_MIE_OFF csrci mstatus, 8
 #define RVPLIC_MIE_ON  csrsi mstatus, 8
 #endif

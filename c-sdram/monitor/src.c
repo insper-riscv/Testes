@@ -18,7 +18,7 @@
 //   dump ADDR N             mostra N palavras a partir de ADDR
 //   run ADDR                chama o código em ADDR (uma função que retorna) e mostra o que ela retorna
 //   status                  mostra o índice e o estado do último ELF, do registrador do display
-//   reset                   reinicia o núcleo pela ROM de boot
+//   reset                   reinicia o núcleo pela memória de boot
 //   quit                    encerra o programa com PASS (o que uma execução de teste precisa)
 //
 // Um comando desconhecido ou malformado imprime "error: ..." e o monitor segue; nada que o host envie
@@ -139,7 +139,7 @@ static int32_t command_run(uint32_t address) {
     return ((int (*)(void))(uintptr_t)address)();
 }
 
-// Reinicia o núcleo saltando para o endereço 0, onde fica a ROM de boot. O endereço passa por uma variável
+// Reinicia o núcleo saltando para o endereço 0, onde fica a memória de boot. O endereço passa por uma variável
 // volátil para que a conversão seja a de um inteiro em tempo de execução e não a de uma constante de ponteiro
 // nulo, que não pode ser chamada.
 [[noreturn]] static void command_reset(void) {

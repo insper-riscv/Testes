@@ -1,45 +1,47 @@
-/* The memory map and the machine timer (CLINT) the interrupt programs (asm-irq/) are built for,
- * as plain numbers an assembly program can use. The map is the one of internal-mem; the CLINT
- * has the layout of the SiFive one: msip at +0x0000, mtimecmp at +0x4000 and mtime at +0xBFF8,
- * all with 32-bit accesses and the low half at the lower address. A platform that wires the
- * interrupts defines RV32_CLINT_BASE in its generated header; the simulation of tests/python
- * defines it as a region of its own model of the CLINT. */
+/* O mapa de memória e o temporizador da máquina (CLINT) para os quais os programas de interrupção (asm-irq/)
+ * são construídos, como números simples que um programa em assembly usa. O mapa é o da internal-mem; o CLINT
+ * tem o layout do SiFive: msip em +0x0000, mtimecmp em +0x4000 e mtime em +0xBFF8, todos com acessos de 32
+ * bits e a metade baixa no endereço menor. Uma plataforma que liga as interrupções define RV32_CLINT_BASE no
+ * seu cabeçalho gerado; a simulação de tests/python o define como uma região do seu próprio modelo do CLINT.
+ *
+ * Os números ficam em #define (e não em constexpr ou enum) porque o assembly (.S) inclui este arquivo e só o
+ * pré-processador os enxerga (ISO/IEC 9899:2024, 6.10); o C de 6.7.2 não é visível ao montador. */
 #ifndef RV32_PLATFORM_H
 #define RV32_PLATFORM_H
 
-#define RV32_RAM_BASE    0x40000000   /* first byte of RAM: the SDRAM of the de0-cv */
-#define RV32_RAM_END     0x44000000   /* one past the last byte of RAM */
-#define RV32_TOHOST      0x43FFFFE8   /* HTIF tohost, 8 bytes; fromhost is 8 bytes above */
+#define RV32_RAM_BASE    0x40000000   /* primeiro byte da RAM: a SDRAM da de0-cv */
+#define RV32_RAM_END     0x44000000   /* um após o último byte da RAM */
+#define RV32_TOHOST      0x43FFFFE8   /* tohost do HTIF, 8 bytes; o fromhost fica 8 bytes acima */
 
 #ifndef RV32_CLINT_BASE
-#define RV32_CLINT_BASE  0xE0000000   /* the CLINT of the de0-cv (slot 6) */
+#define RV32_CLINT_BASE  0xE0000000   /* o CLINT da de0-cv (slot 6) */
 #endif
 #define RV32_MSIP        (RV32_CLINT_BASE + 0x0000)
 #define RV32_MTIMECMP    (RV32_CLINT_BASE + 0x4000)
 #define RV32_MTIME       (RV32_CLINT_BASE + 0xBFF8)
 
-/* The additions of irq-mepc-precise and the distance in mtime ticks between its interrupts: the board
- * counts mtime at 1 MHz (50 clock cycles a tick), so its block is long enough for several interrupts. */
+/* Acréscimos do irq-mepc-precise e a distância, em ticks do mtime, entre as suas interrupções: a placa conta o
+ * mtime a 1 MHz (50 ciclos de clock por tick), então o seu bloco é longo o bastante para várias interrupções. */
 #define RV32_PRECISE_ADDS 12000
 #define RV32_PRECISE_STEP 37
 
-/* Addresses for the access-fault programs: a byte of the read-only ROM, an address in no region of the map, and an
- * address in a slot of the peripheral bus where no peripheral answers (the core faults them with causes 5 and 7, and
- * a fetch from the empty slot or from the hole with cause 1). */
+/* Endereços dos programas de falha de acesso: um byte da ROM somente leitura, um endereço em nenhuma região do
+ * mapa e um endereço num slot do barramento de periféricos onde nenhum periférico responde (o núcleo os falha com
+ * as causas 5 e 7, e uma busca no slot vazio ou no buraco com a causa 1). */
 #define RV32_ROM_ADDR    0x00002000
 #define RV32_HOLE_ADDR   0x10000000
 #define RV32_EMPTY_SLOT  0x90000000
 
-#define RV32_MIE_MSIE    0x00000008   /* bit 3 of mie and mip */
-#define RV32_MIE_MTIE    0x00000080   /* bit 7 of mie and mip */
-#define RV32_MIE_MEIE    0x00000800   /* bit 11 of mie and mip */
+#define RV32_MIE_MSIE    0x00000008   /* bit 3 de mie e mip */
+#define RV32_MIE_MTIE    0x00000080   /* bit 7 de mie e mip */
+#define RV32_MIE_MEIE    0x00000800   /* bit 11 de mie e mip */
 #define RV32_CAUSE_MSI   0x80000003
 #define RV32_CAUSE_MTI   0x80000007
 #define RV32_CAUSE_MEI   0x8000000B
 
 #ifdef __ASSEMBLER__
-/* How an assembly test ends, with the names of the riscv-arch-test model. tohost = 1 is a pass,
- * (code << 1) | 1 a failure with that code. Clobbers t0 and t1. */
+/* Como um teste em assembly termina, com os nomes do modelo do riscv-arch-test. tohost = 1 é aprovação,
+ * (código << 1) | 1 é falha com esse código. Altera t0 e t1. */
 #define RVMODEL_HALT_PASS \
     li   t0, RV32_TOHOST; \
     li   t1, 1; \
@@ -53,9 +55,9 @@
     sw   x0, 4(t0); \
     tail rv32_wait_restart
 
-/* The state a reset leaves, for a platform that restarts a program without resetting the core or the CLINT: no
- * interrupt enabled or pending, the timer out of reach. The first thing every program of asm-irq/ does. Clobbers
- * t0 and t1. */
+/* O estado que um reset deixa, para uma plataforma que reinicia um programa sem reiniciar o núcleo nem o CLINT:
+ * nenhuma interrupção habilitada ou pendente e o temporizador fora de alcance. É a primeira coisa de todo
+ * programa de asm-irq/. Altera t0 e t1. */
 #define RVIRQ_INIT \
     csrci mstatus, 8; \
     csrw  mie, x0; \
@@ -66,9 +68,9 @@
     sw    t1, 4(t0); \
     sw    t1, 0(t0)
 
-/* Arms the timer to fire `delta` ticks from now (the low half of mtime, so for a short wait).
- * The low half goes to all ones first and back to the target last, as the FreeRTOS port does,
- * so that no state in between fires. Clobbers t0, t1 and t2. */
+/* Arma o temporizador para disparar `delta` ticks adiante (a metade baixa do mtime, então para uma espera
+ * curta). A metade baixa vai a todos os bits em um primeiro e ao alvo por último, como faz o porte do
+ * FreeRTOS, para que nenhum estado intermediário dispare. Altera t0, t1 e t2. */
 #define RVIRQ_TIMER_AFTER(delta) \
     li   t0, RV32_MTIME; \
     lw   t1, 0(t0); \
@@ -79,14 +81,15 @@
     sw   x0, 4(t0); \
     sw   t1, 0(t0)
 
-/* Moves the timer out of reach (mtimecmp all ones). Clobbers the two registers it is given. */
+/* Move o temporizador para fora de alcance (mtimecmp com todos os bits em um). Altera os dois registradores
+ * recebidos. */
 #define RVIRQ_TIMER_OFF(ra, rb) \
     li   ra, RV32_MTIMECMP; \
     li   rb, -1; \
     sw   rb, 4(ra); \
     sw   rb, 0(ra)
 
-/* Raises and clears the software interrupt. Clobber the two registers they are given. */
+/* Levanta e baixa a interrupção de software. Alteram os registradores recebidos. */
 #define RVIRQ_SOFTWARE_ON(ra, rb) \
     li   ra, RV32_MSIP; \
     li   rb, 1; \
@@ -95,9 +98,9 @@
     li   ra, RV32_MSIP; \
     sw   x0, 0(ra)
 
-/* The handler of the programs that log: it counts the entries in RV32_RAM_BASE + 0, writes the
- * mcause and the mepc of entry k at RV32_RAM_BASE + 0xF8 + 8k, acknowledges the software and
- * the timer interrupt, and skips the instruction of an exception. It uses t3 to t6 only. */
+/* O tratador dos programas que registram: conta as entradas em RV32_RAM_BASE + 0, escreve o mcause e o mepc
+ * da entrada k em RV32_RAM_BASE + 0xF8 + 8k, reconhece a interrupção de software e a do temporizador e pula a
+ * instrução de uma exceção. Usa só t3 a t6. */
 #define RVIRQ_LOG_HANDLER \
     csrr t3, mcause; \
     csrr t4, mepc; \

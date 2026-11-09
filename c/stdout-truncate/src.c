@@ -17,6 +17,10 @@ struct stdout_buffer {
 // não pode ser constexpr (ISO/IEC 9899:2024, 6.7.2: só o ponteiro nulo).
 #define STDOUT_BUFFER ((const struct stdout_buffer *)RV32_STDOUT_BASE)
 
+// Este teste confere só a cópia em RAM do stdout. Sem a UART a escrita de 1025 bytes não espera os 115200 baud
+// da simulação e cabe no limite de ciclos (definição forte do símbolo fraco do runtime).
+volatile uint32_t rv32_stdio_uart_enabled = 0u;
+
 // O buffer de stdout é linear e tem 1024 bytes (platform/stdio.c): escrever além disso o enche,
 // descarta o resto e liga o sinalizador de truncamento.
 int main(void) {

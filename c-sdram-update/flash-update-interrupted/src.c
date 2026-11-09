@@ -11,7 +11,7 @@
 //
 // É o mesmo programa de flash-update até a rotina, que recebe a ordem de cortar a atualização
 // (RV32_UPDATE_CUT): ela apaga a banca B e programa a carga, mas deixa a página de cabeçalho apagada, e
-// reinicia. A ROM de boot não acha cabeçalho válido na banca B e roda a banca A de novo, que é a segunda
+// reinicia. A memória de boot não acha cabeçalho válido na banca B e roda a banca A de novo, que é a segunda
 // execução da palavra sobrevivente: ela lê a banca B de volta, acha o cabeçalho inválido e a carga lá (o
 // corte foi depois da carga, não antes de tudo), imprime a linha do uart_expected.txt e passa.
 
@@ -39,7 +39,7 @@ int main(void) {
         if (rv32_update_check(RV32_BANK_B_BASE, RV32_BANK_B_SIZE, &version) == RV32_UPDATE_OK) RV32_FAIL(3);
         if (*(volatile uint32_t *)(RV32_BANK_B_BASE + RV32_HEADER_SIZE) == RV32_FLASH_ERASED_WORD) RV32_FAIL(4);
         *SURVIVOR = 0;
-        printf("interrupted update: the boot ROM stayed on bank A\n");
+        printf("interrupted update: the boot memory stayed on bank A\n");
         RV32_PASS();
     }
     uint32_t length = 0;
