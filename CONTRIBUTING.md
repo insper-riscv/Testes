@@ -10,15 +10,34 @@ Todo código C do projeto (programas de teste, runtime e fixtures) é escrito so
 
 | Regra | Especificação |
 | :--- | :--- |
-| Norma da linguagem | C23 (`-std=c23`) em todos os arquivos `.c` e `.h` |
-| Avisos | `-Wall -Wextra -Wpedantic -Werror`; nenhum aviso é aceito |
-| Tipos de largura fixa | `<stdint.h>` (`uint32_t`, `int32_t`) em vez de `int`/`long` quando a largura importa |
-| Palavras-chave de C23 | Usar `bool`, `true`, `false`, `nullptr`, `constexpr`, `static_assert` sem mensagem e `typeof`; não incluir `<stdbool.h>` nem definir `NULL` próprio |
-| Atributos | Usar a sintaxe padrão `[[nodiscard]]`, `[[maybe_unused]]` e `[[noreturn]]` em vez de `__attribute__` |
-| Constantes | `constexpr` ou `enum` no lugar de macros `#define` numéricas; literais binários (`0b1010`) e separadores (`1'000'000`) permitidos |
-| Ambiente freestanding | Código bare-metal compilado com `-ffreestanding` depende apenas dos cabeçalhos garantidos pela norma e da libc do runtime |
-| Nomenclatura | Identificadores em **inglês** com `snake_case`, constantes e macros em `UPPER_SNAKE_CASE`, tipos com sufixo `_t`; comentários em **português** |
-| Comentários | Cada função e cada variável global recebem um comentário descritivo em português imediatamente acima da declaração |
+| Norma da linguagem | C23 (`-std=c23`, nunca `-std=gnu23`) em todos os arquivos `.c` e `.h`; o `riscv-tools` passa a flag em toda compilação |
+| Avisos | `-Wall -Wextra -Wpedantic -Werror`, passados pelo `riscv-tools` em toda compilação; nenhum aviso é aceito |
+| Ambiente de execução | Hospedado, com a picolibc: os programas compilam com o `--specs` da plataforma, sem `-ffreestanding`, e o `main` retorna ao crt0, que chama `exit` |
+| Cabeçalhos | A norma garante em ambiente freestanding só `<float.h>`, `<iso646.h>`, `<limits.h>`, `<stdalign.h>`, `<stdarg.h>`, `<stdbit.h>`, `<stdbool.h>`, `<stddef.h>`, `<stdint.h>` e `<stdnoreturn.h>` (cláusula 4); `<stdio.h>` e `<stdlib.h>` vêm da picolibc e só os programas que testam a biblioteca os incluem |
+| Tipos de largura fixa | `<stdint.h>` (`uint32_t`, `int32_t`, `uintptr_t`) em vez de `int`, `unsigned` e `long` sempre que a largura importa; `int` fica para contadores e códigos de retorno |
+| Palavras-chave de C23 | Usar `bool`, `true`, `false`, `nullptr`, `constexpr`, `alignas`, `static_assert` sem mensagem e `typeof`; não incluir `<stdbool.h>` nem `<stdalign.h>` e não usar `NULL` |
+| Atributos | Sintaxe padrão `[[nodiscard]]`, `[[maybe_unused]]`, `[[noreturn]]`, `[[fallthrough]]` e `[[deprecated]]` no lugar de `__attribute__`; `alignas(n)` no lugar de `aligned(n)`; `[[gnu::noinline]]` e `[[gnu::weak]]` só onde a norma não tem equivalente, com um comentário que diga o motivo |
+| Constantes | `static constexpr` com tipo de largura fixa no lugar de `#define` numérico; `enum : uint32_t` para grupos de máscaras e endereços; literais binários (`0b1010`) e separadores (`1'000'000`) são permitidos |
+| `#define` que permanece | Só onde um `.S` ou um `#if` lê o valor, onde o ponteiro aponta para um endereço fixo (o `constexpr` de ponteiro aceita só o ponteiro nulo, cláusula 6.7.2) ou onde o arquivo é gerado; cada um traz um comentário com o motivo |
+| Nomenclatura | Identificadores em **inglês** com `snake_case`, constantes e macros em `UPPER_SNAKE_CASE`, tipos com sufixo `_t`; sem aliases de `<stdint.h>` (como `u32`) e sem nomes que o POSIX reserva (como `LINE_MAX`); comentários em **português** |
+| Comentários | Cada função, variável global, constante e macro recebe um comentário descritivo em português imediatamente acima da declaração |
+
+### 1.1. Comportamento que a norma não define
+
+| Tema | Regra |
+| :--- | :--- |
+| Registradores MMIO | O endereço é uma constante inteira convertida em ponteiro `volatile` da largura do registrador (cláusulas 6.3.3.3 e 6.7.4.1), sempre alinhado a essa largura, numa macro ou numa função `static inline` única por registrador |
+| Acesso desalinhado | Indefinido em C; um teste que mede o acesso desalinhado o faz por instrução explícita (`lw`, `sw`) em `__asm__ volatile`, nunca por ponteiro |
+| Deslocamentos | Contagem negativa ou maior ou igual à largura é indefinida (cláusula 6.5.8); o `>>` de valor negativo é definido pela implementação e só aparece em teste que mede a instrução `sra`, com comentário que cite a cláusula; os demais deslocamentos usam operando sem sinal |
+| Alias e tipo efetivo | Só os tipos caractere acessam qualquer objeto (cláusula 6.5.1); leituras de meia palavra sobre dado escrito como palavra passam por instrução explícita (`lh`, `lhu`, `sh`) |
+| Escrita em objeto `const` | Indefinida (cláusula 6.7.4.1); o teste que precisa de uma escrita na FLASH faz a escrita por instrução explícita e lê de volta por ponteiro `volatile` |
+| Ponteiro para função | A conversão passa por `uintptr_t`, que a implementação define (cláusula 6.3.3.3); a conversão direta de ponteiro para objeto em ponteiro para função não é definida |
+| Subtração de ponteiros | Só entre elementos do mesmo vetor (cláusula 6.5.7); o tamanho de um bloco de código ou de dados vem de uma constante, não da diferença de dois símbolos |
+| `alignas` e `static_assert` | `alignas(n)` fixa o alinhamento (cláusula 6.7.6); todo deslocamento de estrutura que o assembly lê por posição fixa tem um `static_assert` com `offsetof` (cláusulas 6.7.12 e 7.21) |
+
+### 1.2. Extensões do compilador
+
+Nenhuma flag do GCC proíbe `__attribute__`, `__asm__` ou `__builtin_*`, então a revisão confere o que a norma não cobre. A única extensão aceita é o `__asm__`, porque `asm` não é palavra-chave da norma (cláusula 6.4.2) e `__asm__` não conflita com `-std=c23`; ele fica restrito a instruções que o C não expressa (leitura de CSR, `fence.i`, `lh`, `lhu`, `sh`, `lw` e `sw` que o teste mede) e à rotina de atualização da FLASH, sempre com um comentário. Os atributos `[[gnu::...]]`, o `__strong_reference` do runtime e os `__builtin_*` só entram com um comentário que diga por que a norma não oferece equivalente; para o fim de caminho inalcançável, usar `unreachable()` de `<stddef.h>`.
 
 A norma de referência é a [ISO/IEC 9899:2024](https://www.iso.org/standard/82075.html). Em trabalhos acadêmicos, cite-a com a entrada BibTeX abaixo:
 

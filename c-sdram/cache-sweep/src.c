@@ -1,31 +1,35 @@
 // RV32_TEST_KIND: unit
-#include "rv32_test.h"
+#include <stdint.h>
+
 #include "rv32_sdram.h"
+#include "rv32_test.h"
 
-// Sweeps larger than the 4 KB data cache, so every line is evicted and filled again: write a pattern
-// over 16 KB, read it back, rewrite it with another pattern, and read at strides that put two lines on
-// the same cache index. A word that the cache loses, keeps stale, or puts in another line shows up.
+// Varreduras maiores que a cache de dados de 4 KB, de modo que toda linha é despejada e preenchida de novo:
+// escreve um padrão em 16 KB, lê de volta, reescreve com outro padrão e lê em passos que põem duas linhas no
+// mesmo índice da cache. Uma palavra que a cache perde, mantém velha ou põe em outra linha aparece.
 
-#define WORDS 4096u
+// Número de palavras varridas (16 KB).
+static constexpr uint32_t WORDS = 4096u;
 
+// Executa as quatro varreduras e falha com o número da primeira que não confere.
 int main(void) {
-    volatile unsigned int *m = RV32_SDRAM;
+    volatile uint32_t *m = RV32_SDRAM;
 
-    for (unsigned int i = 0; i < WORDS; i++) m[i] = rv32_sdram_data(i);
-    for (unsigned int i = 0; i < WORDS; i++) {
+    for (uint32_t i = 0; i < WORDS; i++) m[i] = rv32_sdram_data(i);
+    for (uint32_t i = 0; i < WORDS; i++) {
         if (m[i] != rv32_sdram_data(i)) RV32_FAIL(1);
     }
 
-    // rewrite every other word: stores that hit lines in the cache and stores that miss, interleaved
-    for (unsigned int i = 0; i < WORDS; i += 2) m[i] = ~rv32_sdram_data(i);
-    for (unsigned int i = 0; i < WORDS; i++) {
-        unsigned int want = (i & 1u) ? rv32_sdram_data(i) : ~rv32_sdram_data(i);
+    // reescreve uma palavra sim, outra não: escritas que acertam linhas da cache e escritas que erram, intercaladas
+    for (uint32_t i = 0; i < WORDS; i += 2) m[i] = ~rv32_sdram_data(i);
+    for (uint32_t i = 0; i < WORDS; i++) {
+        uint32_t want = (i & 1u) ? rv32_sdram_data(i) : ~rv32_sdram_data(i);
         if (m[i] != want) RV32_FAIL(2);
     }
 
-    // two words 4 KB apart share a cache index: alternate between them
-    for (unsigned int k = 0; k < 64; k++) {
-        unsigned int a = k * 4u, b = a + 1024u;          // 1024 words = 4 KB
+    // duas palavras a 4 KB de distância dividem um índice da cache: alterna entre elas
+    for (uint32_t k = 0; k < 64; k++) {
+        uint32_t a = k * 4u, b = a + 1024u;          // 1024 palavras = 4 KB
         m[a] = 0xA0000000u | k;
         m[b] = 0xB0000000u | k;
         if (m[a] != (0xA0000000u | k)) RV32_FAIL(3);
@@ -33,10 +37,11 @@ int main(void) {
         if (m[a] != (0xA0000000u | k)) RV32_FAIL(5);
     }
 
-    // byte and halfword stores into lines that are in the cache
+    // escritas de byte em linhas que estão na cache (unsigned char pode ser alias de qualquer objeto,
+    // ISO/IEC 9899:2024, 6.5.1)
     volatile unsigned char *bytes = (volatile unsigned char *)RV32_SDRAM;
-    for (unsigned int i = 0; i < 256; i++) bytes[i] = (unsigned char)i;
-    for (unsigned int i = 0; i < 256; i++) {
+    for (uint32_t i = 0; i < 256; i++) bytes[i] = (unsigned char)i;
+    for (uint32_t i = 0; i < 256; i++) {
         if (bytes[i] != (unsigned char)i) RV32_FAIL(6);
     }
 

@@ -1,42 +1,54 @@
 // RV32_EXT: M
 // RV32_TEST_KIND: unit
-#include "rv32_test.h"
-#include "rv32_platform.h"
+#include <stdint.h>
 #include <stdio.h>
 
-// "Hello, world!" in C, on the console of the JTAG UART.
+#include "rv32_platform.h"
+#include "rv32_test.h"
+
+// "Hello, world!" em C, no console da UART JTAG.
 //
-// On the board, start the console first and run the program while it listens:
+// Na placa, inicie o console primeiro e rode o programa enquanto ele escuta:
 //
 //   riscv-tools --config tools/riscv_build/config.sdram.yaml console --seconds 60
 //
-// printf also mirrors every byte to the UART once a host has scanned it, so the program waits
-// for the host before printing (bit 17 of the UART status register, with a bound so a board
-// with nobody attached still finishes). The same bytes land in the stdout buffer, which this
-// program checks, so it is self-checking in simulation as well.
+// O printf também espelha cada byte na UART depois que um host a varreu, então o programa espera o host
+// antes de imprimir (bit 17 do registrador de estado da UART, com um limite para que uma placa sem ninguém
+// ligado ainda termine). Os mesmos bytes caem no buffer de stdout, que este programa confere, então ele se
+// autoverifica também na simulação.
 
-#define UART_STATUS ((volatile unsigned int *)0xC0000008u)
-#define HOST_ATTACHED(status) (((status) >> 17) & 1u)
-#define ATTACH_POLLS 40000000u
+// Registrador de estado da UART. Fica como macro porque um ponteiro para endereço fixo não pode ser constexpr
+// (ISO/IEC 9899:2024, 6.7.2: só o ponteiro nulo); o acesso é volatile (6.7.4.1) e alinhado a palavra.
+#define UART_STATUS ((volatile uint32_t *)0xC0000008u)
 
+// Número máximo de leituras do estado à espera do host.
+static constexpr uint32_t ATTACH_POLLS = 40000000u;
+
+// Diz se um host está ligado à UART (bit 17 do estado).
+static inline bool host_attached(uint32_t status) {
+    return ((status >> 17) & 1u) != 0u;
+}
+
+// Layout do buffer de stdout de platform/stdio.c: comprimento, sinalizador de truncamento e os bytes.
 struct stdout_buffer {
-    volatile unsigned int length;
-    volatile unsigned int truncated;
+    volatile uint32_t length;
+    volatile uint32_t truncated;
     volatile char data[1024];
 };
 
+// Espera o host, imprime as duas linhas e confere que o buffer de stdout as guarda.
 int main(void) {
     const struct stdout_buffer *out = (const struct stdout_buffer *)RV32_STDOUT_BASE;
     const char expected[] = "Hello, world!\nRISC-V RV32IM in C, 3 of 3\n";
 
-    for (unsigned int polls = 0; polls < ATTACH_POLLS && !HOST_ATTACHED(*UART_STATUS); polls++) {
+    for (uint32_t polls = 0; polls < ATTACH_POLLS && !host_attached(*UART_STATUS); polls++) {
     }
 
     puts("Hello, world!");
     printf("RISC-V RV32IM in C, %d of %d\n", 3, 3);
 
     if (out->length != sizeof(expected) - 1) RV32_FAIL(1);
-    for (unsigned int i = 0; i < out->length; i++) {
+    for (uint32_t i = 0; i < out->length; i++) {
         if (out->data[i] != expected[i]) RV32_FAIL(2);
     }
     if (out->truncated != 0) RV32_FAIL(3);
