@@ -21,7 +21,7 @@
 
 | Programa | Motivo |
 | :--- | :--- |
-| `uart-echo`, `uart-tx`, `uart-errors` | Usam os pinos físicos da UART, que as placas não têm ligados; é o único teste que pode falhar na placa |
+| `uart-echo`, `uart-tx`, `uart-errors`, `uart-stdio` | Usam os pinos físicos da UART, que as placas não têm ligados; é o único teste que pode falhar na placa |
 | `asm-plic/` (`plic-timer`, `plic-switches`, `plic-keys`, `plic-uart`, `plic-uart-jtag`, `plic-priority`) | Usam o temporizador, as GPIO e a UART de pinos da plataforma `modular`, que o topo da placa não tem; a placa só tem as fontes `UART_JTAG` e `FLASH`, e o `plic-uart-jtag` e o `plic-priority` dependem de um hospedeiro de latência de ciclos (`fromhost`), que o JTAG da placa não oferece |
 
 ## 4. Falhas e causas encontradas no caminho

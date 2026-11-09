@@ -18,7 +18,7 @@ Without `--stages`, the runner runs the DE0-CV stages, because a session locks o
 | `de2-115` | `de2-115` | `config.de2-115.yaml` | The programs of `asm/`, `c/`, `asm-sdram/` and `c-sdram/` with the NOR FLASH and the 32-bit SDRAM |
 | `de2-115-n2` | `de2-115` | `config.de2-115-n2.yaml` | The programs that fit the 128 KiB emulated RAM, without those of the 16 MB SDRAM window |
 
-`uart-echo`, `uart-tx` and `uart-errors` use the UART pins, which the boards do not have wired. `hex-id` pauses for a person to read the display, so the runner gives it a 90 s timeout.
+`uart-echo`, `uart-tx`, `uart-errors` and `uart-stdio` use the UART pins, which the boards do not have wired. `hex-id` pauses for a person to read the display, so the runner gives it a 90 s timeout.
 
 ## 2. Subcommands
 

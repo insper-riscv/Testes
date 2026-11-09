@@ -82,7 +82,7 @@ printf 'extends: config.generated.yaml\npaths: {include_dir: tools/riscv_build/i
   > tools/riscv_build/config.variation.yaml
 riscv-tools --config tools/riscv_build/config.variation.yaml generate-header
 riscv-tools --config tools/riscv_build/config.variation.yaml compile --emit hex
-riscv-tools --config tools/riscv_build/config.variation.yaml sim --exclude uart-echo,uart-tx,uart-errors
+riscv-tools --config tools/riscv_build/config.variation.yaml sim --exclude uart-echo,uart-tx,uart-errors,uart-stdio
 ```
 
 

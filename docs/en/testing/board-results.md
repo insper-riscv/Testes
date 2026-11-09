@@ -21,7 +21,7 @@
 
 | Program | Reason |
 | :--- | :--- |
-| `uart-echo`, `uart-tx`, `uart-errors` | Use the physical UART pins, which the boards do not have wired; the only test allowed to fail on the board |
+| `uart-echo`, `uart-tx`, `uart-errors`, `uart-stdio` | Use the physical UART pins, which the boards do not have wired; the only test allowed to fail on the board |
 | `asm-plic/` (`plic-timer`, `plic-switches`, `plic-keys`, `plic-uart`, `plic-uart-jtag`, `plic-priority`) | They use the timer, the GPIOs and the pin UART of the `modular` platform, which the board top does not have; the board only has the `UART_JTAG` and `FLASH` sources, and `plic-uart-jtag` and `plic-priority` depend on a host with cycle-level latency (`fromhost`), which the JTAG of the board does not offer |
 
 ## 4. Failures found on the way, and their causes
