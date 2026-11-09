@@ -12,9 +12,9 @@ Suíte de testes de hardware real e de simulação do núcleo RISC-V `RV32IM`, d
 - [riscv-tools](https://github.com/insper-riscv/Tools/blob/main/README.md): referência completa de cada subcomando do `riscv-tools`.
 - [tools/riscv_build/README.md](tools/riscv_build/README.md): convenções específicas desta suíte (formato dos testes, fatos de hardware e como escrever um teste novo).
 - [placa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/placa.md): regra permanente sobre compilar e programar a placa, e o bug de JTAG já diagnosticado.
-- [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): arquitetura BOOT_ROM, FLASH e RAM.
+- [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): arquitetura BOOT_MEMORY, FLASH e RAM.
 - [runtime.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/runtime.md): runtime C (picolibc, `crt0` e linker script da toolchain), arquivo de plataforma, `stdout` e Spike.
-- [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): estado de boot, `crt0` da picolibc e `boot_rom.S`.
+- [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): estado de boot, `crt0` da picolibc e `boot_memory.S`.
 - [atualizacao-de-programa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/atualizacao-de-programa.md): reescrita da FLASH por JTAG e passagem de boot entre testes.
 - [simulacao.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/simulacao.md): simulação do topo de hardware com as memórias reais do Quartus.
 - [docs/pt-br/bugs/pll-lock-loss.md](docs/pt-br/bugs/pll-lock-loss.md), [docs/pt-br/bugs/small-data-section.md](docs/pt-br/bugs/small-data-section.md) e [docs/pt-br/bugs/data-harvard.md](docs/pt-br/bugs/data-harvard.md): bugs de hardware investigados e corrigidos.
@@ -35,8 +35,10 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 | `c-sdram-bank-b/` | O programa da banca B que os testes de atualização enviam (`update-new`), ligado a partir da banca B e empacotado como versão 2; `make flash-update-images` o reconstrói e escreve o `uart_input.txt` dos testes |
 | `tools/flash_update/` | `make_images.sh`, que constrói a imagem da banca B e a confere contra o `uart_input.txt` com `--check` |
 | `tools/riscv_build/` | Configuração deste projeto para o `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` e as variantes dela para a DE0-CV, `config.hpm-reduced.yaml` e `config.hpm-reduced-asm.yaml` para o núcleo de 4 contadores de 40 bits): estende o `config.platform-*.yaml` da plataforma, que `riscv-tools platform sync` gera a partir do submódulo [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) (toolchain, mapa de memória, runtime, projeto do Quartus, simulação), e acrescenta só os caminhos dos testes |
-| `tests/host/` | Testes unitários do harness de UART física, sem precisar da placa |
-| `tests/python/` | Testes por entidade remanescentes: sequências de instrução cruas, todas com `skip`, no `tests.json` ([documentação](tests/python/README.md)) |
+| `tools/board/` | `board_run.py`, que roda os programas nas placas DE0-CV, DE0-Nano, DE10-Lite e DE2-115, e `board_update.py`, que conduz os programas de atualização da FLASH ([board-runner.md](docs/pt-br/testing/board-runner.md)) |
+| `tools/headers/` | `check_platform_headers.py`, que confere cada `include-<placa>/rv32_platform.h` com o `platform.yaml` da plataforma (`make check-headers`) |
+| `tests/host/` | Testes unitários do harness de UART física, do runner de placa, da regressão e da conferência dos cabeçalhos, sem precisar da placa |
+| `tests/python/` | Testes por entidade remanescentes no `tests.json`: sequências de instrução cruas, todas com `skip`, e `irq-programs`, que roda os programas de interrupção no núcleo ([documentação](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação) e `sim-fpga.yml` (simulação do topo de hardware) |
 | `docs/` | Bugs investigados em `docs/pt-br/bugs/`; a arquitetura de memória, o boot, o runtime e a programação da placa estão em `docs/` do submódulo `Insper-RISC-V` |
 
@@ -84,6 +86,22 @@ riscv-tools --config tools/riscv_build/config.variation.yaml compile --emit hex
 riscv-tools --config tools/riscv_build/config.variation.yaml sim --exclude uart-echo,uart-tx,uart-errors
 ```
 
+
+Os programas de `asm-plic/` provam as interrupções externas de ponta a ponta na plataforma `modular`, que tem o temporizador, as duas GPIO, as duas UART e o PLIC. Para cada fonte, o programa habilita a causa no periférico e no PLIC, provoca o evento, entra no handler, faz claim, trata, completa e confere o identificador e o status registrados: `plic-timer` (estouro), `plic-switches` e `plic-keys` (borda de subida, de descida, nível alto e nível baixo, e um pino fora da máscara), `plic-uart` (transmissor vazio, byte recebido com o TX ligado ao RX pelo testbench, erro) e `plic-uart-jtag` (os mesmos três, com o hospedeiro JTAG simulado pelo testbench e comandado pelo programa por `fromhost`). `plic-priority` confere com duas fontes a prioridade, o desempate pelo menor identificador, o limiar e a prioridade zero. A plataforma `de0-cv` simulada tem o chip de FLASH, e `asm-plic-de0-cv/plic-flash` confere a conclusão e a recusa de um comando e a causa de transmissor vazio da UART sobre JTAG.
+
+```bash
+ulimit -s unlimited
+riscv-tools --profile rv32im_zicclsm_zicsr --memory rom=ext,ram=int,icache=on,dcache=off \
+  platform sync --prefix Insper-RISC-V --source Insper-RISC-V/src/simulation/modular/config.yaml \
+  --output tools/riscv_build/config.generated-plic.yaml
+riscv-tools --config tools/riscv_build/config.plic.yaml generate-header
+riscv-tools --config tools/riscv_build/config.plic.yaml compile --emit hex
+riscv-tools --config tools/riscv_build/config.plic.yaml sim
+riscv-tools --config tools/riscv_build/config.plic-de0-cv.yaml compile --emit hex
+riscv-tools --config tools/riscv_build/config.plic-de0-cv.yaml sim
+```
+
+O mapa dos programas está em `include-plic/` (modular) e `include-plic-de0-cv/`, e as macros comuns em `include-plic/rv32_plic_macros.h`. Com `SIM_TRACE_IRQ=1` na frente do comando de simulação, o testbench registra cada mudança das linhas do PLIC e do `MEIP`. Os mesmos programas rodam na placa com o `fpga-*` que tiver as fontes, depois de `generate-header` e `compile`.
 
 ---
 

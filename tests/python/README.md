@@ -6,7 +6,8 @@ moved to [Core](https://github.com/insper-riscv/Core), the memory model tests to
 [Memory](https://github.com/insper-riscv/Memory) and the clock generator's to
 [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V), with their history. What stays
 here needs the platform's simulation top: the whole-core instruction tests
-(`unittests/instructions`), all `skip`ped. Paths in
+(`unittests/instructions`), all `skip`ped, and the interrupt programs
+(`unittests/irq`, entry `irq-programs`), which run. Paths in
 `tests.json` are relative to this repository's root: `Insper-RISC-V/Core/...` for the core,
 `Insper-RISC-V/Memory/...` for the memories and `Insper-RISC-V/src/...` for the platform's
 simulation top.
@@ -70,6 +71,7 @@ and uses that to name the test's `sim_build/` subfolder.
    import cocotb
    from cocotb.triggers import Timer
 
+
    @cocotb.test()
    async def test_basic(dut):
        dut.my_input.value = 1
@@ -96,10 +98,10 @@ and uses that to name the test's `sim_build/` subfolder.
 ## Known issue: the 10 `instructions` tests are all skipped
 
 The `instructions` group (`one`, `two`, `three`, `four`, `five`, `six`,
-`MUL`, `FWD`, `LOAD_USE`, `MEXT`) predates the BOOT_ROM+FLASH memory
+`MUL`, `FWD`, `LOAD_USE`, `MEXT`) predates the BOOT_MEMORY+FLASH memory
 redesign and assumes code starts executing at address `0` with no boot
 delay, which is no longer how the core resets. Fixing this needs a real
-rewrite (a `BOOT_ROM_FILE` generic, `.hex` images re-padded to
+rewrite (a `BOOT_MEMORY_FILE` generic, `.hex` images re-padded to
 `FLASH_BASE`, and corrected cycle counts), not a parameter tweak, so
 these 10 entries carry `"skip": true` for now; see
 [per-entity-tests-ci-breakage.md](../../docs/en/bugs/per-entity-tests-ci-breakage.md)

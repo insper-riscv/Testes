@@ -9,9 +9,9 @@
 // The program is bank A (version 1). The host sends the image of bank B over the JTAG UART (in simulation
 // the testbench sends uart_input.txt, the output of `riscv-tools flash-image pack` for update-new); the
 // program checks the stream, runs the update routine from the SDRAM (erase, program the payload, program the
-// header last, read back) and restarts through the boot ROM. The boot ROM sees two valid banks and runs the
+// header last, read back) and restarts through the boot memory. The boot memory sees two valid banks and runs the
 // newer one, so what ends the test is bank B writing its tohost: update-new prints the line of
-// uart_expected.txt. If the boot ROM runs bank A again, the survivor word tells it and the test fails.
+// uart_expected.txt. If the boot memory runs bank A again, the survivor word tells it and the test fails.
 //
 // The FLASH controller exists only in the simulation top with HAS_FLASH_CONTROLLER (config.sdram-flash-update*.yaml).
 
@@ -25,7 +25,7 @@ static uint32_t ram_code[CODE_WORDS];
 
 int main(void) {
     if (rv32_update_bank_of((uint32_t)(uintptr_t)&main) != RV32_BANK_A_BASE) RV32_FAIL(1);
-    // the update restarted the core and the boot ROM came back here: it did not take bank B
+    // the update restarted the core and the boot memory came back here: it did not take bank B
     if (*SURVIVOR == UPDATING) RV32_FAIL(2);
     uint32_t length = 0;
     int status = rv32_update_receive(image, IMAGE_CAPACITY, &length);

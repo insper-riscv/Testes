@@ -9,12 +9,12 @@
  *                         the FLASH;
  *   rv32_update_bank      copies the update routine to the SDRAM and runs it there: erase the sectors of the
  *                         destination bank, program the payload pages, program the header page LAST, read
- *                         everything back and compare with the buffer, then restart through the boot ROM;
+ *                         everything back and compare with the buffer, then restart through the boot memory;
  *   rv32_update_running   tells which bank the firmware runs from;
  *   rv32_update_check     reads a bank back from the FLASH and says whether its header and payload are valid
- *                         (what the boot ROM asks of it);
+ *                         (what the boot memory asks of it);
  *   rv32_update_cut       a flag of rv32_update_bank that leaves the header page erased, the state of an
- *                         update that lost power before the end: the boot ROM must refuse the bank.
+ *                         update that lost power before the end: the boot memory must refuse the bank.
  *
  * The routine is written in assembly, with no absolute address but the parameters it receives, so the
  * copy in the SDRAM runs as it is. It runs from the SDRAM because a FLASH chip of one bank cannot be read
@@ -44,7 +44,7 @@ enum {
 
 /* Flags of rv32_update_bank. */
 #define RV32_UPDATE_CUT 1u     /* do not write the header page */
-#define RV32_UPDATE_RESTART 2u /* on success, restart through the boot ROM instead of returning */
+#define RV32_UPDATE_RESTART 2u /* on success, restart through the boot memory instead of returning */
 
 #define RV32_HEADER_SIZE 256u
 #define RV32_SECTOR_SIZE 4096u
@@ -140,7 +140,7 @@ static inline uint32_t rv32_update_bank_of(uint32_t address) {
     return 0;
 }
 
-/* Reads the bank back and says whether its image is valid, as the boot ROM sees it. */
+/* Reads the bank back and says whether its image is valid, as the boot memory sees it. */
 static inline int rv32_update_check(uint32_t base, uint32_t bank_size, uint32_t *version) {
     const volatile uint8_t *header = (const volatile uint8_t *)base;
     uint32_t payload = 0;

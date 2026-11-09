@@ -10,6 +10,7 @@
     .globl main
 
 main:
+    RVIRQ_INIT
     li   s0, RV32_RAM_BASE
     sw   x0, 0(s0)
     la   s1, vectors              # 64-byte aligned

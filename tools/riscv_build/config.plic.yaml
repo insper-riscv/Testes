@@ -1,0 +1,9 @@
+# The PLIC programs (asm-plic/) on the modular platform, with its peripherals (timer, GPIOs, UARTs) and the PLIC.
+# config.generated-plic.yaml comes from the platform (see the README of this repository):
+#   riscv-tools --profile rv32im_zicclsm_zicsr --memory rom=ext,ram=int,icache=on,dcache=off platform sync --prefix Insper-RISC-V \
+#     --source Insper-RISC-V/src/simulation/modular/config.yaml --output tools/riscv_build/config.generated-plic.yaml
+extends: config.generated-plic.yaml
+paths: {include_dir: tools/riscv_build/include-plic, build_dir: build-plic, c_dir: asm-plic, asm_dir: asm-plic}
+sim:
+  env:
+    SIM_TIMEOUT_CYCLES: "300000"

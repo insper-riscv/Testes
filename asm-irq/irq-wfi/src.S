@@ -10,6 +10,7 @@
     .globl main
 
 main:
+    RVIRQ_INIT
     la   t0, handler
     csrw mtvec, t0
     li   s0, RV32_RAM_BASE
@@ -20,8 +21,14 @@ main:
     wfi
     wfi
     wfi
+    li   t1, 100000               # the timer may need many cycles to be due (mtime ticks slower than the clock)
+wait_pending:
     csrr t0, mip
     andi t0, t0, RV32_MIE_MTIE
+    bnez t0, pending
+    addi t1, t1, -1
+    bnez t1, wait_pending
+pending:
     beqz t0, fail1                # still running, and the timer is pending
     lw   t1, 0(s0)
     bnez t1, fail2                # nothing was taken

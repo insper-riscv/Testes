@@ -61,7 +61,7 @@ The manual read (one call, with real time to spare) worked the first time, confi
 
 The two fixes above (`poll_interval_seconds` + compile-time check) were a **mitigation**: they prevented a non-empty `.data` from silently corrupting a test, but did not make `.data` work: the core still had no path from the MEM stage to the ROM.
 
-That changed with the 3-part memory redesign (BOOT_ROM, a fixed bootloader; FLASH, the firmware of each test; RAM, data), which gave the MEM stage a second read port to FLASH specifically for the `.data` copy loop at boot. `.data` with a non-zero initial value works normally now; the compile-time check and the "`.bss` only" restriction described above no longer apply.
+That changed with the 3-part memory redesign (BOOT_MEMORY, a fixed bootloader; FLASH, the firmware of each test; RAM, data), which gave the MEM stage a second read port to FLASH specifically for the `.data` copy loop at boot. `.data` with a non-zero initial value works normally now; the compile-time check and the "`.bss` only" restriction described above no longer apply.
 
 See [MEMORY_ARCHITECTURE.md](https://github.com/insper-riscv/TopLevel/blob/main/docs/MEMORY_ARCHITECTURE.md) for the complete architecture (memory map, the Quartus Lite limit that required a second physical copy of FLASH, JTAG indices, LEDs).
 

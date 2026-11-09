@@ -12,9 +12,9 @@ Real-hardware and simulation test suite of the `RV32IM` RISC-V core, driven by t
 - [riscv-tools](https://github.com/insper-riscv/Tools/blob/main/README.en.md): complete reference of each `riscv-tools` subcommand.
 - [tools/riscv_build/README.md](tools/riscv_build/README.md): conventions specific to this suite (test format, hardware facts, and how to write a new test).
 - [placa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/placa.md): permanent rule on compiling and programming the board, and the JTAG bug already diagnosed.
-- [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): BOOT_ROM, FLASH, and RAM architecture.
+- [memoria.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md): BOOT_MEMORY, FLASH, and RAM architecture.
 - [runtime.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/runtime.md): C runtime (picolibc, `crt0`, and toolchain linker script), platform file, `stdout`, and Spike.
-- [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): boot state, picolibc `crt0`, and `boot_rom.S`.
+- [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): boot state, picolibc `crt0`, and `boot_memory.S`.
 - [atualizacao-de-programa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/atualizacao-de-programa.md): FLASH rewrite over JTAG and boot handoff between tests.
 - [simulacao.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/simulacao.md): hardware-top simulation with the real Quartus memories.
 - [docs/en/bugs/pll-lock-loss.md](docs/en/bugs/pll-lock-loss.md), [docs/en/bugs/small-data-section.md](docs/en/bugs/small-data-section.md), and [docs/en/bugs/data-harvard.md](docs/en/bugs/data-harvard.md): hardware bugs investigated and fixed.
@@ -34,7 +34,10 @@ Real-hardware tests require a workstation with Quartus, a self-hosted GitHub Act
 | `c-sdram-bank-b/` | The bank B program that the update tests send (`update-new`), linked from bank B and packed as version 2; `make flash-update-images` rebuilds it and writes the `uart_input.txt` of the tests |
 | `tools/flash_update/` | `make_images.sh`, which builds the image of bank B and checks it against the `uart_input.txt` with `--check` |
 | `tools/riscv_build/` | This project's configuration for `riscv-tools` (`config.yaml`, `config.fpga-sim.yaml`, `config.sdram-flash.yaml` and its variants for the DE0-CV, `config.hpm-reduced.yaml` and `config.hpm-reduced-asm.yaml` for the core of 4 counters of 40 bits): it extends the `config.platform-*.yaml` that `riscv-tools platform sync` generates from the [Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V) submodule (toolchain, memory map, runtime, Quartus project, and simulation), and adds only the test paths |
-| `tests/python/` | Remaining per-entity tests: raw instruction sequences, all marked `skip`, in `tests.json` ([documentation](tests/python/README.md)) |
+| `tools/board/` | `board_run.py`, which runs the programs on the DE0-CV, DE0-Nano, DE10-Lite and DE2-115 boards, and `board_update.py`, which drives the FLASH update programs ([board-runner.md](docs/en/testing/board-runner.md)) |
+| `tools/headers/` | `check_platform_headers.py`, which checks each `include-<board>/rv32_platform.h` against the `platform.yaml` of the platform (`make check-headers`) |
+| `tests/host/` | Unit tests of the physical UART harness, the board runner, the regression and the header check, with no board needed |
+| `tests/python/` | Remaining per-entity tests in `tests.json`: raw instruction sequences, all marked `skip`, and `irq-programs`, which runs the interrupt programs on the core ([documentation](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (real hardware), `sim.yml` (simulation), and `sim-fpga.yml` (hardware-top simulation) |
 | `docs/` | Investigated bugs in `docs/en/bugs/`; the memory architecture, boot, runtime, and board programming are in the `docs/` of the `Insper-RISC-V` submodule |
 
@@ -76,6 +79,10 @@ riscv-tools --config tools/riscv_build/config.variation.yaml compile --emit hex
 riscv-tools --config tools/riscv_build/config.variation.yaml sim --exclude uart-echo,uart-tx,uart-errors
 ```
 
+
+The programs in `asm-plic/` prove the external interrupts end to end on the `modular` platform, which has the timer, the two GPIOs, the two UARTs and the PLIC. For each source the program enables the cause in the peripheral and in the PLIC, raises the event, enters the handler, claims, services, completes and checks the logged id and status: `plic-timer` (overflow), `plic-switches` and `plic-keys` (rising edge, falling edge, high level and low level, and a pin outside the mask), `plic-uart` (transmitter empty, a received byte with TX wired to RX by the testbench, error) and `plic-uart-jtag` (the same three, with the JTAG host simulated by the testbench and commanded by the program through `fromhost`). `plic-priority` checks priority, the lower-id tie-break, the threshold and priority zero with two sources. The simulated `de0-cv` platform has the FLASH chip, and `asm-plic-de0-cv/plic-flash` checks the completion and the refusal of a command and the transmitter-empty cause of the JTAG UART.
+
+The commands are the ones in the Portuguese README. The map of the programs is in `include-plic/` (modular) and `include-plic-de0-cv/`, and the shared macros in `include-plic/rv32_plic_macros.h`. With `SIM_TRACE_IRQ=1` before the simulation command the testbench logs every change of the PLIC lines and of `MEIP`.
 
 ---
 

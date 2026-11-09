@@ -18,6 +18,18 @@
 #define RV32_MTIMECMP    (RV32_CLINT_BASE + 0x4000)
 #define RV32_MTIME       (RV32_CLINT_BASE + 0xBFF8)
 
+/* The additions of irq-mepc-precise and the distance in mtime ticks between its interrupts: the board
+ * counts mtime at 1 MHz (50 clock cycles a tick), so its block is long enough for several interrupts. */
+#define RV32_PRECISE_ADDS 400
+#define RV32_PRECISE_STEP 37
+
+/* Addresses for the access-fault programs: a byte of the read-only ROM, an address in no region of the map, and an
+ * address in a slot of the peripheral bus where no peripheral answers (the core faults them with causes 5 and 7, and
+ * a fetch from the empty slot or from the hole with cause 1). */
+#define RV32_ROM_ADDR    0x00004000
+#define RV32_HOLE_ADDR   0x00400000
+#define RV32_EMPTY_SLOT  0x90000000
+
 #define RV32_MIE_MSIE    0x00000008   /* bit 3 of mie and mip */
 #define RV32_MIE_MTIE    0x00000080   /* bit 7 of mie and mip */
 #define RV32_MIE_MEIE    0x00000800   /* bit 11 of mie and mip */
@@ -40,6 +52,19 @@
     sw   t1, 0(t0); \
     sw   x0, 4(t0); \
     tail rv32_wait_restart
+
+/* The state a reset leaves, for a platform that restarts a program without resetting the core or the CLINT: no
+ * interrupt enabled or pending, the timer out of reach. The first thing every program of asm-irq/ does. Clobbers
+ * t0 and t1. */
+#define RVIRQ_INIT \
+    csrci mstatus, 8; \
+    csrw  mie, x0; \
+    li    t0, RV32_MSIP; \
+    sw    x0, 0(t0); \
+    li    t0, RV32_MTIMECMP; \
+    li    t1, -1; \
+    sw    t1, 4(t0); \
+    sw    t1, 0(t0)
 
 /* Arms the timer to fire `delta` ticks from now (the low half of mtime, so for a short wait).
  * The low half goes to all ones first and back to the target last, as the FreeRTOS port does,

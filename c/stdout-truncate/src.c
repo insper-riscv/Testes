@@ -1,6 +1,7 @@
 // RV32_TEST_KIND: unit
 #include "rv32_test.h"
 #include "rv32_platform.h"
+#include <stdint.h>
 #include <stdio.h>
 
 // stdout's buffer is linear and 1024 bytes (platform/stdio.c): writing
@@ -12,6 +13,10 @@ struct stdout_buffer {
     volatile unsigned int truncated;
     volatile char data[1024];
 };
+
+// Este teste confere só a cópia em RAM do stdout. Sem a UART a escrita de 1025 bytes não espera os 115200 baud
+// da simulação e cabe no limite de ciclos (definição forte do símbolo fraco do runtime).
+volatile uint32_t rv32_stdio_uart_enabled = 0u;
 
 int main(void) {
     const struct stdout_buffer *out = (const struct stdout_buffer *)STDOUT_BASE;

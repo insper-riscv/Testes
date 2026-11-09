@@ -28,7 +28,7 @@ Three terms appear throughout the text:
 
 ## 2. Level 0: static consistency
 
-The memory map (where the boot ROM, the FLASH, the RAM, and the reserved words live) is copied by hand in many places: test configuration, linker flags, boot ROM, runtime, core VHDL constants, memory IPs, and testbench. The `platform.yaml` of each platform is the source of truth, and `check-memory-map` checks each copy against it, for the `internal-mem` platform and for the `sdram` one. `check-paths` checks that every path listed in the manifest exists.
+The memory map (where the boot memory, the FLASH, the RAM, and the reserved words live) is copied by hand in many places: test configuration, linker flags, boot memory, runtime, core VHDL constants, memory IPs, and testbench. The `platform.yaml` of each platform is the source of truth, and `check-memory-map` checks each copy against it, for the `internal-mem` platform and for the `sdram` one. `check-paths` checks that every path listed in the manifest exists.
 
 | | |
 | :--- | :--- |
@@ -70,7 +70,7 @@ The SDRAM tests run against a chip model that **aborts the simulation** on any v
 
 ## 5. Level 3: program on the full core
 
-The simulation top gathers the core, the boot ROM, and the FLASH, and runs the 89 programs of the suite (52 in assembly and 37 in C). The flow of each program is:
+The simulation top gathers the core, the boot memory, and the FLASH, and runs the 89 programs of the suite (52 in assembly and 37 in C). The flow of each program is:
 
 1. `riscv-tools compile --emit hex` compiles the program with the RISC-V GCC (picolibc) and generates the memory images.
 2. `riscv-tools sim` loads the image, runs the core until the program writes the verdict to `tohost`, and compares the result with the golden.
