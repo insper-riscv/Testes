@@ -1,1 +1,81 @@
-PLACEHOLDER
+[project]
+name = "riscv-workstation-tests"
+version = "0.2.1"
+description = "Real-hardware + simulation test suite for RV32IM, driven by riscv-tools (installed in the CI image)."
+license = "Apache-2.0"
+# Same Python as the ci-* images of Infra, which also carry riscv-tools.
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    # tests/python/runner.py runs the per-entity cocotb tests with cocotb (and its cocotb_tools),
+    # at the version of the ci-* images. riscv-tools comes from the image, not from here.
+    "cocotb==2.1.0",
+]
+
+[tool.uv]
+# Not a distributable package itself: a project that runs scripts and tests with the
+# riscv-tools of the image.
+package = false
+
+# Os scripts e os testes do host deste repositório; o submódulo Insper-RISC-V tem as próprias ferramentas e conferências.
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+extend-exclude = ["Insper-RISC-V", "build*"]
+
+[tool.ruff.lint]
+extend-select = ["B", "BLE", "S"]
+# os comandos são montados a partir de listas versionadas, como no Tools
+ignore = ["S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+# assert é o mecanismo dos testes e os caminhos de /tmp dos testes são de mentira
+"tests/**" = ["S101", "S108"]
+
+[tool.pyright]
+include = ["tools", "tests"]
+# tests/python/unittests são testbenches cocotb, em que o dut é um handle dinâmico do simulador
+exclude = ["Insper-RISC-V", "build*", "**/__pycache__", "tests/python/unittests"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingModuleSource = "none"
+reportMissingTypeStubs = "none"
+
+[tool.pyrefly]
+preset = "strict"
+project-includes = ["tools", "tests"]
+project-excludes = ["Insper-RISC-V", "build*", "tests/python/unittests"]
+python-version = "3.14"
+# tools/board/board_update.py importa o board_run do mesmo diretório, como roteiro
+search-path = ["tools/board"]
+
+[tool.complexipy]
+paths = ["tools", "tests"]
+max-complexity-allowed = 10
+
+[tool.pylint.main]
+ignore = ["Insper-RISC-V", ".venv"]
+fail-under = 10
+# tools/board/board_update.py importa o board_run do mesmo diretório, como roteiro
+init-hook = "import sys; sys.path.append('tools/board')"
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.basic]
+# os métodos de teste e os auxiliares privados dispensam docstring
+no-docstring-rgx = "^(_|test_)"
+
+[tool.pylint.messages_control]
+disable = [
+    "too-few-public-methods", # registros e dublês dos testes
+    "too-many-instance-attributes", # registros do relatório e do plano
+]
+
+[tool.deptry]
+extend_exclude = ["Insper-RISC-V", "build.*"]
+
+[tool.deptry.per_rule_ignores]
+# o riscv-tools vem da imagem de CI (não é dependência deste projeto) e board_run é o módulo vizinho do roteiro
+DEP001 = ["riscv_tools", "board_run"]
+# o cocotb é usado só pelos testes em tests/python, que o deptry não varre
+DEP002 = ["cocotb"]
