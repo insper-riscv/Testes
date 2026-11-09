@@ -8,7 +8,7 @@
 // An update that loses power before the end: the header page of bank B is never written.
 //
 // Same program as flash-update up to the routine, which is told to cut the update (RV32_UPDATE_CUT): it erases
-// bank B and programs the payload but leaves the header page erased, and restarts. The boot ROM finds no valid
+// bank B and programs the payload but leaves the header page erased, and restarts. The boot memory finds no valid
 // header in bank B and runs bank A again, which is the survivor word's second run: it reads bank B back, finds
 // the header invalid and the payload there (the cut was after the payload, not before everything), prints the
 // line of uart_expected.txt and passes.
@@ -28,7 +28,7 @@ int main(void) {
         if (rv32_update_check(RV32_BANK_B_BASE, RV32_BANK_B_SIZE, &version) == RV32_UPDATE_OK) RV32_FAIL(3);
         if (*(volatile uint32_t *)(RV32_BANK_B_BASE + RV32_HEADER_SIZE) == RV32_FLASH_ERASED_WORD) RV32_FAIL(4);
         *SURVIVOR = 0;
-        printf("interrupted update: the boot ROM stayed on bank A\n");
+        printf("interrupted update: the boot memory stayed on bank A\n");
         RV32_PASS();
     }
     uint32_t length = 0;

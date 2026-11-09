@@ -1,0 +1,8 @@
+# The programs that use the SDRAM (c-sdram/) and the reduced profile of the DE0-Nano runs.
+extends: config.platform-de0-nano.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-de0-nano
+  build_dir: build-nano-sdram
+  c_dir: c-sdram
+  asm_dir: asm-sdram

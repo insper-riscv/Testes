@@ -64,20 +64,17 @@ def build(name):
     flags += ["-nostartfiles", f"-T{linker}"]
     flags += [f"-DRV32_CLINT_BASE={CLINT_BASE:#x}", f"-I{INCLUDE_DIR}"]
     source = ASM_DIR / name / "src.S"
-    subprocess.run(  # noqa: S603
-        ["riscv32-unknown-elf-gcc", *flags, "-o", elf, crt, source],  # noqa: S607
+    subprocess.run(
+        ["riscv32-unknown-elf-gcc", *flags, "-o", elf, crt, source],
         check=True,
     )
-    subprocess.run(  # noqa: S603
-        ["riscv32-unknown-elf-objcopy", "-O", "binary", elf, binary],  # noqa: S607
+    subprocess.run(
+        ["riscv32-unknown-elf-objcopy", "-O", "binary", elf, binary],
         check=True,
     )
     data = binary.read_bytes()
     data += bytes(-len(data) % 4)
-    return {
-        i: int.from_bytes(data[i : i + 4], "little")
-        for i in range(0, len(data), 4)
-    }
+    return {i: int.from_bytes(data[i : i + 4], "little") for i in range(0, len(data), 4)}
 
 
 class Clint:
@@ -118,6 +115,10 @@ class Clint:
             self.mtimecmp = (self.mtimecmp & ~0xFFFFFFFF) | value
         elif offset == 0x4004:
             self.mtimecmp = (self.mtimecmp & 0xFFFFFFFF) | (value << 32)
+        elif offset == 0xBFF8:
+            self.mtime = (self.mtime & ~0xFFFFFFFF) | value
+        elif offset == 0xBFFC:
+            self.mtime = (self.mtime & 0xFFFFFFFF) | (value << 32)
 
 
 def merge(old, new, byteena):
@@ -175,13 +176,14 @@ class Bus:
         dut.i_irq_timer.value = self.clint.timer
         dut.i_irq_software.value = self.clint.msip
         dut.i_irq_external.value = 0
+        dut.i_mtime.value = self.clint.mtime
 
 
 async def run(dut, image):
     """Roda a imagem até o programa gravar tohost; devolve seu valor."""
     bus = Bus()
     dut.i_rst.value = 1
-    for port in ("i_boot_rom_data", "i_flash_data", "i_ram_rdata"):
+    for port in ("i_boot_memory_data", "i_flash_data", "i_ram_rdata"):
         getattr(dut, port).value = 0
     cocotb.start_soon(Clock(dut.i_clk, 10, unit="ns").start())
     for _ in range(3):
@@ -192,7 +194,7 @@ async def run(dut, image):
         await Timer(1, unit="ns")
         bus.present(dut)
         word = image.get(int(dut.o_if_addr.value) & ~3, 0)
-        dut.i_boot_rom_data.value = word
+        dut.i_boot_memory_data.value = word
         dut.i_flash_data.value = word
         bus.capture(dut)
         bus.clint.tick()
@@ -249,3 +251,39 @@ async def test_irq_wfi(dut):
 async def test_irq_ecall(dut):
     """A interrupção vence o ecall, que trapa depois do retorno."""
     await check(dut, "irq-ecall")
+
+
+@cocotb.test()
+async def test_irq_lcofi(dut):
+    """A interrupção de estouro de contador (Sscofpmf), com OF e MINH."""
+    await check(dut, "irq-lcofi")
+
+
+@cocotb.test()
+async def test_irq_lcofi_priority(dut):
+    """O estouro tem a menor prioridade e vai a BASE + 52 no modo vetorado."""
+    await check(dut, "irq-lcofi-priority")
+
+
+@cocotb.test()
+async def test_access_store_fault(dut):
+    """O store em ROM, em buraco e em janela vazia gera a causa 7."""
+    await check(dut, "access-store-fault")
+
+
+@cocotb.test()
+async def test_access_load_fault(dut):
+    """O load em buraco e em janela vazia gera a causa 5, também desalinhado."""
+    await check(dut, "access-load-fault")
+
+
+@cocotb.test()
+async def test_access_fetch_fault(dut):
+    """A busca em janela vazia e em buraco gera a causa 1."""
+    await check(dut, "access-fetch-fault")
+
+
+@cocotb.test()
+async def test_time_follows_mtime(dut):
+    """O CSR time é o sombreamento do mtime do CLINT."""
+    await check(dut, "time-follows-mtime")

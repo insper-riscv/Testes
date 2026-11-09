@@ -48,6 +48,14 @@ static void write_mtimecmp(uint32_t high, uint32_t low) {
     clint_write(CLINT_MTIMECMP, low);
 }
 
+// Espera até POLL_LIMIT leituras do mip, até os bits de mask valerem value.
+static int wait_mip(uint32_t mask, uint32_t value) {
+    for (uint32_t polls = 0u; polls < POLL_LIMIT; polls++) {
+        if ((read_mip() & mask) == value) return 1;
+    }
+    return 0;
+}
+
 int main(void) {
     write_mtimecmp(UINT32_MAX, UINT32_MAX);
     clint_write(CLINT_MSIP, 0u);
@@ -56,10 +64,11 @@ int main(void) {
     }
     if ((read_mip() & (MIP_MSIP | MIP_MTIP)) != 0u) RV32_FAIL(1);
 
+    // As linhas do CLINT entram no núcleo por um registrador: o mip as mostra alguns ciclos depois da escrita.
     clint_write(CLINT_MSIP, 1u);
-    if ((read_mip() & MIP_MSIP) == 0u) RV32_FAIL(2);
+    if (!wait_mip(MIP_MSIP, MIP_MSIP)) RV32_FAIL(2);
     clint_write(CLINT_MSIP, 0u);
-    if ((read_mip() & MIP_MSIP) != 0u) RV32_FAIL(3);
+    if (!wait_mip(MIP_MSIP, 0u)) RV32_FAIL(3);
 
     // O mtime sobe um tick por mtime_hz: lê a metade baixa e arma o disparo ARM_TICKS à frente.
     write_mtimecmp(0u, clint_read(CLINT_MTIME) + ARM_TICKS);

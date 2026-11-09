@@ -13,17 +13,14 @@ paths:
   sources:
   - Insper-RISC-V/src/simulation/internal-mem/runtime/_exit.c
   - Insper-RISC-V/src/simulation/internal-mem/runtime/stdio.c
-  boot_rom: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_rom.S
-  boot_rom_linker_script: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_rom.ld
-freq_sweep:
-  pll_file: Insper-RISC-V/src/simulation/internal-mem/pll/pll_0002.v
-  phase_count: 3
+  boot_memory: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_memory.S
+  boot_memory_linker_script: Insper-RISC-V/src/simulation/internal-mem/runtime/boot_memory.ld
 quartus:
   project_dir: Insper-RISC-V/src/simulation/internal-mem/quartus
   project_name: core_fpga_test
   sof_file: output_files/core_fpga_test.sof
   rom_mif_target: init.mif
-  boot_rom_mif_target: boot_rom_init.mif
+  boot_memory_mif_target: boot_memory_init.mif
   jtag_device: '@1: 5CE(BA4|FA4) (0x02B050DD)'
   ram_mem_instance: 0
   rom_write_method: jtag_loader
@@ -109,11 +106,13 @@ sim:
   - Insper-RISC-V/Core/src/core/stage_mem.vhd
   - Insper-RISC-V/Core/src/core/stage_wb.vhd
   - Insper-RISC-V/Core/src/core/core.vhd
+  - Insper-RISC-V/Memory/src/block_ram/altera/block_ram.vhd
   - Insper-RISC-V/Memory/src/RAM/FPGA/Cyclone-V/ram.vhd
-  - Insper-RISC-V/Memory/src/ROM/Cyclone-V/boot_rom.vhd
+  - Insper-RISC-V/Memory/src/ROM/Cyclone-V/boot_memory.vhd
   - Insper-RISC-V/Memory/src/ROM/Cyclone-V/flash.vhd
   - Insper-RISC-V/Memory/src/ROM/SoC/flash_jtag_core.vhd
   - Insper-RISC-V/Memory/src/ROM/SoC/flash_loader.vhd
+  - Insper-RISC-V/Common-Components/src/altera/virtual_jtag.vhd
   - Insper-RISC-V/Memory/src/ROM/Cyclone-V/flash_jtag_shell.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/uart2BusTop_pkg.vhd
   - Insper-RISC-V/Peripherals/src/UART/serial/vendor/opencores_uart2bus/baudGen.vhd
@@ -148,15 +147,15 @@ sim:
     - $QUARTUS_ROOTDIR/eda/sim_lib/altera_mf.vhd
   run_files:
     init.mif: '{mif_path}'
-    boot_rom_init.mif: '{boot_rom_mif_path}'
+    boot_memory_init.mif: '{boot_memory_mif_path}'
 emulator:
   sources:
   - Insper-RISC-V/src/simulation/internal-mem/runtime/spike_exit.S
   gcc_flags:
   - -DRV32_SPIKE
 memory:
-  boot_rom_base: 0
-  boot_rom_words: 1024
+  boot_memory_base: 0
+  boot_memory_words: 1024
   rom_base: 4096
   rom_words: 7168
   ram_base: 32768

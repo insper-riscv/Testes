@@ -168,5 +168,5 @@ jobs:
         run: |
           set -o pipefail
           riscv-tools --config tools/riscv_build/config.yaml run \
-            --exclude uart-echo,uart-tx,uart-errors \
+            --exclude uart-echo,uart-tx,uart-errors,uart-stdio \
             --skip-reconfigure | tee build/real/latest.log

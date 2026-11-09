@@ -2,7 +2,7 @@
 // RV32_TEST_KIND: memory
 //
 // Decoding rules the specification leaves to the implementation (matrix rows I8, I10 and I13):
-//  1. a load with rd = x0 still raises its exception: lw x0 at an odd address in the BOOT_ROM traps with
+//  1. a load with rd = x0 still raises its exception: lw x0 at an odd address in the BOOT_MEMORY traps with
 //     mcause 4 and mtval = the effective address, and x0 stays zero;
 //  2. FENCE ignores rs1, rd, pred and succ, and a reserved fm behaves as fm = 0: no trap, rd keeps its value;
 //  3. the HINTs of the RV32I table change nothing but pc and the counters: x0 stays zero (also through the
@@ -20,7 +20,7 @@ main:
     csrw mtvec, x6
     li   x6, 0x0F0F0F0F           # operand of the HINTs
     li   x21, 0xA5A5A5A5          # rd sentinel of FENCE
-    li   x25, 0x400               # inside the BOOT_ROM: a misaligned load traps
+    li   x25, 0x400               # inside the BOOT_MEMORY: a misaligned load traps
 
     # 1. lw x0 at an odd address
     la   x20, site_lw

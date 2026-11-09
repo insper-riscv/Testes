@@ -1,0 +1,17 @@
+# The PLIC programs of the de0-cv simulation top (asm-plic-de0-cv/): the FLASH controller with its command chip and
+# the JTAG UART, whose host the testbench plays.
+extends: config.platform-de0-cv.yaml
+
+paths:
+  include_dir: tools/riscv_build/include-plic-de0-cv
+  build_dir: build-plic-de0-cv
+  c_dir: asm-plic-de0-cv
+  asm_dir: asm-plic-de0-cv
+
+sim:
+  parameters:
+    HAS_FLASH_CONTROLLER: true
+    FLASH_ERASE_LATENCY: "100"
+    FLASH_PROGRAM_LATENCY: "20"
+  env:
+    SIM_TIMEOUT_CYCLES: "3000000"

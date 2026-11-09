@@ -25,7 +25,7 @@ in one place instead of drifting between copies.
 | :--- | :--- |
 | `config.yaml` | `internal-mem` platform (ROM and RAM inside the FPGA, `core_fpga_test` top): the programs of `asm/` and `c/` |
 | `config.fpga-sim.yaml` | The same platform simulated with the Quartus memory models (`sim-fpga.yml`) |
-| `config.sdram-flash-regression.yaml` | `de0-cv` platform (BOOT_ROM in the core, FLASH and SDRAM behind the caches): the programs of `asm/` and `c/`, with the same results as `internal-mem` |
+| `config.sdram-flash-regression.yaml` | `de0-cv` platform (BOOT_MEMORY in the core, FLASH and SDRAM behind the caches): the programs of `asm/` and `c/`, with the same results as `internal-mem` |
 | `config.sdram-flash.yaml` | `de0-cv` platform: the programs of `asm-sdram/` and `c-sdram/`, which use the SDRAM and the FLASH |
 | `config.sdram-flash-lat*.yaml`, `config.sdram-flash-regression-lat*.yaml`, `config.sdram-flash-slow.yaml` | The two above with other FLASH latencies, for the simulation |
 | `config.hpm-reduced.yaml`, `config.hpm-reduced-asm.yaml` | `internal-mem` simulation with 4 event counters of 40 bits, for `asm-hpm-reduced/` |
@@ -124,7 +124,7 @@ checks that `quartus/init.mif` is byte-for-byte identical to the compiled
 1. opens the serial port in raw 115200 8N1 and reprograms the existing `.sof`;
 2. sends `RX test\r\n`, requires the exact nine-byte echo and `TOHOST=1`;
 3. replaces both FLASH copies with `uart-tx.mif` over JTAG, restarts through
-   the boot ROM, and requires the exact `Hello, world!\r\n` output plus
+   the boot memory, and requires the exact `Hello, world!\r\n` output plus
    `TOHOST=1`;
 4. loads `uart-errors.mif`, fills the TX path with the 17 accepted bytes `A`
    through `Q` (one in the physical transmitter and 16 in the FIFO), rejects
@@ -138,7 +138,7 @@ checks that `quartus/init.mif` is byte-for-byte identical to the compiled
    the final `P` marker, no new error flags, and `TOHOST=1`.
 
 Running the baked-in echo first is intentional: it leaves the CPU parked in
-the boot ROM, where replacing FLASH for the later tests is safe. Reprogramming
+the boot memory, where replacing FLASH for the later tests is safe. Reprogramming
 first makes the whole sequence repeatable on every invocation. Individual
 selection is available for diagnostics:
 
@@ -211,11 +211,11 @@ cable) is in [RUNNER_SETUP.md](https://github.com/insper-riscv/Infra/blob/main/d
 of Infra. What is specific to the tests:
 
 - the JTAG device is `@1: 5CE(BA4|FA4) (0x02B050DD)`, and the cable name changes with the USB port, so
-  scripts find it by the IDCODE `02B050DD` in the `jtagconfig` output;
+  `riscv-tools board select` finds the board by that IDCODE and the USB port of the cable;
 - the Quartus project of the `de0-cv` platform is in `Insper-RISC-V/src/cyclone-v/de0-cv`, with the
   In-System Memory Content Editor instances for the FLASH and the SDRAM debug port that the
   `htif`, `ram_dump`, `rom_writer` and `sdram_debug` modules of `riscv-tools` rely on;
-- the memory map (BOOT_ROM, FLASH, SDRAM, and the `tohost` and `fromhost` words) is the
+- the memory map (BOOT_MEMORY, FLASH, SDRAM, and the `tohost` and `fromhost` words) is the
   `platform.yaml` of the platform, and `riscv-tools check-memory-map` checks every copy of it.
 
 ---

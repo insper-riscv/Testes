@@ -15,7 +15,7 @@
 //   dump ADDR N             shows N words from ADDR
 //   run ADDR                calls the code at ADDR (a function that returns) and shows what it returns
 //   status                  shows the index and the state of the last ELF, from the display register
-//   reset                   restarts the core from the boot ROM
+//   reset                   restarts the core from the boot memory
 //   quit                    ends the program with a PASS (what a test run needs)
 //
 // An unknown or malformed command prints "error: ..." and the monitor goes on; nothing a host sends

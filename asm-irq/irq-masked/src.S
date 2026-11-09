@@ -11,6 +11,7 @@
     .globl main
 
 main:
+    RVIRQ_INIT
     la   t0, handler
     csrw mtvec, t0
     li   s0, RV32_RAM_BASE

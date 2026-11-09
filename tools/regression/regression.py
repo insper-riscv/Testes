@@ -39,9 +39,9 @@ class StageResult:
     """
 
     name: str
-    verdicts: dict[str, bool] = field(default_factory=dict)
+    verdicts: dict[str, bool] = field(default_factory=dict[str, bool])
     exit_code: int = 0
-    excluded: dict[str, str] = field(default_factory=dict)
+    excluded: dict[str, str] = field(default_factory=dict[str, str])
 
     @property
     def passed(self) -> bool:
@@ -162,9 +162,7 @@ def _run(cmd: list[str], log: Path) -> tuple[int, str]:
         O código de saída e a saída.
     """
     print("+", " ".join(cmd), flush=True)
-    proc = subprocess.run(  # noqa: S603 - comando montado pelo plano versionado
-        cmd, capture_output=True, text=True, check=False
-    )
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     out = proc.stdout + proc.stderr
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as handle:
@@ -172,9 +170,7 @@ def _run(cmd: list[str], log: Path) -> tuple[int, str]:
     return proc.returncode, out
 
 
-def run_sim_stage(
-    stage: dict[str, str], excluded: dict[str, str], report_dir: Path
-) -> StageResult:
+def run_sim_stage(stage: dict[str, str], excluded: dict[str, str], report_dir: Path) -> StageResult:
     """Compila e simula os programas de uma plataforma.
 
     Parameters
@@ -207,9 +203,7 @@ def run_sim_stage(
     return result
 
 
-def run_spike_stage(
-    config: str, skip: set[str], report_dir: Path
-) -> StageResult:
+def run_spike_stage(config: str, skip: set[str], report_dir: Path) -> StageResult:
     """Roda os programas no Spike.
 
     Parameters
@@ -235,12 +229,82 @@ def run_spike_stage(
         result.exit_code = code
         return result
     _, out = _run([*base, "spike-run"], log)
-    result.verdicts = {
-        n: ok for n, ok in parse_verdicts(out).items() if n not in skip
-    }
+    result.verdicts = {n: ok for n, ok in parse_verdicts(out).items() if n not in skip}
     if not result.verdicts:
         result.exit_code = 1
     return result
+
+
+def _stage_rows(stages: list[StageResult]) -> list[str]:
+    """Monta a tabela de etapas do relatório.
+
+    Parameters
+    ----------
+    stages : list of StageResult
+        Os resultados das etapas de simulação.
+
+    Returns
+    -------
+    list of str
+        As linhas da tabela.
+    """
+    lines = ["| Etapa | Programas | Passaram | Falharam | Excluídos | Resultado |"]
+    lines += ["| :--- | ---: | ---: | ---: | ---: | :--- |"]
+    for st in stages:
+        ok = sum(st.verdicts.values())
+        lines.append(
+            f"| {st.name} | {len(st.verdicts)} | {ok} | "
+            f"{len(st.verdicts) - ok} | {len(st.excluded)} | "
+            f"{'verde' if st.passed else 'VERMELHO'} |"
+        )
+    return lines
+
+
+def _failure_sections(stages: list[StageResult]) -> list[str]:
+    """Lista, por etapa, os programas que falharam.
+
+    Parameters
+    ----------
+    stages : list of StageResult
+        Os resultados das etapas de simulação.
+
+    Returns
+    -------
+    list of str
+        As linhas das seções de falha, vazia quando nenhuma etapa falhou.
+    """
+    lines: list[str] = []
+    for st in stages:
+        failed = sorted(n for n, ok in st.verdicts.items() if not ok)
+        if failed or st.exit_code:
+            lines += ["", f"### Falhas em {st.name}", ""]
+            lines += [f"- {n}" for n in failed] or ["- falha de preparo"]
+    return lines
+
+
+def _crosscheck_lines(
+    crosscheck: tuple[dict[str, str], list[str], list[str]] | None,
+) -> list[str]:
+    """Monta a seção da verificação cruzada com o Spike.
+
+    Parameters
+    ----------
+    crosscheck : tuple or None
+        O resultado de ``classify_divergences``, ou None sem Spike.
+
+    Returns
+    -------
+    list of str
+        As linhas da seção.
+    """
+    if crosscheck is None:
+        return ["Não executada."]
+    classified, unclassified, stale = crosscheck
+    lines = ["| Programa | Classificação |", "| :--- | :--- |"]
+    lines += [f"| {n} | {r} |" for n, r in classified.items()]
+    lines += ["", f"Divergências sem classificação: {unclassified or 'nenhuma'}."]
+    lines += [f"Classificações que já não divergem: {stale or 'nenhuma'}."]
+    return lines
 
 
 def render_report(
@@ -266,16 +330,7 @@ def render_report(
     """
     desc = {s["name"]: s["description"] for s in plan["stages"]}
     lines = ["# Relatório de regressão", "", "## 1. Etapas", ""]
-    lines += ["| Etapa | Programas | Passaram | Falharam | Excluídos | Resultado |"]
-    lines += ["| :--- | ---: | ---: | ---: | ---: | :--- |"]
-    for st in stages:
-        ok = sum(st.verdicts.values())
-        row = (
-            f"| {st.name} | {len(st.verdicts)} | {ok} | "
-            f"{len(st.verdicts) - ok} | {len(st.excluded)} | "
-            f"{'verde' if st.passed else 'VERMELHO'} |"
-        )
-        lines.append(row)
+    lines += _stage_rows(stages)
     lines += ["", "## 2. Exclusões justificadas", ""]
     lines += ["| Etapa | Programa | Justificativa |", "| :--- | :--- | :--- |"]
     for st in stages:
@@ -283,21 +338,59 @@ def render_report(
             lines.append(f"| {st.name} | {name} | {reason} |")
     lines += ["", "## 3. Descrição das etapas", ""]
     lines += [f"- {n}: {d}" for n, d in desc.items()]
-    for st in stages:
-        failed = sorted(n for n, ok in st.verdicts.items() if not ok)
-        if failed or st.exit_code:
-            lines += ["", f"### Falhas em {st.name}", ""]
-            lines += [f"- {n}" for n in failed] or ["- falha de preparo"]
+    lines += _failure_sections(stages)
     lines += ["", "## 4. Verificação cruzada com o Spike", ""]
-    if crosscheck is None:
-        lines.append("Não executada.")
-    else:
-        classified, unclassified, stale = crosscheck
-        lines += ["| Programa | Classificação |", "| :--- | :--- |"]
-        lines += [f"| {n} | {r} |" for n, r in classified.items()]
-        lines += ["", f"Divergências sem classificação: {unclassified or 'nenhuma'}."]
-        lines += [f"Classificações que já não divergem: {stale or 'nenhuma'}."]
+    lines += _crosscheck_lines(crosscheck)
     return "\n".join(lines) + "\n"
+
+
+def _write_reports(
+    report_dir: Path,
+    plan: dict[str, Any],
+    stages: list[StageResult],
+    crosscheck: tuple[dict[str, str], list[str], list[str]] | None,
+) -> None:
+    """Escreve o relatório em Markdown e em JSON e imprime o Markdown.
+
+    Parameters
+    ----------
+    report_dir : Path
+        Pasta do relatório.
+    plan : dict of {str: Any}
+        O plano.
+    stages : list of StageResult
+        Os resultados das etapas de simulação.
+    crosscheck : tuple or None
+        O resultado de ``classify_divergences``, ou None sem Spike.
+    """
+    (report_dir / "report.md").write_text(render_report(plan, stages, crosscheck), encoding="utf-8")
+    (report_dir / "report.json").write_text(
+        json.dumps({s.name: s.verdicts for s in stages}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print((report_dir / "report.md").read_text(encoding="utf-8"))
+
+
+def run_sim_stages(plan: dict[str, Any], report_dir: Path) -> list[StageResult]:
+    """Roda as etapas de simulação do plano, cada uma com as exclusões justificadas dela.
+
+    Parameters
+    ----------
+    plan : dict of {str: Any}
+        O plano.
+    report_dir : Path
+        Pasta dos logs.
+
+    Returns
+    -------
+    list of StageResult
+        Um resultado por etapa, na ordem do plano.
+    """
+    results: list[StageResult] = []
+    for stage in plan["stages"]:
+        excluded = {i["test"]: i["reason"] for i in plan["exclusions"] if i["stage"] == stage["name"]}
+        results.append(run_sim_stage(stage, excluded, report_dir))
+    return results
 
 
 def regression(skip_spike: bool, report_dir: Path) -> int:
@@ -319,34 +412,17 @@ def regression(skip_spike: bool, report_dir: Path) -> int:
     report_dir.mkdir(parents=True, exist_ok=True)
     for old in report_dir.glob("*.log"):
         old.unlink()
-    stages: list[StageResult] = []
-    for stage in plan["stages"]:
-        excluded = {
-            i["test"]: i["reason"]
-            for i in plan["exclusions"]
-            if i["stage"] == stage["name"]
-        }
-        stages.append(run_sim_stage(stage, excluded, report_dir))
+    stages = run_sim_stages(plan, report_dir)
     crosscheck = None
     spike_failed = False
     if not skip_spike:
-        sim = stages[0].verdicts
         spike = run_spike_stage(plan["spike"]["config"], set(), report_dir)
         spike_failed = spike.exit_code != 0
         known = {d["test"]: d["reason"] for d in plan["spike"]["divergences"]}
-        crosscheck = classify_divergences(sim, spike.verdicts, known)
-    (report_dir / "report.md").write_text(
-        render_report(plan, stages, crosscheck), encoding="utf-8"
-    )
-    (report_dir / "report.json").write_text(
-        json.dumps({s.name: s.verdicts for s in stages}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    print((report_dir / "report.md").read_text(encoding="utf-8"))
-    bad = not all(s.passed for s in stages) or spike_failed
-    if crosscheck is not None and crosscheck[1]:
-        bad = True
-    return 1 if bad else 0
+        crosscheck = classify_divergences(stages[0].verdicts, spike.verdicts, known)
+    _write_reports(report_dir, plan, stages, crosscheck)
+    unclassified = crosscheck is not None and bool(crosscheck[1])
+    return 0 if all(s.passed for s in stages) and not spike_failed and not unclassified else 1
 
 
 def main(argv: list[str] | None = None) -> int:

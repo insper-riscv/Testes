@@ -1,9 +1,9 @@
 // RV32_EXT: M,Zicsr
 // RV32_TEST_KIND: unit
 //
-// mepc is the first instruction that did not complete. A block of 400 additions to s1 runs
-// while the timer interrupts it every few tens of cycles. Whatever the instant, at each entry s1
-// equals the number of additions before mepc, and at the end s1 is 400: no addition is lost or
+// mepc is the first instruction that did not complete. A block of RV32_PRECISE_ADDS additions to s1 (400 in
+// the simulation, more on a platform whose mtime ticks slower than the clock) runs while the timer interrupts it. Whatever the instant, at each entry s1
+// equals the number of additions before mepc, and at the end s1 is RV32_PRECISE_ADDS: no addition is lost or
 // done twice.
 #include "rv32_platform.h"
 
@@ -11,6 +11,7 @@
     .globl main
 
 main:
+    RVIRQ_INIT
     la   t0, handler
     csrw mtvec, t0
     li   s0, RV32_RAM_BASE
@@ -21,12 +22,12 @@ main:
     csrs mie, t0
     csrsi mstatus, 8
 block_start:
-    .rept 400
+    .rept RV32_PRECISE_ADDS
     addi s1, s1, 1
     .endr
 block_end:
     csrci mstatus, 8              # no more interrupts
-    li   t0, 400
+    li   t0, RV32_PRECISE_ADDS
     bne  s1, t0, fail1            # every addition ran exactly once
     lw   s2, 0(s0)                # entries
     li   t0, 4
@@ -70,10 +71,10 @@ handler:
     sw   t6, 0(t5)
     li   t4, RV32_MTIME
     lw   t3, 0(t4)
-    addi t3, t3, 37
+    addi t3, t3, RV32_PRECISE_STEP
     li   t4, RV32_MTIMECMP
     li   t6, -1
     sw   t6, 0(t4)
     sw   x0, 4(t4)
-    sw   t3, 0(t4)                # next interrupt in 37 ticks
+    sw   t3, 0(t4)                # next interrupt in RV32_PRECISE_STEP ticks
     mret
