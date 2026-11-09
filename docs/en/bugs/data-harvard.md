@@ -10,13 +10,13 @@ The core (`rv32im_pipeline_core`) is Harvard. The instruction and data buses are
 
 | Bus | Address source | Reaches |
 | :--- | :--- | :--- |
-| `rom_addr` | `pc_fetch` | BOOT_ROM and FLASH, for instruction fetch |
+| `rom_addr` | `pc_fetch` | BOOT_MEMORY and FLASH, for instruction fetch |
 | `ram_addr` | `exmem_alu_out`, that is, the ALU result of any `lw` or `sw` | RAM |
 | second read port of the MEM stage | `exmem_alu_out` | FLASH, only for the `.data` copy at boot |
 
 Without the second port, no `lw` or `sw` would reach the FLASH, and the standard `.data` mechanism could not work. The bus separation is a choice of this core, and the RISC-V ISA does not require it.
 
-The split of the memory into BOOT_ROM (fixed bootloader), FLASH (firmware of each test), and RAM (data), with the address map, is described in the [Insper-RISC-V memory documentation](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/en/platform/memoria.md).
+The split of the memory into BOOT_MEMORY (fixed bootloader), FLASH (firmware of each test), and RAM (data), with the address map, is described in the [Insper-RISC-V memory documentation](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/en/platform/memoria.md).
 
 ## 2. `.data` copy at boot
 

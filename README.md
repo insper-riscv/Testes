@@ -17,8 +17,8 @@ Suíte de testes de hardware real e de simulação do núcleo RISC-V `RV32IM`, d
 - [boot.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/boot.md): estado de boot, `crt0` da picolibc e `boot_memory.S`.
 - [atualizacao-de-programa.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/atualizacao-de-programa.md): reescrita da FLASH por JTAG e passagem de boot entre testes.
 - [simulacao.md](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/guide/simulacao.md): simulação do topo de hardware com as memórias reais do Quartus.
-- [docs/pt-br/bugs/pll-lock-loss.md](docs/pt-br/bugs/pll-lock-loss.md), [docs/pt-br/bugs/small-data-section.md](docs/pt-br/bugs/small-data-section.md) e [docs/pt-br/bugs/data-harvard.md](docs/pt-br/bugs/data-harvard.md): bugs de hardware investigados e corrigidos.
-- [docs/pt-br/bugs/per-entity-tests-ci-breakage.md](docs/pt-br/bugs/per-entity-tests-ci-breakage.md): bugs no CI dos testes por entidade.
+- [docs/pt-br/bugs/pll-lock-loss.md](docs/pt-br/bugs/pll-lock-loss.md), [docs/pt-br/bugs/small-data-section.md](docs/pt-br/bugs/small-data-section.md) e [docs/pt-br/bugs/data-harvard.md](docs/pt-br/bugs/data-harvard.md): PLL e perda de lock, dados pequenos e o registrador `gp`, e inicialização de `.data` no core Harvard.
+- [docs/pt-br/bugs/per-entity-tests-ci-breakage.md](docs/pt-br/bugs/per-entity-tests-ci-breakage.md): a suíte de testes por entidade e o grupo `instructions` com `skip`.
 
 ## 2. Pré-requisitos
 
@@ -40,7 +40,7 @@ Os testes de hardware real exigem uma workstation com Quartus, um runner self-ho
 | `tests/host/` | Testes unitários do harness de UART física, do runner de placa, da regressão e da conferência dos cabeçalhos, sem precisar da placa |
 | `tests/python/` | Testes por entidade remanescentes no `tests.json`: sequências de instrução cruas, todas com `skip`, e `irq-programs`, que roda os programas de interrupção no núcleo ([documentação](tests/python/README.md)) |
 | `.github/workflows/` | `real.yml` (hardware real), `sim.yml` (simulação) e `sim-fpga.yml` (simulação do topo de hardware) |
-| `docs/` | Bugs investigados em `docs/pt-br/bugs/`; a arquitetura de memória, o boot, o runtime e a programação da placa estão em `docs/` do submódulo `Insper-RISC-V` |
+| `docs/` | Referências de hardware e de testes em `docs/pt-br/bugs/` e `docs/pt-br/testing/`; a arquitetura de memória, o boot, o runtime e a programação da placa estão em `docs/` do submódulo `Insper-RISC-V` |
 
 ## 4. Uso Rápido
 
@@ -49,17 +49,17 @@ riscv-tools --config tools/riscv_build/config.yaml generate-header
 riscv-tools --config tools/riscv_build/config.yaml compile --emit mif   # hardware real
 riscv-tools --config tools/riscv_build/config.yaml compile --emit hex   # simulação
 uv run python -m unittest discover -s tests/host -v                            # harness UART, sem placa
-riscv-tools --config tools/riscv_build/config.yaml sim                  # inclui uart-tx, uart-echo e uart-errors
+riscv-tools --config tools/riscv_build/config.yaml sim                  # inclui os quatro testes UART
 
 # hardware real: uma síntese, UART física dedicada, depois tohost/JTAG
 riscv-tools --config tools/riscv_build/config.yaml program build/real/uart-echo.mif
 uv run python tools/riscv_build/uart_hardware_test.py --skip-program
 riscv-tools --config tools/riscv_build/config.yaml run \
-  --exclude uart-echo,uart-tx,uart-errors --skip-reconfigure
+  --exclude uart-echo,uart-tx,uart-errors,uart-stdio --skip-reconfigure
 riscv-tools --root Insper-RISC-V check-memory-map --platform src/simulation/internal-mem/platform.yaml   # mapa de memória (na plataforma)
 ```
 
-Os programas `uart-tx`, `uart-echo` e `uart-errors` rodam na simulação da plataforma `internal-mem` e na placa, porque usam os pinos seriais do topo de hardware. Nas simulações das plataformas `sdram` e `sdram-flash`, cujos topos só têm a UART sobre JTAG, eles ficam de fora com `--exclude uart-echo,uart-tx,uart-errors`.
+Os programas `uart-tx`, `uart-echo`, `uart-errors` e `uart-stdio` rodam na simulação da plataforma `internal-mem` e na placa, porque usam os pinos seriais do topo de hardware. `uart-stdio` integra o `printf` e o `scanf` da picolibc com as filas TX/RX. Nas simulações das plataformas `sdram` e `sdram-flash`, cujos topos só têm a UART sobre JTAG, eles ficam de fora com `--exclude uart-echo,uart-tx,uart-errors,uart-stdio`.
 
 Os programas `hpm-*` cobrem os 29 índices do Zihpm. Em `asm/`, `hpm-full` espera o perfil completo (29 contadores de 64 bits), e `hpm-sweep`, `hpm-fused-high` e `hpm-inhibit-select` se ajustam ao perfil do núcleo. O `hpm-reduced` espera 4 contadores de 40 bits e roda em outra configuração:
 

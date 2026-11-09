@@ -21,26 +21,26 @@ Uma entrada com `"skip": true` e um `"skip_reason"` fica fora da varredura `all`
 
 ## 3. Por que o grupo `instructions` está pulado
 
-O topo `rv32i3stage_core_sim_test.vhd` instancia duas cópias de `ROM_simulation`, uma para a BOOT_ROM (generic `ROM_FILE => BOOT_ROM_FILE`) e outra para a FLASH (generic `ROM_FILE => ROM_FILE`). As dez entradas do grupo só passam `ROM_FILE`. Sem `BOOT_ROM_FILE`, a BOOT_ROM usa o valor padrão da entidade, `default.hex`, que não existe, e a elaboração falha antes de qualquer teste:
+O topo `rv32i3stage_core_sim_test.vhd` instancia duas cópias de `ROM_simulation`, uma para a BOOT_MEMORY (generic `ROM_FILE => BOOT_MEMORY_FILE`) e outra para a FLASH (generic `ROM_FILE => ROM_FILE`). As dez entradas do grupo só passam `ROM_FILE`. Sem `BOOT_MEMORY_FILE`, a BOOT_MEMORY usa o valor padrão da entidade, `default.hex`, que não existe, e a elaboração falha antes de qualquer teste:
 
 ```
 rom_simulation.vhd:79:12:error: cannot open file: default.hex
 ```
 
-Passar `BOOT_ROM_FILE` faria a elaboração passar, mas os testes seguiriam errados, porque cada módulo supõe que o reset sai direto para o conteúdo de `ROM_FILE` no endereço 0. Na arquitetura de memória, o reset entra sempre pela BOOT_ROM, e o código de usuário começa em `FLASH_BASE = 0x800`, depois do boot. O cálculo do PC em `tests/python/unittests/instructions/one.py` mostra a suposição:
+Passar `BOOT_MEMORY_FILE` faria a elaboração passar, mas os testes seguiriam errados, porque cada módulo supõe que o reset sai direto para o conteúdo de `ROM_FILE` no endereço 0. Na arquitetura de memória, o reset entra sempre pela BOOT_MEMORY, e o código de usuário começa em `FLASH_BASE = 0x800`, depois do boot. O cálculo do PC em `tests/python/unittests/instructions/one.py` mostra a suposição:
 
 ```python
 # PC de cada AUIPC: começa em 4 * nº da instrução (modelo single-cycle)
 pcs = [i * 4 for i in range(len(auipc_immediates))]
 ```
 
-Os arquivos `.hex` de `tests/python/unittests/instructions/codes/` também começam no endereço 0 do array, sem o padding que o `riscv-tools` aplica para alinhar o conteúdo a `FLASH_BASE`. O salto da BOOT_ROM ainda acrescenta bolhas ao pipeline.
+Os arquivos `.hex` de `tests/python/unittests/instructions/codes/` também começam no endereço 0 do array, sem o padding que o `riscv-tools` aplica para alinhar o conteúdo a `FLASH_BASE`. O salto da BOOT_MEMORY ainda acrescenta bolhas ao pipeline.
 
 ## 4. Condições para reativar um teste do grupo
 
 Cada um dos dez testes precisa de três itens.
 
-1. Um `BOOT_ROM_FILE` real, como `boot_rom.hex` ou um stub mínimo que só executa `j 0x800`.
+1. Um `BOOT_MEMORY_FILE` real, como `boot_rom.hex` ou um stub mínimo que só executa `j 0x800`.
 2. O `.hex` do teste gerado de novo, com o padding de `FLASH_BASE`.
 3. As contas de PC e de número de ciclos do módulo Python reescritas para incluir o atraso do boot.
 

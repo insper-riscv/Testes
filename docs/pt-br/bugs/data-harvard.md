@@ -10,13 +10,13 @@ O core (`rv32im_pipeline_core`) é Harvard. Os barramentos de instrução e de d
 
 | Barramento | Origem do endereço | Alcança |
 | :--- | :--- | :--- |
-| `rom_addr` | `pc_fetch` | BOOT_ROM e FLASH, para a busca de instrução |
+| `rom_addr` | `pc_fetch` | BOOT_MEMORY e FLASH, para a busca de instrução |
 | `ram_addr` | `exmem_alu_out`, isto é, o resultado da ALU de qualquer `lw` ou `sw` | RAM |
 | segunda porta de leitura do estágio MEM | `exmem_alu_out` | FLASH, só para a cópia de `.data` no boot |
 
 Sem a segunda porta, nenhum `lw` ou `sw` alcançaria a FLASH, e o mecanismo padrão de `.data` não teria como funcionar. A separação dos barramentos é uma escolha deste core, e a ISA RISC-V não a exige.
 
-A divisão da memória em BOOT_ROM (bootloader fixo), FLASH (firmware de cada teste) e RAM (dado), com o mapa de endereços, está descrita na [documentação de memória do Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md).
+A divisão da memória em BOOT_MEMORY (bootloader fixo), FLASH (firmware de cada teste) e RAM (dado), com o mapa de endereços, está descrita na [documentação de memória do Insper-RISC-V](https://github.com/insper-riscv/Insper-RISC-V/blob/main/docs/pt-br/platform/memoria.md).
 
 ## 2. Cópia de `.data` no boot
 

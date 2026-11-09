@@ -28,7 +28,7 @@ Três termos aparecem ao longo do texto.
 
 ## 2. Nível 0, consistência estática
 
-O mapa de memória (onde ficam a boot ROM, a FLASH, a RAM e as palavras reservadas) é copiado à mão em muitos lugares: configuração dos testes, flags do linker, boot ROM, runtime, constantes do VHDL do core, IPs de memória e testbench. O `platform.yaml` de cada plataforma é a fonte de verdade, e `check-memory-map` confere cada cópia contra ele, para a plataforma `internal-mem` e para a `sdram`. `check-paths` confere que todo caminho listado no manifesto existe.
+O mapa de memória (onde ficam a boot memory, a FLASH, a RAM e as palavras reservadas) é copiado à mão em muitos lugares: configuração dos testes, flags do linker, boot memory, runtime, constantes do VHDL do core, IPs de memória e testbench. O `platform.yaml` de cada plataforma é a fonte de verdade, e `check-memory-map` confere cada cópia contra ele, para a plataforma `internal-mem` e para a `sdram`. `check-paths` confere que todo caminho listado no manifesto existe.
 
 | | |
 | :--- | :--- |
@@ -70,7 +70,7 @@ Os testes da SDRAM rodam contra um modelo do chip que **aborta a simulação** e
 
 ## 5. Nível 3, programa no core completo
 
-O topo de simulação reúne o core, a boot ROM e a FLASH, e roda a suíte de programas em assembly e em C. O fluxo de cada programa tem dois passos.
+O topo de simulação reúne o core, a boot memory e a FLASH, e roda a suíte de programas em assembly e em C. O fluxo de cada programa tem dois passos.
 
 1. `riscv-tools compile --emit hex` compila o programa com o GCC RISC-V (picolibc) e gera as imagens de memória.
 2. `riscv-tools sim` carrega a imagem, roda o core até o programa escrever o veredito no `tohost` e compara o resultado com o golden.
@@ -89,6 +89,8 @@ O tempo de cada programa, em ticks, também é registrado e serve de base para m
 | Não pega | comportamento da SDRAM, timing de pinos, sintetizabilidade |
 | Comandos | `riscv-tools --config tools/riscv_build/config.yaml generate-header`, `compile --emit hex` e `sim` |
 | Custo | minutos para a suíte inteira |
+
+A regressão completa roda os níveis 3 e 4 em uma execução, com a verificação cruzada no Spike e um relatório único, por `make regression` (ver `tools/regression/README.md`). Cada programa excluído tem a justificativa no plano.
 
 ## 6. Nível 4, plataforma com SDRAM
 
