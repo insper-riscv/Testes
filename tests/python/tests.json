@@ -813,7 +813,7 @@
         "toplevel": "core",
         "sources": [
             "Insper-RISC-V/Common-Components/src/utils_pkg.vhd",
-            "Insper-RISC-V/Common-Components/src/config_pkg.vhd",
+            "tests/python/unittests/irq/config/config_pkg.vhd",
             "Insper-RISC-V/Core/src/shared/pipeline_types.vhd",
             "Insper-RISC-V/Core/src/shared/byte_mask_consts.vhd",
             "Insper-RISC-V/Core/src/shared/opcode_consts.vhd",
@@ -887,15 +887,7 @@
         ],
         "test_module": "tests.python.unittests.irq.programs",
         "parameters": {
-            "has_m": true,
-            "has_zicsr": true,
-            "has_zihpm": true,
-            "has_sscofpmf": true,
-            "has_interrupts": true,
-            "has_zicntr": true,
             "time_external": true,
-            "has_access_faults": true,
-            "ram_end_kib": 2048,
             "periph_slots": "00000001"
         },
         "build_args": [
